@@ -245,7 +245,7 @@ tab3_left_margin=12
       genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
       
       genes=intersect(genemask,genes)
-      print(length(genes))
+    #  print(length(genes))
       tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = 1e-5)#params$reg)
       tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
       tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(model$models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(model$models)))
@@ -257,16 +257,17 @@ tab3_left_margin=12
       
       if (length(tmp_dataset$ds)==0){
         for (ds_i in 1:length(tmp_env$ds_numis)){
-          message(ds_i)
           tmp_dataset$ds[[ds_i]]=list()
         }
       }
       for (ds_i in 1:length(tmp_env$ds_numis)){
         tmp_dataset$ds[[ds_i]][[sampi]]=tmp_env$ds[[ds_i]]
       }
+      message("")
      
     }
     
+    message("One more minute...")
     
     dataset<<-new.env()
     dataset$ds_numis=tmp_dataset$ds_numis
@@ -274,7 +275,7 @@ tab3_left_margin=12
     dataset$ll<<-tmp_dataset$ll[[samples[1]]]
     dataset$cell_to_cluster<<-tmp_dataset$cell_to_cluster[[samples[1]]]
     names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
-    dataset$cell_to_sample<-rep(sampi,ncol(tmp_dataset$umitab[[samples[1]]]))
+    dataset$cell_to_sample<<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
     names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
     dataset$avg<<-tmp_dataset$avg
     dataset$counts<<-tmp_dataset$counts
@@ -282,8 +283,7 @@ tab3_left_margin=12
     dataset$ds<<-list()
 
     for (ds_i in 1:length(tmp_env$ds_numis)){
-      message(ds_i)
-      dataset$ds[[ds_i]]=tmp_dataset$ds[[ds_i]][[samples[1]]]
+      dataset$ds[[ds_i]]=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
     }
     if (length(samples)>1){
       for (sampi in samples[-1]){
@@ -295,7 +295,7 @@ tab3_left_margin=12
         names(cell_to_sampi)=cellids
         dataset$cell_to_sample<<-c(dataset$cell_to_sample,cell_to_sampi)
         for (ds_i in 1:length(dataset$ds_numis)){
-          dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],tmp_dataset$ds[[ds_i]][[sampi]])
+          dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],tmp_dataset$ds[[ds_i]][[sampi]][genes,])
         }
       }
     }
@@ -800,7 +800,7 @@ tab3_left_margin=12
       score=rep(0,length(inclusts))
       for (i in 1:length(genes)){
         message(sig[i],genes[i])
-        browser()
+  
         score=score+(10^(5*(length(genes)-i)))*ifelse(sig[i]=="+",1,-1)*(mat[genes[i],inclusts])
       }
       
@@ -990,7 +990,7 @@ tab3_left_margin=12
     mtext(text = clustAnnots[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
     # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =colnames(logr), side=2,  at=seq(1,0,l=dim(logr)[2]),las=2,cex=1)
-    print(obs)
+    #print(obs)
     box()
   })
   
@@ -1036,7 +1036,7 @@ tab3_left_margin=12
     input$inBirdClusterSetInclude
   #####
     
-    clustmask=clusters_reactive()
+    inclusts=clusters_reactive()
     ingenes=genes_reactive()#genes_reactive()
     insamples=truth_samples_reactive()
      if (!loaded_flag){
@@ -1045,29 +1045,34 @@ tab3_left_margin=12
   
     # Lables for axes
     if (length(ingenes)==0){
-    
         return()
+    }
+    if (length(inclusts)==0){
+      return()
     }
 
     zlim=input$inModelColorScale
-    if (length(insamples)>1){
+    if (length(insamples)>1&(length(inclusts)>1)){
       layout(matrix(1:2,1,2),widths=c(1,10))
       par(mar=c(7,1,1,.1))
-   
-      tab=table(unlist(dataset$cell_to_cluster),rep(names(dataset$cell_to_cluster),sapply(dataset$cell_to_cluster,length)))
-      tab=t(t(tab)/colSums(tab))[,names(dataset$cell_to_cluster)]
-      tab=(tab/rowSums(tab))[intersect(clustmask,rownames(tab)),]
+      tab=table(dataset$cell_to_cluster,dataset$cell_to_sample)
+      tab=t(t(tab)/colSums(tab))[,insamples]
+      tab=(tab/rowSums(tab))[intersect(inclusts,rownames(tab)),,drop=F]
       barplot(t(tab[nrow(tab):1,insamples]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     }
     par(mar=c(7,tab3_left_margin,1,9))
     
-  
     mat<<-model$models[match(ingenes,rownames(model$models)),]
-    mat1=mat[,clustmask]
+    mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
-      mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1)))
-      break1=-1e6
-      break2=1e6
+      if (ncol(mat1)>1){
+        mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1)))
+        break1=-1e6
+        break2=1e6
+      }
+      else{
+        return()
+      }
     }
     else if (input$inAbsOrRel=="Absolute"){
       mat_to_show=log10(mat1)
@@ -1080,8 +1085,8 @@ tab3_left_margin=12
     box()
    
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
-    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[clustmask]," ; ",round(100*ncells_per_cluster[clustmask]/sum(ncells_per_cluster[names(which(!is_cluster_excluded))]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(clustAnnots[clustmask]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster[names(which(!is_cluster_excluded))]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
@@ -1093,7 +1098,7 @@ tab3_left_margin=12
     input$inModelVer
     #####
     mods=modules_reactive()
-    clustmask=clusters_reactive()
+    inclusts=clusters_reactive()
     if (!exists("inmodules")){
       return()
     }
@@ -1113,7 +1118,7 @@ tab3_left_margin=12
    
     modulemat<<-t(sapply(inmodules,function(modi){colSums(counts[modi,])})/colSums(counts))
     
-    mat1=modulemat[,clustmask]
+    mat1=modulemat[,inclusts]
     
     if (input$inAbsOrRel=="Relative"){
       mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1)))
@@ -1131,8 +1136,8 @@ tab3_left_margin=12
     box()
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
-    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[clustmask]," ; ",round(100*ncells_per_cluster[clustmask]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(clustAnnots[clustmask]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
@@ -1167,7 +1172,7 @@ tab3_left_margin=12
     box()
     
  #   mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
-  #  mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[clustmask]," ; ",round(100*ncells_per_cluster[clustmask]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+  #  mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =external_profiles, side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
@@ -1211,32 +1216,35 @@ tab3_left_margin=12
     
     cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=unlist(sapply(split(colnames(ds),dataset$cell_to_sample[colnames(ds)]),sample,size = cells_per_sample,replace = F))
-    cell_mask=dataset$cell_to_cluster[colnames(ds)]%in%inclusts&dataset$cell_to_sample[colnames(ds)]%in%insamples&colnames(ds)%in%cells_selected
+    sample_if_possible=function(x,size){if(length(x)>size){return(sample(x,size=size,replace=F))}else{return(x)}}
+    cells_selected=unlist(sapply(split(colnames(ds),dataset$cell_to_sample[colnames(ds)]),sample_if_possible,size = cells_per_sample))
+    cell_mask=dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
+              dataset$cell_to_sample[colnames(ds)]%in%insamples &
+              colnames(ds)%in%cells_selected
     ds=ds[genes,cell_mask]
-  
-    
-   
+    ds=ds[,order(match(dataset$cell_to_cluster[colnames(ds)],inclusts))]
     samps=dataset$cell_to_sample[colnames(ds)]   
     
-    ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)
+    ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)[inclusts]
     #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
    # names(ncells)=names(ds_cl)
     
-    pmat=as.matrix(ds)
+    pmat=as.matrix(ds)[,ncol(ds):1]
     spacer_size=ceiling(dim(pmat)[2]/200)
     pmat2=log2(1+pmat)
 
     layout(matrix(1:2,1,2),widths=c(40,1))   
     par(mar=c(10,3,1,1))
-    image(pmat2[,ncol(pmat2):1],col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
+   # image(pmat2[,ncol(pmat2):1],col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
+    image(pmat2,col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
+    
+    
     box()
-    print(ncells)
     if (input$inTruthShowSeparatorBars){
       abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
     }
     mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1,col=gcol[toupper(rownames(pmat))])
- 
+   
     a=cumsum(ncells)
     b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
     mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1)
@@ -1436,7 +1444,7 @@ tab3_left_margin=12
       ##### Don't delete!!
       #####
       insamples=truth_samples_reactive()
-      clustmask=clusters_reactive()
+      inclusts=clusters_reactive()
       ingenes=genes_reactive()
       
       
@@ -1461,16 +1469,16 @@ tab3_left_margin=12
       par(mar=c(7,7,1,9))
       
       browser()
-      mat1<-model$models[match(ingenes,rownames(model$models)),clustmask]
+      mat1<-model$models[match(ingenes,rownames(model$models)),inclusts]
    
       n=ncol(mat1)
-      ncells_per_projected_cluster=rep(0,length(clustmask))
-      names(ncells_per_projected_cluster)=clustmask
+      ncells_per_projected_cluster=rep(0,length(inclusts))
+      names(ncells_per_projected_cluster)=inclusts
       t1=table(projected$cell_to_cluster)
       ncells_per_projected_cluster[names(t1)]=t1
       
-      percents_ref=round(100*ncells_per_cluster[clustmask]/sum(ncells_per_cluster),digits=1)
-      percents_projected=round(100*ncells_per_projected_cluster[clustmask]/sum(ncells_per_projected_cluster),digits=1)
+      percents_ref=round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1)
+      percents_projected=round(100*ncells_per_projected_cluster[inclusts]/sum(ncells_per_projected_cluster),digits=1)
       
       
       layout(matrix(1:2,1,2))
@@ -1487,7 +1495,7 @@ tab3_left_margin=12
         sapply(yv,function(y){arrows(xusr[1],y,xusr[2],y,length=0,col="gray")})
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
         mtext(text =paste(" ",colnames(mat1)," (",percents_ref,"% /",percents_projected,"% )",sep=""), side=4, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[clustmask]," ",sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
       }
       else if (input$inProjectPlotType=="Side by Side"){
         avg=rowMeans(cbind(mat1,mat1p))
@@ -1499,7 +1507,7 @@ tab3_left_margin=12
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_ref,"%)",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[clustmask]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         image(log2(1e-5+mat1p/pmax(1e-5,avg))[,ncol(mat1p):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=input$inProjectedDataset)
         yusr=par("usr")[3:4]
         xusr=par("usr")[1:2]
@@ -1507,7 +1515,7 @@ tab3_left_margin=12
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_projected,"%)",sep=""), side=4,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[clustmask]," ",sep=""), side=2,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         
         box()
       }
