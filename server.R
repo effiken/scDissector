@@ -1,18 +1,30 @@
 library(ggvis)
 library(dplyr)
 library(gplots)
+source("projector.r")
 set.seed(3505)
-if (exists("projected")){
-  rm(projected,envir = .GlobalEnv)  
-}
-if (exists("ext_prof")){
-  rm(ext_prof,envir= .GlobalEnv)
-}
-if (exists("modules")){
-  rm(modules)
+
+
+clean_all=function(){
+  if (exists("projected")){
+    rm(projected,envir = .GlobalEnv)  
+  }
+  if (exists("ext_prof")){
+    rm(ext_prof,envir= .GlobalEnv)
+  }
+  if (exists("modules")){
+    rm(modules,envir=.GlobalEnv)
+  }
+  if (exists("model")){
+    rm(model,envir =.GlobalEnv)
+  }
+  if (exists("dataset")){
+    rm(dataset,envir =.GlobalEnv)
+  }
 }
 
-source("projector.r")
+clean_all()
+
 cap <- function(x) {
   paste(toupper(substring(x, 1,1)), tolower(substring(x, 2)),sep="", collapse=" ")
 }
@@ -126,8 +138,7 @@ tab3_left_margin=12
     {
       return()
     }
-   
-   
+    
     i=match(input$inModelVer,vers_tab$title)
     f=paste(input$inDatapath,vers_tab$path[ifelse(is.na(i),1,i)],sep="/")
     
@@ -137,15 +148,7 @@ tab3_left_margin=12
     }
   
     #rm(c())
-    if(exists("projected")){
-      rm(projected)
-    }
-    if (exists("modules")){
-      rm(modules)
-    }
-    if (exists("model$ds")){
-      rm(model$ds)
-    }
+    clean_all()
     message("Loading ",f)
     model<<-new.env(parent = globalenv())
     load(file=f,model)
@@ -531,6 +534,7 @@ tab3_left_margin=12
       ord=order(apply(modulemat[,clusters],1,which.max))
       updateTextInput(session,"inModules",value=paste(rownames(modulemat)[ord],collapse=","))
     }
+    print(modules[ord])
   })
   
   
@@ -974,6 +978,7 @@ tab3_left_margin=12
   })
   
   output$textModuleGenes<- renderText({
+    input$inModules
     if (exists("modules")){
       paste(modules[[input$inModuleSelect]],collapse=",")
     }
@@ -1094,7 +1099,7 @@ tab3_left_margin=12
     mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
       if (ncol(mat1)>1){
-        mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1)))
+        mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
         break1=-1e6
         break2=1e6
       }
@@ -1120,10 +1125,16 @@ tab3_left_margin=12
   
   
   module_counts_reactive<-reactive({
+    input$inGetModules
     if (!exists("modules")){
       return()
     }
-    return(t(sapply(modules,function(modi){colSums(dataset$counts[modi,])})/colSums(dataset$counts)))
+
+    counts=0
+    for (i in 1:length(dataset$counts)){
+      counts=counts+dataset$counts[[i]]
+    }
+    return(t(sapply(modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
   
     
   })
@@ -1139,12 +1150,14 @@ tab3_left_margin=12
     if (!loaded_flag){
       return()
     }
-
-    modulemat=module_counts_reactive()
+    if (!exists("modules")){
+      return()
+    }
+    modulemat<<-module_counts_reactive()
     if(is.null(modulemat)){
       return()
     }
-    modulemat=modulemat[inmodules,]
+    modulemat<<-modulemat[inmodules,]
     
     zlim=input$inModelColorScale
     par(mar=c(7,tab3_left_margin,1,9))
@@ -1154,7 +1167,7 @@ tab3_left_margin=12
     mat1=modulemat[,inclusts]
     
     if (input$inAbsOrRel=="Relative"){
-      mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1)))
+      mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
       break1=-1e6
       break2=1e6
     }
@@ -1163,9 +1176,9 @@ tab3_left_margin=12
       break1=0
       break2=1e-1
     }
-    isolate({
-      image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=loaded_version)
-    })
+  
+    image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=loaded_version)
+  
     box()
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
