@@ -431,16 +431,15 @@ tab3_left_margin=12
   
   
   ds_QC_reactive <-reactive({
+    clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+    samples=truth_samples_reactive()
     if (!exists("dataset")){
       return()
     }
-    clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
     
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    genes=rownames(ds)
-    samples=dataset$samples
-    cell_mask=(dataset$cell_to_cluster%in%clust&dataset$cell_to_sample%in%samples)[colnames(ds)]
-    return(ds[genes,cell_mask])
+    cell_mask=intersect(colnames(ds),names(dataset$cell_to_cluster)[(dataset$cell_to_cluster%in%clust&dataset$cell_to_sample%in%samples)])
+    return(ds[,cell_mask])
   })
   
   observeEvent(input$inGeneSets,{
@@ -1352,6 +1351,7 @@ tab3_left_margin=12
 
     output$cellcor<-renderPlot({
       clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+      insamples=truth_samples_reactive()
       ds=ds_QC_reactive()
       if (is.null(ds)){
         return()
@@ -1362,11 +1362,12 @@ tab3_left_margin=12
       var_genes=head(genemask[order(v[genemask]/m[genemask],decreasing=T)],200)
       z=ds[var_genes,sample(colnames(ds),size = pmin(1000,ncol(ds)),replace = F)]
       z=z/mean(z)
-      message("*")
+      
       cormat=cor(as.matrix(z),use="comp")
-
+     
       ord=hclust(dist(1-cormat))$order
-      layout(matrix(c(1,2,3),nrow = 3),heights = c(8,1,1))
+      samps=dataset$cell_to_sample[colnames(cormat)[ord]]
+      layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(8,1))
       par(mar=c(.5,2,2,2))
       image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F)
       lab=paste("Single-cells (cluster ",clust,")",sep="")
@@ -1383,14 +1384,21 @@ tab3_left_margin=12
         image(as.matrix(x),breaks=c(-1e6,seq(-3,3,l=99),1e6),col=colgrad,axes=F)
         mtext(2,text = input$inGene1)
       }
+      else{
+        plot.new()
+      }
       if (!is.na(gene2)){
         x=t(ds[gene2,colnames(cormat),drop=F])
         x=log2(1e-5+x/(pmax(1e-5,mean(x,na.rm=T))))
         image(as.matrix(x),breaks=c(-1e6,seq(-3,3,l=99),1e6),col=colgrad,axes=F)
-       
         mtext(2,text = input$inGene2)
-        
       }
+      else{
+        plot.new()
+      }
+      par(mar=c(.5,.5,2,.5))
+      image(t(as.matrix(match(samps,insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
+      
       
     })
     
@@ -1417,11 +1425,11 @@ tab3_left_margin=12
         return()
       }
       clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
-  
-      mask=model$cell_to_cluster[colnames(model$ds)]%in%clust
-      flag=sum(c(input$inGene1,input$inGene2)%in%rownames(model$ds))==2
+      ds=ds_QC_reactive()
+      mask=dataset$cell_to_cluster[colnames(ds)]%in%clust
+      flag=sum(c(input$inGene1,input$inGene2)%in%rownames(ds))==2
       if (flag){
-        dat=floor(log2(1+data.frame(t(model$ds[c(input$inGene1,input$inGene2),mask]))))
+        dat=floor(log2(1+data.frame(t(as.matrix(ds[c(input$inGene1,input$inGene2),mask])))))
         tab=table(dat)
         x=matrix(0,1+max(dat[,1],na.rm=T),1+max(dat[,2],na.rm=T))
         rownames(x)=0:(nrow(x)-1)
