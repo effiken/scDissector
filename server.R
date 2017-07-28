@@ -149,7 +149,7 @@ tab3_left_margin=12
     message("Loading ",f)
     model<<-new.env(parent = globalenv())
     load(file=f,model)
-    loaded_flag<<-T
+    
     
     loaded_file<<-f
  
@@ -231,6 +231,12 @@ tab3_left_margin=12
       f=paste(input$inDatapath,samples_tab$path[i],sep="/")
       tmp_env=new.env()
       load(f,envir = tmp_env)
+      
+      colnames(tmp_env$umitab)=paste(samples[sampi],colnames(tmp_env$umitab),sep="_")
+      for (ds_i in 1:length(tmp_env$ds)){
+        colnames(tmp_env$ds[[ds_i]])=paste(samples[sampi],colnames(tmp_env$ds[[ds_i]]),sep="_")
+      }
+  
       if (is.null(tmp_dataset$ds_numis)){
         tmp_dataset$ds_numis=tmp_env$ds_numis
       }
@@ -281,10 +287,23 @@ tab3_left_margin=12
     dataset$counts<<-tmp_dataset$counts
     dataset$samples=samples
     dataset$ds<<-list()
-
+    dataset$randomly_selected_cells<<-list()
+    
     for (ds_i in 1:length(tmp_env$ds_numis)){
-      dataset$ds[[ds_i]]=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
+      ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
+      dataset$ds[[ds_i]]=ds_sampi
+      dataset$randomly_selected_cells[[ds_i]]<<-list()
+      for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
+        nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
+        if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-colnames(ds_sampi)
+        }
+        else{
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
+        }
+      }
     }
+   
     if (length(samples)>1){
       for (sampi in samples[-1]){
         cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
@@ -294,8 +313,21 @@ tab3_left_margin=12
         cell_to_sampi=rep(sampi,length(cellids))
         names(cell_to_sampi)=cellids
         dataset$cell_to_sample<<-c(dataset$cell_to_sample,cell_to_sampi)
+        
         for (ds_i in 1:length(dataset$ds_numis)){
-          dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],tmp_dataset$ds[[ds_i]][[sampi]][genes,])
+          ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]]
+          dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
+         
+          
+          for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
+            nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
+            if (nrandom_cells=="All"||nrandom_cells>=ncol(ds_sampi)){
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
+            }
+            else{
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
+            }
+          }
         }
       }
     }
@@ -317,10 +349,10 @@ tab3_left_margin=12
     updateSelectInput(session,"inTweezersLLY",choices = clust_title)
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
-    updateSelectInput(session,"inDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+    updateSelectInput(session,"inTruthDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
     updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = 1000)
     message("Successfully finished loading.")
-     
+    loaded_flag<<-T
   })
   
   
@@ -438,8 +470,9 @@ tab3_left_margin=12
     }
     
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    cell_mask=intersect(colnames(ds),names(dataset$cell_to_cluster)[(dataset$cell_to_cluster%in%clust&dataset$cell_to_sample%in%samples)])
-    return(ds[,cell_mask])
+    sampling_mask=dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
+    return(ds[,intersect(sampling_mask,cluster_mask)])
   })
   
   observeEvent(input$inGeneSets,{
@@ -453,6 +486,7 @@ tab3_left_margin=12
   #  if (loaded_flag){
   #    init_genes(genes)
   #  }
+    
     })
   
   
@@ -1211,19 +1245,18 @@ tab3_left_margin=12
     }
 
     samps_cl=list() 
-    ds=dataset$ds[[match(input$inDownSamplingVersion,dataset$ds_numis)]]
+    ds=dataset$ds[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]]
     
     cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
     genes=intersect(ingenes,rownames(ds))
-    sample_if_possible=function(x,size){if(length(x)>size){return(sample(x,size=size,replace=F))}else{return(x)}}
-    cells_selected=unlist(sapply(split(colnames(ds),dataset$cell_to_sample[colnames(ds)]),sample_if_possible,size = cells_per_sample))
+    cells_selected=dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+                                                                                                            
     cell_mask=dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
               dataset$cell_to_sample[colnames(ds)]%in%insamples &
               colnames(ds)%in%cells_selected
     ds=ds[genes,cell_mask]
     ds=ds[,order(match(dataset$cell_to_cluster[colnames(ds)],inclusts))]
     samps=dataset$cell_to_sample[colnames(ds)]   
-    
     ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)[inclusts]
     #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
    # names(ncells)=names(ds_cl)
@@ -1251,24 +1284,17 @@ tab3_left_margin=12
     image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
   })
     
-   # v <- reactiveValues(counter = 1L)
-    
-    # Filter the movies, returning a data frame
-    movies <- reactive({
+
+    varmean_reactive <- reactive({
       clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
-      # Due to dplyr issue #318, we need temp variables for input values
       ds=ds_QC_reactive()
       if (is.null(ds))(return(data.frame(m=0,varmean=0,gene=0)))
       
       m=rowMeans(ds)
-      
       v=apply(ds,1,var)
       
       df=data.frame(m=log10(m),varmean=log2(v/m),gene=rownames(ds))
       mask2=df$m>input$mean[1]&df$m<input$mean[2]&df$varmean<input$varmean[2]&df$varmean>input$varmean[1]
-      mask=m>0.001&log2(v/m)>1.1
-      mask[is.na(mask)]=F
-      clust_var_genes<<-names(m)[mask]
       df[mask2,]
       #  
       # Apply filters
@@ -1328,7 +1354,7 @@ tab3_left_margin=12
       # but since the inputs are strings, we need to do a little more work.
       #   xvar <- prop("x", as.symbol(input$xvar))
       #    yvar <- prop("y", as.symbol(input$yvar))
-        movies %>%
+        varmean_reactive %>%
         ggvis(x = ~m, y = ~varmean) %>%
         layer_points(size := 50, size.hover := 200,
                      fillOpacity := 0.2, fillOpacity.hover := 0.5, key := ~gene) %>%
@@ -1367,7 +1393,7 @@ tab3_left_margin=12
      
       ord=hclust(dist(1-cormat))$order
       samps=dataset$cell_to_sample[colnames(cormat)[ord]]
-      layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(8,1))
+      layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(9,1))
       par(mar=c(.5,2,2,2))
       image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F)
       lab=paste("Single-cells (cluster ",clust,")",sep="")
@@ -1399,7 +1425,6 @@ tab3_left_margin=12
       par(mar=c(.5,.5,2,.5))
       image(t(as.matrix(match(samps,insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
       
-      
     })
     
     click_tooltip <- function(x) {
@@ -1419,7 +1444,7 @@ tab3_left_margin=12
     
     output$gene2 <- renderText({ paste("_________",input$inGene2,sep="")})
     output$gene1 <- renderText({ input$inGene1})  
-    
+   
     output$table <- renderTable({
       if (!loaded_flag){
         return()
@@ -1476,7 +1501,6 @@ tab3_left_margin=12
       zlim=input$inModelColorScale
       par(mar=c(7,7,1,9))
       
-      browser()
       mat1<-model$models[match(ingenes,rownames(model$models)),inclusts]
    
       n=ncol(mat1)

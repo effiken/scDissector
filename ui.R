@@ -125,9 +125,9 @@ mainPanel(
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,3)),
                       
                       textInput("inTruthSamples", width=2000, "Samples:"),
-                      selectInput("inDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
+                      selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                       checkboxInput("inTruthShowSeparatorBars",label = "Show Separator Bars",value = T),
-                      selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=c(100,500,1000,2000,4000,"All"),selected = 1000,width=200)
+                      selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
                   )),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
