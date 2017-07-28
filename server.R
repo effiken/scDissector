@@ -902,11 +902,13 @@ tab3_left_margin=12
     {
       return(data.frame(m=0,v=0,gene=""))
     }
-    message("..")
+    
+    
     
      ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
     
     ds_mean<-rowMeans(ds)
+    message("Estimating variance for ",nrow(ds)," genes")
     ds_var<-apply(ds,1,var)
     return(data.frame(m=ds_mean,v=ds_var,gene=rownames(ds)))
   })
@@ -932,10 +934,10 @@ tab3_left_margin=12
     }
     df=modules_varmean_reactive()
     plot(log10(df$m),log2(df$v/df$m),xlab="Log10(mean)",ylab="log2(var/mean)",panel.first=grid())
-    
     abline(v=input$inVarMean_MeanThresh,col=2)
+    
     abline(h=input$inVarMean_varmeanThresh,col=2)
-      
+    
     n=sum(geneModuleMask_reactive())
     legend("topright", paste(n,"genes"), bty="n",text.col=2) 
     
@@ -1157,7 +1159,7 @@ tab3_left_margin=12
     if(is.null(modulemat)){
       return()
     }
-    modulemat<<-modulemat[inmodules,]
+    modulemat<<-modulemat[inmodules,inclusts]
     
     zlim=input$inModelColorScale
     par(mar=c(7,tab3_left_margin,1,9))
