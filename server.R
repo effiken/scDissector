@@ -1,15 +1,15 @@
 library(ggvis)
 library(dplyr)
 library(gplots)
-
+set.seed(3505)
 if (exists("projected")){
   rm(projected,envir = .GlobalEnv)  
 }
 if (exists("ext_prof")){
   rm(ext_prof,envir= .GlobalEnv)
 }
-if (exists("inmodules")){
-  rm(inmodules)
+if (exists("modules")){
+  rm(modules)
 }
 
 source("projector.r")
@@ -140,8 +140,8 @@ tab3_left_margin=12
     if(exists("projected")){
       rm(projected)
     }
-    if (exists("inmodules")){
-      rm(inmodules)
+    if (exists("modules")){
+      rm(modules)
     }
     if (exists("model$ds")){
       rm(model$ds)
@@ -183,8 +183,8 @@ tab3_left_margin=12
     if (file.exists(annnot_fn)){
       a=read.delim(annnot_fn,header=F,stringsAsFactors = F,row.names = 1)
       clustAnnots<<-a[,1]
+      clustAnnots[is.na(clustAnnots)]<<-""
       names(clustAnnots)<<-rownames(a)
-      print(clustAnnots)
     }
     else{
       clustAnnots<<-rep("",ncol(model$models))
@@ -315,13 +315,13 @@ tab3_left_margin=12
         dataset$cell_to_sample<<-c(dataset$cell_to_sample,cell_to_sampi)
         
         for (ds_i in 1:length(dataset$ds_numis)){
-          ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]]
+          ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
           dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
          
           
           for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
             nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
-            if (nrandom_cells=="All"||nrandom_cells>=ncol(ds_sampi)){
+            if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
               dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
             }
             else{
@@ -342,15 +342,16 @@ tab3_left_margin=12
     
     updateTextInput(session,"inClusters",value=paste(cluster_order,collapse=",")) 
     updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
-    updateSelectInput(session,"inTweezersFromCluster",choices = clust_title)
-    updateSelectInput(session,"inTweezersToCluster",choices = clust_title)
-    updateSelectInput(session,"inVarmeanClust",choices =clust_title)
-    updateSelectInput(session,"inTweezersLLX",choices = clust_title)
-    updateSelectInput(session,"inTweezersLLY",choices = clust_title)
+#    updateSelectInput(session,"inTweezersFromCluster",choices = clust_title)
+#    updateSelectInput(session,"inTweezersToCluster",choices = clust_title)
+    updateSelectInput(session,"inQCClust",choices =clust_title)
+#    updateSelectInput(session,"inTweezersLLX",choices = clust_title)
+#    updateSelectInput(session,"inTweezersLLY",choices = clust_title)
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
     updateSelectInput(session,"inTruthDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
-    updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = 1000)
+    updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+    updateSelectInput(session,"inModulesDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
     message("Successfully finished loading.")
     loaded_flag<<-T
   })
@@ -359,62 +360,6 @@ tab3_left_margin=12
   observeEvent(input$inAddSample,{
     s1=paste(unique(c(strsplit(input$inSamples,",|, | ,")[[1]],input$inSampleToAdd)),collapse=", ")
     updateTextInput(session,"inSamples",value=s1) 
-  })
-  
-  
-  
-  observeEvent(input$inProjChisqTest,{
-    
-    counts=t(sapply(split(as.data.frame(t(umitab)),model$cell_to_cluster),colSums))
-    proj_counts=t(sapply(split(as.data.frame(t(projected$umitab)),projected$cell_to_cluster),colSums))
-   
-  })
-  
-  observeEvent(input$inSaveProjectedVersion,{
-  message("Saving projected version ")
-    if (input$inProjectedVersionName%in%vers_tab$title){
-      message("Version name already exists. Version was not saved!")
-      return()
-    }
-    if (!exists("projected")){
-      message("Cells must be projected first. Version was not saved!")
-      return()
-    }
-    
-    chisq_res<-chisq_genes(projected$umitab,projected$cell_to_cluster)
-    fn=paste(input$inDatapath,input$inProjectedVersionFilename,sep="/")
-    message("Saving ",input$inProjectedVersionName, " to ", fn)
-    umitab=projected$umitab
-    ds=projected$ds
-    model$models=projected$models
-    cell_to_cluster=projected$cell_to_cluster
-    ll=projected$ll
-    cell_to_batch=projected$cell_to_batch
-    chisq_res=chisq_res
-    params=projected$params
-    save(umitab,ds,model$models,cell_to_cluster,ll,cell_to_batch,chisq_res,params,file=fn)
-    vers<<-rbind(vers,c(input$inProjectedVersionName,input$inProjectedVersionFilename))
-    write.csv(vers,file=paste(input$inDatapath,"model_versions.csv",sep="/"),row.names = F,quote=F)
-    
-    loaded_annot_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_annots.txt",sep="")
-    
-    if (file.exists(loaded_annot_fn)){
-      annot_fn=paste(input$inDatapath,strsplit(input$inProjectedVersionFilename,"\\.")[[1]][1],"_annots.txt",sep="")
-      write.table(file=annot_fn,clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
-    }
-    
-    loaded_order_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_order.txt",sep="")
-    if (file.exists(loaded_order_fn)){
-      loaded_cluster_order=as.character(read.table(file=loaded_order_fn,header = F)[,1])
-      order_fn=paste(input$inDatapath,strsplit(input$inProjectedVersionFilename,"\\.")[[1]][1],"_order.txt",sep="")
-      write.table(loaded_cluster_order,file=order_fn,quote = F,sep="\t",row.names = F,col.names = F)
-    
-    }
-    updateSelectInput(session,"inModelVer", "Clustering Version:",choices = vers_tab$title)
-    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices = vers_tab$title)
-    message("Done.")
-    
-    
   })
   
   
@@ -463,16 +408,16 @@ tab3_left_margin=12
   
   
   ds_QC_reactive <-reactive({
-    clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+    clust=strsplit(input$inQCClust," - ")[[1]][1]
     samples=truth_samples_reactive()
     if (!exists("dataset")){
       return()
     }
     
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    sampling_mask=dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    sampling_mask=dataset$randomly_selected_cells[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
-    return(ds[,intersect(sampling_mask,cluster_mask)])
+    return(ds[,intersect(sampling_mask,cluster_mask),drop=F])
   })
   
   observeEvent(input$inGeneSets,{
@@ -724,7 +669,7 @@ tab3_left_margin=12
   observeEvent(input$inResetClusters, {
      clust_title=paste(default_clusters," - ",clustAnnots[default_clusters],sep="") 
     updateTextInput(session,"inClusters",value=paste(default_clusters,collapse=","))
-    updateSelectInput(session,"inVarmeanClust",choices=clust_title)
+    updateSelectInput(session,"inQCClust",choices=clust_title)
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title)
     
   })
@@ -842,51 +787,51 @@ tab3_left_margin=12
     clust_title=paste(inclusts," - ",clustAnnots[inclusts],sep="") 
     
     updateTextInput(session,"inClusters",value=paste(inclusts[reorderv1],collapse=","))
-    updateSelectInput(session,"inVarmeanClust",choices=clust_title[reorderv1])
+    updateSelectInput(session,"inQCClust",choices=clust_title[reorderv1])
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title[reorderv1])
   })
   
   
 
   
-  observeEvent(input$inTweezersMoveCells, {
-    input_cells=strsplit(input$inTweezers_cells_to_move,",")[[1]]
-    from_cluster=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
-    to_cluster=strsplit(input$inTweezersToCluster," - ")[[1]][1]
-    cells=intersect(colnames(model$umitab)[model$cell_to_cluster==from_cluster],input_cells)
-    if (length(cells)==0){
-      message("None of the input cells ",input$inTweezers_cells_to_move, " were found in cluster ", from_cluster)
-      return()
-    }
-    else {
-      message("Moving ",length(cells)," cells from cluster ", from_cluster, " to cluster ", to_cluster)
-      model$cell_to_cluster[cells]<<-to_cluster
-      model$models<<-update_model(model$umitab,model$cell_to_cluster)
-      ll<<-getLikelihood(model$umitab,model$models,reg=params$reg)
-      
-      message("Done.")
-    }
-  })
+ # observeEvent(input$inTweezersMoveCells, {
+#    input_cells=strsplit(input$inTweezers_cells_to_move,",")[[1]]
+#    from_cluster=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
+#    to_cluster=strsplit(input$inTweezersToCluster," - ")[[1]][1]
+#    cells=intersect(colnames(model$umitab)[model$cell_to_cluster==from_cluster],input_cells)
+#    if (length(cells)==0){
+#      message("None of the input cells ",input$inTweezers_cells_to_move, " were found in cluster ", from_cluster)
+#      return()
+#    }
+#    else {
+#      message("Moving ",length(cells)," cells from cluster ", from_cluster, " to cluster ", to_cluster)
+#      model$cell_to_cluster[cells]<<-to_cluster
+#      model$models<<-update_model(model$umitab,model$cell_to_cluster)
+#      ll<<-getLikelihood(model$umitab,model$models,reg=params$reg)
+#      
+#      message("Done.")
+#    }
+#  })
   
-  observeEvent(input$inTweezersSaveVersion, {
-    if (input$inTweezers_new_version_name%in%vers_tab$title){
-      message("Version name already exists. Version was not saved!")
-      return()
-    }
+#  observeEvent(input$inTweezersSaveVersion, {
+#    if (input$inTweezers_new_version_name%in%vers_tab$title){
+#      message("Version name already exists. Version was not saved!")
+#      return()
+#    }
     
-    chisq_res<<-chisq_genes(model$umitab,model$cell_to_cluster)
-    fn=paste(input$inDatapath,input$inTweezers_new_version_filename,sep="/")
-    message("Saving ",input$inTweezers_new_version_name, " to ", fn)
-    save(model$umitab,ds,model$models,model$cell_to_cluster,ll,l_cells_per_cluster,cell_to_batch,chisq_res,params,file=fn)
-    vers<<-rbind(vers,c(input$inTweezers_new_version_name,input$inTweezers_new_version_filename))
-    write.csv(vers,file=paste(input$inDatapath,"model_versions.csv",sep="/"),row.names = F,quote=F)
+#    chisq_res<<-chisq_genes(model$umitab,model$cell_to_cluster)
+#    fn=paste(input$inDatapath,input$inTweezers_new_version_filename,sep="/")
+#    message("Saving ",input$inTweezers_new_version_name, " to ", fn)
+#    save(model$umitab,ds,model$models,model$cell_to_cluster,ll,l_cells_per_cluster,cell_to_batch,chisq_res,params,file=fn)
+#    vers<<-rbind(vers,c(input$inTweezers_new_version_name,input$inTweezers_new_version_filename))
+#    write.csv(vers,file=paste(input$inDatapath,"model_versions.csv",sep="/"),row.names = F,quote=F)
     
-    annot_fn=paste(input$inDatapath,strsplit(input$inTweezers_new_version_filename,"\\.")[[1]][1],"_annots.txt",sep="")
-    write.table(file=annot_fn,clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
-    updateSelectInput(session,"inModelVer", "Clustering Version:",choices = vers_tab$title)
-    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices = vers_tab$title)
-    message("Done.")
-  })
+#    annot_fn=paste(input$inDatapath,strsplit(input$inTweezers_new_version_filename,"\\.")[[1]][1],"_annots.txt",sep="")
+#    write.table(file=annot_fn,clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
+#    updateSelectInput(session,"inModelVer", "Clustering Version:",choices = vers_tab$title)
+#    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices = vers_tab$title)
+#    message("Done.")
+#  })
   ###########################################################
   observeEvent(input$inBirdDefineClusterSet,{
     clusts_to_add=strsplit(input$inBirdAddClusters,",| ,|, ")[[1]]
@@ -946,45 +891,92 @@ tab3_left_margin=12
   })
   
   ###########################################################
+  modules_varmean_reactive=reactive({
+    ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
+    
+     if (!loaded_flag)
+    {
+      return(data.frame(m=0,v=0,gene=""))
+    }
+    message("..")
+    
+     ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    
+    ds_mean<-rowMeans(ds)
+    ds_var<-apply(ds,1,var)
+    return(data.frame(m=ds_mean,v=ds_var,gene=rownames(ds)))
+  })
   
+  geneModuleMask_reactive<-reactive({
+    if (!loaded_flag)
+    {
+      return()
+    }
+    df=modules_varmean_reactive()
+    
+    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>as.numeric(input$inVarMean_varmeanThresh)
+    geneModuleMask[is.na(geneModuleMask)]<-F
+    return(geneModuleMask)
+    
+  })
+   
   
   output$varMeanThreshPlot <- renderPlot({
-   
-    if (exists("ds")){
-      ds_mean<<-rowMeans(ds)
-      ds_var<<-apply(ds,1,var)
-      plot(log10(ds_mean),log2(ds_var/ds_mean),xlab="Log10(mean)",ylab="log2(var/mean)",panel.first=grid())
+    if (!loaded_flag)
+    {
+      return()
     }
+    df=modules_varmean_reactive()
+    plot(log10(df$m),log2(df$v/df$m),xlab="Log10(mean)",ylab="log2(var/mean)",panel.first=grid())
+    
     abline(v=input$inVarMean_MeanThresh,col=2)
     abline(h=input$inVarMean_varmeanThresh,col=2)
-    geneModuleMask<<-log10(ds_mean)>as.numeric(input$inVarMean_MeanThresh)&log2(ds_var/ds_mean)>as.numeric(input$inVarMean_varmeanThresh)
-    geneModuleMask[is.na(geneModuleMask)]<<-F
-    
-    n=sum(geneModuleMask)
+      
+    n=sum(geneModuleMask_reactive())
     legend("topright", paste(n,"genes"), bty="n",text.col=2) 
     
   })
+  
+  
+  module_cor_reactive=reactive({
+    if (!loaded_flag)
+    {
+      return()
+    }
+    ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
+    ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    message("calculating gene-to-gene correlations..")
+    cormat=cor(as.matrix(t(log2(.1+ds[geneModuleMask_reactive(),]))),use="comp")
+    return(cormat)
+  })
+  
   
   observeEvent(input$inGetModules,{
     if (!loaded_flag)
     {
       return()
     }
-    if (!exists("geneModuleMask")){
+    geneModuleMask=geneModuleMask_reactive()
+    if (is.null(geneModuleMask)){
       return()
     }
-    cormat=cor(t(log2(.1+ds[geneModuleMask,])),use="comp")
-    counts<<-sapply(split(as.data.frame(t(model$umitab)),model$cell_to_cluster),colSums)
+    cormat=module_cor_reactive()
+    if (is.null(cormat)){
+      return()
+    }
+    
     c2c=cutree(hclust(as.dist(1-cormat)),k=as.numeric(input$inNUmberOfGeneModules))
  
-    inmodules<<-(split(names(c2c),c2c))
-    updateTextInput(session,"inModules",value=paste(names(inmodules),collapse=","))
-    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(inmodules))
-    print(inmodules)
+    modules<<-(split(names(c2c),c2c))
+    updateTextInput(session,"inModules",value=paste(names(modules),collapse=","))
+    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(modules))
+    print(modules)
   })
   
   output$textModuleGenes<- renderText({
-    paste(inmodules[[input$inModuleSelect]],collapse=",")
+    if (exists("modules")){
+      paste(modules[[input$inModuleSelect]],collapse=",")
+    }
   })
   
   ###########################################################
@@ -1010,6 +1002,9 @@ tab3_left_margin=12
   output$BatchHeatmap <- renderPlot({
     clusters=clusters_reactive()
     cells=names(model$cell_to_cluster)[model$cell_to_cluster%in%clusters]
+    if(length(unique(model$cell_to_batch[cells]))==1){
+      return()
+    }
     obs=table(model$cell_to_cluster[cells],model$cell_to_batch[cells])[clusters,]
     cs=colSums(obs)
     rs=rowSums(obs)
@@ -1124,32 +1119,37 @@ tab3_left_margin=12
   })
   
   
+  module_counts_reactive<-reactive({
+    if (!exists("modules")){
+      return()
+    }
+    return(t(sapply(modules,function(modi){colSums(dataset$counts[modi,])})/colSums(dataset$counts)))
   
+    
+  })
 
   output$kellisogram_modules <- renderPlot({
     ##### Don't delete!!
     input$inModelVer
     #####
-    mods=modules_reactive()
+
     inclusts=clusters_reactive()
-    if (!exists("inmodules")){
-      return()
-    }
-    inmodules=inmodules[mods] 
+    inmodules=modules_reactive()
+   
     if (!loaded_flag){
       return()
     }
-    # Lables for axes
-    if (length(inmodules)==0){
+
+    modulemat=module_counts_reactive()
+    if(is.null(modulemat)){
       return()
     }
-  
+    modulemat=modulemat[inmodules,]
     
     zlim=input$inModelColorScale
     par(mar=c(7,tab3_left_margin,1,9))
    
    
-    modulemat<<-t(sapply(inmodules,function(modi){colSums(counts[modi,])})/colSums(counts))
     
     mat1=modulemat[,inclusts]
     
@@ -1256,8 +1256,12 @@ tab3_left_margin=12
               colnames(ds)%in%cells_selected
     ds=ds[genes,cell_mask]
     ds=ds[,order(match(dataset$cell_to_cluster[colnames(ds)],inclusts))]
-    samps=dataset$cell_to_sample[colnames(ds)]   
-    ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)[inclusts]
+    samps=dataset$cell_to_sample[colnames(ds)]
+    ncells=rep(0,length(inclusts))
+    names(ncells)=inclusts
+    tmp_ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)
+    ncells[names(tmp_ncells)]=tmp_ncells
+   
     #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
    # names(ncells)=names(ds_cl)
     
@@ -1276,7 +1280,6 @@ tab3_left_margin=12
       abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
     }
     mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1,col=gcol[toupper(rownames(pmat))])
-   
     a=cumsum(ncells)
     b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
     mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1)
@@ -1286,9 +1289,17 @@ tab3_left_margin=12
     
 
     varmean_reactive <- reactive({
-      clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
-      ds=ds_QC_reactive()
+      clust=strsplit(input$inQCClust," - ")[[1]][1]
+      samples=truth_samples_reactive()
+      if (!exists("dataset")){
+        return(data.frame(m=0,varmean=0,gene=""))
+      }
+      ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
+      cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
+      ds=ds[,intersect(colnames(ds),cluster_mask),drop=F]
+
       if (is.null(ds))(return(data.frame(m=0,varmean=0,gene=0)))
+      if (ncol(ds)<2)(return(data.frame(m=0,varmean=0,gene=0)))
       
       m=rowMeans(ds)
       v=apply(ds,1,var)
@@ -1349,12 +1360,12 @@ tab3_left_margin=12
     # A reactive expression with the ggvis plot
     vis <- reactive({
       # Lables for axes
-      clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+      clust=strsplit(input$inQCClust," - ")[[1]][1]
       # Normally we could do something like props(x = ~BoxOffice, y = ~Reviews),
       # but since the inputs are strings, we need to do a little more work.
       #   xvar <- prop("x", as.symbol(input$xvar))
       #    yvar <- prop("y", as.symbol(input$yvar))
-        varmean_reactive %>%
+      varmean_reactive %>%
         ggvis(x = ~m, y = ~varmean) %>%
         layer_points(size := 50, size.hover := 200,
                      fillOpacity := 0.2, fillOpacity.hover := 0.5, key := ~gene) %>%
@@ -1376,26 +1387,29 @@ tab3_left_margin=12
     vis %>% bind_shiny("varmeanplot")
 
     output$cellcor<-renderPlot({
-      clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+      clust=strsplit(input$inQCClust," - ")[[1]][1]
       insamples=truth_samples_reactive()
       ds=ds_QC_reactive()
       if (is.null(ds)){
+        return()
+      }
+      if (ncol(ds)<2){
+        message("Warning: Cluster ",clust, " has less than 2 cells above the UMIs threshold.")
         return()
       }
       v=apply(ds,1,var)
       m=rowMeans(ds)
       genemask=rownames(ds)[m>1e-1]
       var_genes=head(genemask[order(v[genemask]/m[genemask],decreasing=T)],200)
-      z=ds[var_genes,sample(colnames(ds),size = pmin(1000,ncol(ds)),replace = F)]
+      z=ds[var_genes,]
       z=z/mean(z)
       
       cormat=cor(as.matrix(z),use="comp")
-     
       ord=hclust(dist(1-cormat))$order
       samps=dataset$cell_to_sample[colnames(cormat)[ord]]
       layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(9,1))
       par(mar=c(.5,2,2,2))
-      image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F)
+      image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F,main=paste("Cluster",clust,": ",ncol(cormat),"/",sum(dataset$cell_to_cluster==clust),"cells"))
       lab=paste("Single-cells (cluster ",clust,")",sep="")
      # mtext(3,lab)
     #  mtext(4,lab)
@@ -1424,7 +1438,7 @@ tab3_left_margin=12
       }
       par(mar=c(.5,.5,2,.5))
       image(t(as.matrix(match(samps,insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
-      
+      mtext(side=3,text = "Sample",cex=.8)
     })
     
     click_tooltip <- function(x) {
@@ -1449,8 +1463,11 @@ tab3_left_margin=12
       if (!loaded_flag){
         return()
       }
-      clust=strsplit(input$inVarmeanClust," - ")[[1]][1]
+      clust=strsplit(input$inQCClust," - ")[[1]][1]
       ds=ds_QC_reactive()
+      if (ncol(ds)==0){
+        return()
+      }
       mask=dataset$cell_to_cluster[colnames(ds)]%in%clust
       flag=sum(c(input$inGene1,input$inGene2)%in%rownames(ds))==2
       if (flag){
@@ -1586,8 +1603,8 @@ tab3_left_margin=12
         tab["-1"]=sum(tab2[setdiff(names(tab2),clusters)])
         return(tab)
       }
-      tab1=t(sapply(dataset$cell_to_cluster[samples1],full_table,inclusters))
-      tab2=t(sapply(dataset$cell_to_cluster[samples2],full_table,inclusters))
+      tab1=t(sapply(dataset$cell_to_cluster[dataset$cell_to_sample%in%samples1],full_table,inclusters))
+      tab2=t(sapply(dataset$cell_to_cluster[dataset$cell_to_sample%in%samples2],full_table,inclusters))
       
       tot1=colSums(tab1)   
       tot2=colSums(tab2)
@@ -1750,44 +1767,44 @@ tab3_left_margin=12
       paste0("<b>", x$cell, "</b>")
     }
     
-    ll_plot <- reactive({
-      clust=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
-      llx=strsplit(input$inTweezersLLX," - ")[[1]][1]
-      lly=strsplit(input$inTweezersLLY," - ")[[1]][1]
+#    ll_plot <- reactive({
+#      clust=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
+#      llx=strsplit(input$inTweezersLLX," - ")[[1]][1]
+#      lly=strsplit(input$inTweezersLLY," - ")[[1]][1]
    
-      print(llx)
-      print(lly)
-      if (is.na(clust)|!loaded_flag){return(data.frame(x=0,y=0,gene=0))}
+#      print(llx)
+#      print(lly)
+#      if (is.na(clust)|!loaded_flag){return(data.frame(x=0,y=0,gene=0))}
       
-      print(llx)
-      print(lly)
-      df=data.frame(x=ll[model$cell_to_cluster==cluster,llx],y=ll[model$cell_to_cluster==cluster,lly],cell=rownames(ll)[model$cell_to_cluster==cluster])
+#      print(llx)
+#      print(lly)
+#      df=data.frame(x=ll[model$cell_to_cluster==cluster,llx],y=ll[model$cell_to_cluster==cluster,lly],cell=rownames(ll)[model$cell_to_cluster==cluster])
       
-    })
+#    })
     # A reactive expression with the ggvis plot
-    vis3 <- reactive({
+#    vis3 <- reactive({
       
-      clust=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
+#      clust=strsplit(input$inTweezersFromCluster," - ")[[1]][1]
       
-      ll_plot %>%
-        ggvis(x = ~x, y = ~y) %>%
-        layer_points(size := 50, size.hover := 200,
-                     fillOpacity := 0.2, fillOpacity.hover := 0.5, key := ~cell) %>%
-        add_tooltip(cell_tooltip, "hover")%>% 
-        add_tooltip(click_tooltip_ll, "click")%>% 
-        add_axis("x", title = "llx") %>%
-        add_axis("y", title = "lly") %>%
-        add_axis("x", orient = "top", ticks = 0, title = paste(loaded_version," ",clust),
-                 properties = axis_props(
-                   axis = list(stroke = "white"),
-                   labels = list(fontSize = 0))) %>%
-        scale_numeric("x", domain = c(-6,-1)) %>%
-        scale_numeric("y", domain = c(-6,6)) %>%
-        set_options(width = 500, height = 500)
-      
-      vis3 %>% bind_shiny("TweezersLikelihoodPlot")
-      
-    })
+#      ll_plot %>%
+#        ggvis(x = ~x, y = ~y) %>%
+#        layer_points(size := 50, size.hover := 200,
+#                     fillOpacity := 0.2, fillOpacity.hover := 0.5, key := ~cell) %>%
+#        add_tooltip(cell_tooltip, "hover")%>% 
+#        add_tooltip(click_tooltip_ll, "click")%>% 
+#        add_axis("x", title = "llx") %>%
+#        add_axis("y", title = "lly") %>%
+#        add_axis("x", orient = "top", ticks = 0, title = paste(loaded_version," ",clust),
+#                 properties = axis_props(
+#                   axis = list(stroke = "white"),
+#                   labels = list(fontSize = 0))) %>%
+#        scale_numeric("x", domain = c(-6,-1)) %>%
+#        scale_numeric("y", domain = c(-6,6)) %>%
+#        set_options(width = 500, height = 500)
+#      
+#      vis3 %>% bind_shiny("TweezersLikelihoodPlot")
+#      
+#    })
     
     
     if (exists("scDissector_datadir")){

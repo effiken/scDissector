@@ -132,8 +132,10 @@ mainPanel(
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
-                          selectInput("inVarmeanClust", "Cluster:",choices=c()),
-                          selectInput("inQCDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200)
+                          selectInput("inQCClust", "Cluster:",choices=c()),
+                          selectInput("inQCDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
+                          selectInput("inQCNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
+                          
                         )
                       ),
                       column(8,
@@ -180,6 +182,7 @@ mainPanel(
               tabPanel("Gene Modules",fluidRow(
                 wellPanel(
                   plotOutput("varMeanThreshPlot"),
+                  selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                   textInput("inVarMean_MeanThresh",  "Min Log10(mean):", value = "-2"),
                   textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15")
                 ),
@@ -214,31 +217,26 @@ mainPanel(
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
                    tableOutput("Gene1ExprsTableRefVsProj")),
-                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500),
-                 wellPanel(
-                   textInput("inProjectedVersionName","New Projected Version Name"),
-                   textInput("inProjectedVersionFilename","New Projected Version Filename"),
-                   actionButton("inSaveProjectedVersion","Save Projected Version")
-                 )),
-              tabPanel("Tweezers",fluidRow(column(6,
-                wellPanel(
-                selectInput("inTweezersFromCluster","Select Cells From Cluster:",choices=c()),
-                textInput("inTweezers_cells_to_move","Cells To Move: ",value = "")
-                )
-              ),
-              column(6,wellPanel(
-                selectInput("inTweezersToCluster","Move Cells To Cluster:",choices=c()),
-                actionButton("inTweezersMoveCells","Move cells"))),
-              column(12,selectInput("inTweezersLLX", "Log Likelihood X-axis:",choices=c()),
-                        selectInput("inTweezersLLY", "Log Likelihood Y-axis:",choices=c()),
-                     
-                     wellPanel(
-                                    textInput("inTweezers_new_version_filename","Rd Filename: ",value = ""),
-                                    textInput("inTweezers_new_version_name","Version Name: ",value = ""),
-                                    actionButton("inTweezersSaveVersion","Save Version"))),
-              plotOutput("TweezersLikelihoodPlot"))),
+                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500)),
+#             tabPanel("Tweezers",fluidRow(column(6,
+#                wellPanel(
+#                selectInput("inTweezersFromCluster","Select Cells From Cluster:",choices=c()),
+#                textInput("inTweezers_cells_to_move","Cells To Move: ",value = "")
+#                )
+#              ),
+#              column(6,wellPanel(
+#                selectInput("inTweezersToCluster","Move Cells To Cluster:",choices=c()),
+#                actionButton("inTweezersMoveCells","Move cells"))),
+#              column(12,selectInput("inTweezersLLX", "Log Likelihood X-axis:",choices=c()),
+#                        selectInput("inTweezersLLY", "Log Likelihood Y-axis:",choices=c()),
+#                     
+#                     wellPanel(
+#                                    textInput("inTweezers_new_version_filename","Rd Filename: ",value = ""),
+#                                    textInput("inTweezers_new_version_name","Version Name: ",value = ""),
+#                                    actionButton("inTweezersSaveVersion","Save Version"))),
+#              plotOutput("TweezersLikelihoodPlot"))),
                        
-                   fluidRow(column(12,br(),br(),br(),br(),br(),br(),br())
+                   fluidRow(column(12,br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br())
                     
                 )#,
 #                tabPanel("Playground",fluidRow(
