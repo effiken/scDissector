@@ -264,6 +264,7 @@ tab3_left_margin=12
       tmp_dataset$counts[[sampi]]=model$models*0
       tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
       
+      
       if (length(tmp_dataset$ds)==0){
         for (ds_i in 1:length(tmp_env$ds_numis)){
           tmp_dataset$ds[[ds_i]]=list()
@@ -1317,10 +1318,11 @@ tab3_left_margin=12
       if (ncol(ds)<2)(return(data.frame(m=0,varmean=0,gene=0)))
       
       m=rowMeans(ds)
-      v=apply(ds,1,var)
-      
-      df=data.frame(m=log10(m),varmean=log2(v/m),gene=rownames(ds))
-      mask2=df$m>input$mean[1]&df$m<input$mean[2]&df$varmean<input$varmean[2]&df$varmean>input$varmean[1]
+      logm=log10(m)
+      mask1=logm>input$mean[1]&logm<input$mean[2]
+      v=apply(ds[mask1,],1,var)
+      df=data.frame(m=logm[mask1],varmean=log2(v/m[mask1]),gene=rownames(ds)[mask1])
+      mask2=df$varmean<input$varmean[2]&df$varmean>input$varmean[1]
       df[mask2,]
       #  
       # Apply filters
@@ -1412,6 +1414,7 @@ tab3_left_margin=12
         message("Warning: Cluster ",clust, " has less than 2 cells above the UMIs threshold.")
         return()
       }
+
       v=apply(ds,1,var)
       m=rowMeans(ds)
       genemask=rownames(ds)[m>1e-1]
@@ -1420,14 +1423,14 @@ tab3_left_margin=12
       z=z/mean(z)
       
       cormat=cor(as.matrix(z),use="comp")
+ 
       ord=hclust(dist(1-cormat))$order
       samps=dataset$cell_to_sample[colnames(cormat)[ord]]
       layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(9,1))
       par(mar=c(.5,2,2,2))
       image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F,main=paste("Cluster",clust,": ",ncol(cormat),"/",sum(dataset$cell_to_cluster==clust),"cells"))
       lab=paste("Single-cells (cluster ",clust,")",sep="")
-     # mtext(3,lab)
-    #  mtext(4,lab)
+
       
       par(mar=c(.5,2,.5,2))
       gene1=match(input$inGene1,rownames(ds))
@@ -1451,9 +1454,11 @@ tab3_left_margin=12
       else{
         plot.new()
       }
+
       par(mar=c(.5,.5,2,.5))
       image(t(as.matrix(match(samps,insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
       mtext(side=3,text = "Sample",cex=.8)
+  
     })
     
     click_tooltip <- function(x) {
