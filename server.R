@@ -341,6 +341,9 @@ tab3_left_margin=12
     temptab=table(model$cell_to_cluster)
     ncells_per_cluster[names(temptab)]<<-temptab
     
+    ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
+    ncells_per_sample=ncells_choices[which.min(abs((2000/length(samples))-ncells_choices))]
+    
     clust_title=paste(cluster_order," - ",clustAnnots[cluster_order],sep="") 
     default_clusters<<-cluster_order
     
@@ -354,8 +357,10 @@ tab3_left_margin=12
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
     updateSelectInput(session,"inTruthDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
-    updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+    updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
+     updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
     updateSelectInput(session,"inModulesDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+    
     message("Successfully finished loading.")
     loaded_flag<<-T
   })
