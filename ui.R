@@ -47,8 +47,10 @@ mainPanel(
                              plotOutput("ncells_barplot",width="150%",height=200),
                              plotOutput("UMI_boxplot",width="150%",height=200),
                              br(),
-                             plotOutput("BatchHeatmap",width="150%",height=600)
-                           )
+                             plotOutput("BasicsSampleClusterNumisNcellsHeatmaps",width="150%")
+                             #   plotOutput("BatchHeatmap",width="150%",height=600)
+                          
+                          )
                    ),
                   
                   tabPanel("Model", 
@@ -90,7 +92,8 @@ mainPanel(
                             selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Formula")),
                             textInput("inOrderClusetersByGenes","Order by gene formula:",width=2000),
                             actionButton("inResetClusters", "Reset Clusters"),
-                            actionButton("inSaveClusterOrder","Save Order")
+                            actionButton("inSaveClusterOrder","Save Order"),
+                            actionButton("inUndoClusterChanges","Undo")
                             ),
                             wellPanel(
                               selectInput("inAnnotateClusterNum","Cluster",choices=c()),
@@ -157,29 +160,7 @@ mainPanel(
                        )
                       )
                   ),
-              tabPanel("ClusterSets",fluidRow(
-                wellPanel(
-                textInput("inBirdAddClusters",  "Clusters:", value = ""),
-                textInput("inBirdAddClusterSetName",  "Cluster set name:", value = ""),
-    #            checkboxInput("inBirdExcludeClusterSet",label = "Exclude Cluster Set",value = F),
-                actionButton("inBirdDefineClusterSet","Define")),
-                wellPanel(
-                  selectInput("inBirdUndefineClusterSetSelect",label="Cluster Set:",choices = ""),
-                  actionButton("inBirdUndefineClusterSet","Undefine")
-                ),
-                wellPanel(
-                  selectInput("inBirdClusterSetsExcludeSelect","Cluster Set:",choices=""),
-                  actionButton("inBirdClusterSetExclude","Exclude")),
-                wellPanel(
-                  selectInput("inBirdClusterSetsIncludeSelect","Cluster Set:",choices=""),
-                  actionButton("inBirdClusterSetInclude","Include")
-                ),
-                wellPanel(
-                  actionButton("inBirdSaveClusterSets","Save")
-                )
-                  
-              )),
-              tabPanel("Gene Modules",fluidRow(
+                tabPanel("Gene Modules",fluidRow(
                 wellPanel(
                   plotOutput("varMeanThreshPlot"),
                   selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),

@@ -21,7 +21,13 @@ clean_all=function(){
   if (exists("dataset")){
     rm(dataset,envir =.GlobalEnv)
   }
+  
+  if (exists("scDissector_params")){
+    rm(scDissector_params,envir =.GlobalEnv)
+  }
 }
+
+
 
 clean_all()
 
@@ -54,9 +60,17 @@ names(gene_symbol_old2new)<<-old_symbol2
 gene_symbol_new2old<<-old_symbol
 names(gene_symbol_new2old)<<-new_symbol
 
+
 referenceSets<-read.csv(file="ReferenceProfiles/refereceSets.csv",header=T,stringsAsFactors = F)
 tab3_left_margin=12
   function(input, output, session) {
+    
+    update_clusters=function(new_clusts,delete_old=F){
+      if(delete_old){
+        scDissector_params$previous_clusters<<-new_clusts
+      }
+      updateTextInput(session,"inClusters",value=paste(new_clusts,collapse=",")) 
+    }
    
     updateSelectInput(session,"inReferenceSets",label = "Reference Set:",choices = referenceSets$title)  
   observeEvent(input$inDatapath,{
@@ -149,6 +163,7 @@ tab3_left_margin=12
   
     #rm(c())
     clean_all()
+    scDissector_params<<-list()
     message("Loading ",f)
     model<<-new.env(parent = globalenv())
     load(file=f,model)
@@ -157,26 +172,21 @@ tab3_left_margin=12
     loaded_file<<-f
  
     loaded_version<<-input$inModelVer
-  
-    is_cluster_excluded<<-rep(F,ncol(model$models))
-    names(is_cluster_excluded)<<-colnames(model$models)
-    
+    scDissector_params$excluded_clusters<<-c()
     clusterset_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_clustersets.txt",sep="")
     if (file.exists(clusterset_fn)){
       cluster_sets_tab=read.table(file=clusterset_fn,header = T,stringsAsFactors = F)
       if (nrow(cluster_sets_tab)>0){
-        cluster_sets<<-strsplit(cluster_sets_tab[,2],",")
-        names(cluster_sets)<<-cluster_sets_tab[,1]
-      
-        is_cluster_excluded[unlist(cluster_sets)]<<-rep(cluster_sets_tab[,3],sapply(cluster_sets,length))
-        excluded_cluster_sets<<-cluster_sets_tab[cluster_sets_tab[,3],1]
-        updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(cluster_sets)) 
-        updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(cluster_sets),excluded_cluster_sets)) 
-        updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =excluded_cluster_sets) 
+        scDissector_params$cluster_sets<<-strsplit(cluster_sets_tab[,2],",")
+        scDissector_params$excluded_cluster_sets<<-cluster_sets_tab[cluster_sets_tab[,3],1]
+        names(scDissector_params$cluster_sets)<<-cluster_sets_tab[,1]
+        if (length(scDissector_params$excluded_cluster_sets)>0){
+          scDissector_params$excluded_clusters<<-unlist(scDissector_params$cluster_sets[[scDissector_params$excluded_cluster_sets]])
+       }
       }
     }
     else{
-      cluster_sets<<-list()
+      scDissector_params$cluster_sets<<-list()
     }
     
     
@@ -201,8 +211,9 @@ tab3_left_margin=12
     else{
       cluster_order=colnames(model$models)
     }
-    
    
+    cluster_order=cluster_order[!cluster_order%in%scDissector_params$excluded_clusters]
+    
     
     samples=strsplit(input$inSamples,",| ,|, ")[[1]]
     tmp_samples=as.list(samples)
@@ -257,11 +268,19 @@ tab3_left_margin=12
     #  print(length(genes))
       tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = 1e-5)#params$reg)
       tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
-      tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(model$models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(model$models)))
+      
+      cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%scDissector_params$excluded_clusters]
+      
+      tmp_dataset$cell_to_cluster[[sampi]]=tmp_dataset$cell_to_cluster[[sampi]][cells_to_include]
+      tmp_dataset$ll[[sampi]]=tmp_dataset$ll[[sampi]][cells_to_include,]
+      tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,cells_to_include]
+      tmp_models=model$models[,setdiff(colnames(model$models),scDissector_params$excluded_clusters)]
+      
+      tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
       tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
       tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
       tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
-      tmp_dataset$counts[[sampi]]=model$models*0
+      tmp_dataset$counts[[sampi]]=tmp_models*0
       tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
       
       
@@ -271,7 +290,7 @@ tab3_left_margin=12
         }
       }
       for (ds_i in 1:length(tmp_env$ds_numis)){
-        tmp_dataset$ds[[ds_i]][[sampi]]=tmp_env$ds[[ds_i]]
+        tmp_dataset$ds[[ds_i]][[sampi]]=tmp_env$ds[[ds_i]][,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)]
       }
       message("")
      
@@ -339,6 +358,7 @@ tab3_left_margin=12
     ncells_per_cluster<<-rep(0,dim(model$models)[2])
     names(ncells_per_cluster)<<-colnames(model$models)
     temptab=table(model$cell_to_cluster)
+    temptab=temptab[setdiff(names(temptab),scDissector_params$excluded_cluster_sets)]
     ncells_per_cluster[names(temptab)]<<-temptab
     
     ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
@@ -347,7 +367,7 @@ tab3_left_margin=12
     clust_title=paste(cluster_order," - ",clustAnnots[cluster_order],sep="") 
     default_clusters<<-cluster_order
     
-    updateTextInput(session,"inClusters",value=paste(cluster_order,collapse=",")) 
+    update_clusters(cluster_order,T)
     updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
 #    updateSelectInput(session,"inTweezersFromCluster",choices = clust_title)
 #    updateSelectInput(session,"inTweezersToCluster",choices = clust_title)
@@ -397,7 +417,7 @@ tab3_left_margin=12
   
   clusters_reactive <-reactive({
     clusts=strsplit(input$inClusters,",")[[1]]
-    clusts=setdiff(intersect(clusts,colnames(model$models)),names(which(is_cluster_excluded)))
+    clusts=intersect(clusts,setdiff(colnames(model$models),scDissector_params$excluded_clusters))
     return(clusts)
   })
   
@@ -678,7 +698,7 @@ tab3_left_margin=12
   
   observeEvent(input$inResetClusters, {
      clust_title=paste(default_clusters," - ",clustAnnots[default_clusters],sep="") 
-    updateTextInput(session,"inClusters",value=paste(default_clusters,collapse=","))
+    update_clusters(default_clusters)
     updateSelectInput(session,"inQCClust",choices=clust_title)
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title)
     
@@ -695,6 +715,10 @@ tab3_left_margin=12
     }else{
       message("Order could not be saved since 1 or more clusters are missing.")
     }
+  })
+  
+  observeEvent(input$inUndoClusterChanges, {
+    update_clusters(scDissector_params$previous_clusters,T)
   })
   
   observeEvent(input$detectDiffExrs, {
@@ -796,7 +820,7 @@ tab3_left_margin=12
     }
     clust_title=paste(inclusts," - ",clustAnnots[inclusts],sep="") 
     
-    updateTextInput(session,"inClusters",value=paste(inclusts[reorderv1],collapse=","))
+    update_clusters(inclusts[reorderv1])
     updateSelectInput(session,"inQCClust",choices=clust_title[reorderv1])
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title[reorderv1])
   })
@@ -850,35 +874,35 @@ tab3_left_margin=12
       message("Warning! Cluster list contained unknown clusters. Cluster-set was not defined.")
       return()
     }
-    intersect_with_defined=intersect(clusts_to_add,unlist(cluster_sets))
+    intersect_with_defined=intersect(clusts_to_add,unlist(scDissector_params$cluster_sets))
     if (length(intersect_with_defined)>0){
       message("warning! Cluster list contained clusters that have been already defined as cluster sets: ",paste(intersect_with_defined,collapse=","),". Cluster-set was not defined.")
       return()
     }
     
-    if (input$inBirdAddClusterSetName%in%names(cluster_sets)){
+    if (input$inBirdAddClusterSetName%in%names(scDissector_params$cluster_sets)){
       message("warning! Name has already been used. Cluster-set was not defined.")
       return()
     }
     
-    cluster_sets[[input$inBirdAddClusterSetName]]<<-clusts_to_add
-    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(cluster_sets)) 
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(cluster_sets)) 
+    scDissector_params$cluster_sets[[input$inBirdAddClusterSetName]]<<-clusts_to_add
+    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
    })
   
   observeEvent(input$inBirdUndefineClusterSet,{
-    is_cluster_excluded[cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
-    cluster_sets[[input$inBirdUndefineClusterSetSelect]]<<-NULL
-    excluded_cluster_sets<<-setdiff(excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(cluster_sets),excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =excluded_cluster_sets)
-    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(cluster_sets)) 
+    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
+    scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]<<-NULL
+    scDissector_params$excluded_cluster_sets<<-setdiff(scDissector_params$excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
+    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
+    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
   })
   
   observeEvent(input$inBirdSaveClusterSets,{
     f=paste(input$inDatapath,vers_tab$path[vers_tab$title==loaded_version],sep="/")
   
-    clusters_set_tab=data.frame(name=names(cluster_sets),clusters=sapply(cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(cluster_sets)%in%excluded_cluster_sets,"T","F"))
+    clusters_set_tab=data.frame(name=names(scDissector_params$cluster_sets),clusters=sapply(scDissector_params$cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(scDissector_params$cluster_sets)%in%scDissector_params$excluded_cluster_sets,"T","F"))
     clusterset_fn=paste(strsplit(f,"\\.")[[1]][1],"_clustersets.txt",sep="")
     write.table(file=clusterset_fn,clusters_set_tab,row.names=F,col.names=T,quote=F,sep="\t")
    
@@ -886,18 +910,19 @@ tab3_left_margin=12
   
   observeEvent(input$inBirdClusterSetExclude,{
     
-    is_cluster_excluded[cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<<-T
-    excluded_cluster_sets<<-unique(c(excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(cluster_sets),excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =excluded_cluster_sets)
+    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<<-T
+    scDissector_params$excluded_cluster_sets<<-unique(c(scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
+    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
+    
   })
   
   observeEvent(input$inBirdClusterSetInclude,{
     
-    is_cluster_excluded[cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<<-F
-    excluded_cluster_sets<<-setdiff(excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(cluster_sets),excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =excluded_cluster_sets)
+    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<<-F
+    scDissector_params$excluded_cluster_sets<<-setdiff(scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
+    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
   })
   
   ###########################################################
@@ -1015,8 +1040,11 @@ tab3_left_margin=12
   output$BatchHeatmap <- renderPlot({
     clusters=clusters_reactive()
     cells=names(model$cell_to_cluster)[model$cell_to_cluster%in%clusters]
-    if(length(unique(model$cell_to_batch[cells]))==1){
+     if(length(unique(model$cell_to_batch[cells]))==1){
       return()
+     }
+    if (is.null(unique(model$cell_to_batch[cells]))){
+      return(NULL)
     }
     obs=table(model$cell_to_cluster[cells],model$cell_to_batch[cells])[clusters,]
     cs=colSums(obs)
@@ -1034,6 +1062,29 @@ tab3_left_margin=12
     #print(obs)
     box()
   })
+  
+  output$BasicsSampleClusterNumisNcellsHeatmaps<- renderPlot({
+    inclusts=clusters_reactive()
+    insamples=truth_samples_reactive()
+    numis_bin=1+floor(log2(pmax(100,colSums(dataset$umitab))/100))
+    dataset$cell_to_sample
+    dataset$cell_to_cluster
+    max_numis_bin=max(numis_bin)
+    tab=matrix(0,nrow=max_numis_bin,ncol=length(inclusts),dimnames = list(1:max_numis_bin,inclusts))
+    tmp_tab=table(numis_bin,dataset$cell_to_cluster)
+    tmp_tab=log2((.1+tmp_tab)/(.1+colSums(tmp_tab)))
+    tab[rownames(tmp_tab),intersect(inclusts,colnames(tmp_tab))]=tmp_tab[,intersect(inclusts,colnames(tmp_tab))]
+    par(mar=c(10,7,1,2))
+    image(t(tab[,ncol(tab):1]),axes=F,col=colorRampPalette(c("white","blue"))(100),ylab="#UMIs bins")
+    yusr=par("usr")[3:4]
+#    mtext(side = 2,text = 100*2^(0:(max_numis_bin)),at=seq(1-(yusr[2]-1),-1*yusr[1],l=max_numis_bin+1),las=2)
+    d=1/(2*(max_numis_bin+1))
+    mtext(side = 2,text = 100*2^(0:(max_numis_bin)),at=seq(-d,1+d,l=max_numis_bin+1),las=2)
+    mtext(text = clustAnnots[colnames(tab)],side = 1,at = seq(0,1,l=dim(tab)[2]),las= 2,cex=1)
+
+        box()
+  })
+  
   
   output$avg_profile_plot <- renderUI({
     he=max(c(500,12*length(clusters_reactive())),na.rm=T)
@@ -1126,7 +1177,7 @@ tab3_left_margin=12
     box()
    
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
-    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster[names(which(!is_cluster_excluded))]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster[setdiff(names(ncells_per_cluster),scDissector_params$excluded_clusters)]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
