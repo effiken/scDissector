@@ -624,7 +624,8 @@ tab3_left_margin=12
       genes=intersect(tfs,rownames(model$models))
     } else if(input$inSelectGenesFrom=="Surface markers"){
       pref="Surf"
-      genes=surface_markers
+      genes=intersect(surface_markers,rownames(model$models))
+      
     }
     cells=names(model$cell_to_cluster[model$cell_to_cluster%in%clusters])
     chisq_res2=chisq_genes(model$umitab,model$cell_to_cluster,genes,cells)
