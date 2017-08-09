@@ -108,9 +108,21 @@ tab3_left_margin=12
       myGeneListFile= paste(input$inDatapath,"gene_sets.txt",sep="/")
    
       if (file.exists(myGeneListFile)){
-        geneList<<-rbind( read.table(file=myGeneListFile,header=T,stringsAsFactors = F,row.names =1),geneList)
-      }
-    
+        added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
+        added_gene_list=added_gene_list_tmp[,2,drop=F]
+        if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
+          message(myGeneListFile, " was not loaded since gene sets names are not unique.")
+        }
+        else{
+          rownames(added_gene_list)=added_gene_list_tmp[,1]
+          if (colnames(added_gene_list)=="genes"){
+            geneList<<-rbind(added_gene_list,geneList)
+          }
+          else{
+            message(myGeneListFile, " was not loaded due to parsing errors.")
+          }
+        }
+      }  
     updateSelectInput(session,"inGeneSets",choices = rownames(geneList))
     
     
@@ -1336,6 +1348,7 @@ tab3_left_margin=12
     ds=ds[genes,cell_mask]
     ds=ds[,order(match(dataset$cell_to_cluster[colnames(ds)],inclusts))]
     samps=dataset$cell_to_sample[colnames(ds)]
+
     ncells=rep(0,length(inclusts))
     names(ncells)=inclusts
     tmp_ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)
