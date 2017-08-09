@@ -930,14 +930,14 @@ tab3_left_margin=12
   modules_varmean_reactive=reactive({
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     
-     if (!loaded_flag)
+    if (!loaded_flag)
     {
       return(data.frame(m=0,v=0,gene=""))
     }
     
-    
-    
-     ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    inclusts=clusters_reactive()
+    cluster_cells_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts]
+    ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-rowMeans(ds)
     message("Estimating variance for ",nrow(ds)," genes")
@@ -957,7 +957,7 @@ tab3_left_margin=12
     return(geneModuleMask)
     
   })
-   
+  
   
   output$varMeanThreshPlot <- renderPlot({
     if (!loaded_flag)
@@ -981,12 +981,18 @@ tab3_left_margin=12
     {
       return()
     }
+    inclusts=clusters_reactive()
+    cluster_cells_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts]
+    
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
-    ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    
     message("calculating gene-to-gene correlations..")
     cormat=cor(as.matrix(t(log2(.1+ds[geneModuleMask_reactive(),]))),use="comp")
     return(cormat)
   })
+  
   
   
   observeEvent(input$inGetModules,{
