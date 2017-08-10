@@ -36,6 +36,7 @@ names(gene_symbol_new2old)<<-new_symbol
 referenceSets<-read.csv(file="ReferenceProfiles/refereceSets.csv",header=T,stringsAsFactors = F)
 tab3_left_margin=12
   function(input, output, session) {
+    
     session$userData$loaded_flag<-F
     session$userData$loaded_model_version=NA
     session$userData$prev_inModelColorScale_rel<-c(-2,4)
@@ -111,26 +112,6 @@ tab3_left_margin=12
       names(session$userData$sample_sets)<-rownames(sample_sets_tab)
       
       updateSelectInput(session,"inSampleToAdd", "Samples:",choices = c(names(session$userData$sample_sets),session$userData$samples_tab$index))
-    }
-    
-    tfs_file="tfs.csv"
-    if (file.exists(tfs_file)){
-      tfs<<-read.csv(file=tfs_file,header=F,stringsAsFactors = F)[,1]
-      tfs2=paste(substring(tfs, 1,1), tolower(substring(tfs, 2)),sep="")
-       tfs<<-c(tfs,tfs2)
-    }
-    else{
-      message(tfs_file ," not found")
-    }
-    
-    surface_markers_file="surface_markers.csv"
-    if (file.exists(surface_markers_file)){
-      surface_markers<<-read.csv(file=surface_markers_file,header=F,stringsAsFactors = F)[,1]
-      surface_markers2=paste(substring(surface_markers, 1,1), tolower(substring(surface_markers, 2)),sep="")
-      surface_markers<<-c(surface_markers,surface_markers2)
-    }
-    else{
-      message(surface_markers_file ," not found")
     }
     
  
@@ -415,6 +396,10 @@ tab3_left_margin=12
     return(clusts)
   })
   
+  external_profiles_reactive <-reactive({
+    return(strsplit(input$inRefProfiles,",")[[1]])
+  })
+  
   truth_samples_reactive <-reactive({
     samples=strsplit(input$inTruthSamples,",")[[1]]
      if (is.null(session$userData$dataset)){
@@ -472,8 +457,8 @@ tab3_left_margin=12
     
    # genes=genes[(mask1|mask2|mask3)]
     
-    gcol<<-ifelse(toupper(genes)%in%tfs ,4,1)
-    names(gcol)<<-toupper(genes)
+    session$userData$gcol<-ifelse(toupper(genes)%in%tfs ,4,1)
+    names(session$userData$gcol)<-toupper(genes)
     return(genes)
   #  updateTextInput(session,"inGenes",value=genes)
     
@@ -500,19 +485,19 @@ tab3_left_margin=12
   read_reference_set=function(){
     fn=paste("ReferenceProfiles/",referenceSets[referenceSets$title==input$inReferenceSets,"path"],sep="")
     message("Reading ",fn)
-    ext_prof<<-read.delim(fn,stringsAsFactors = F,row.names = 1,header=T)
+    session$userData$ext_prof<-read.delim(fn,stringsAsFactors = F,row.names = 1,header=T)
     message("Done.")
   }
   observeEvent(input$inSelectHighlyCorrelatedProfiles,{
-    if (!exists("ext_prof")){
+    if (is.null(session$userData$ext_prof)){
       read_reference_set()
     }
     clusts=clusters_reactive()
     genes=genes_reactive()
-    gmask=intersect(genes,intersect(toupper(rownames(session$userData$model$models)),rownames(ext_prof)))
+    gmask=intersect(genes,intersect(toupper(rownames(session$userData$model$models)),rownames(session$userData$ext_prof)))
   
-    cormat=cor(session$userData$model$models[match(gmask,toupper(rownames(session$userData$model$models))),clusts],ext_prof[gmask,],method="spearman",use="comp")
-    profs=unique(as.vector(apply(cormat,1,function(x){colnames(ext_prof)[order(x,decreasing=T)[1:2]]})))
+    cormat=cor(session$userData$model$models[match(gmask,toupper(rownames(session$userData$model$models))),clusts],session$userData$ext_prof[gmask,],method="spearman",use="comp")
+    profs=unique(as.vector(apply(cormat,1,function(x){colnames(session$userData$ext_prof)[order(x,decreasing=T)[1:2]]})))
   
     updateTextInput(session, "inRefProfiles",value=paste(profs,collapse=","))
   })
@@ -521,7 +506,7 @@ tab3_left_margin=12
  
     read_reference_set()
     
-    updateTextInput(session, "inRefProfiles",value=paste(colnames(ext_prof),collapse=","))
+    updateTextInput(session, "inRefProfiles",value=paste(colnames(session$userData$ext_prof),collapse=","))
   })
     
   observeEvent(input$inClusterGenes, {
@@ -1112,7 +1097,7 @@ tab3_left_margin=12
   })
   
   output$external_profiles_plot <- renderUI({
-    external_profiles<<-strsplit(input$inRefProfiles,",")[[1]]
+    external_profiles<-external_profiles_reactive()
      if (length(external_profiles)==0){
       return()
     }
@@ -1190,7 +1175,7 @@ tab3_left_margin=12
     })
     box()
    
-    mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
+    mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
     mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
@@ -1265,8 +1250,11 @@ tab3_left_margin=12
   output$kellisogram_external_profiles<- renderPlot({
     input$inRefProfiles
     ingenes=genes_reactive()
+    insamples=truth_samples_reactive()
+    inclusts=clusters_reactive()
+    external_profiles<-external_profiles_reactive()
     
-    if (!exists("ext_prof")){
+    if (is.null(session$userData$ext_prof)){
       read_reference_set()
     }
     if (!session$userData$loaded_flag){
@@ -1278,10 +1266,13 @@ tab3_left_margin=12
       
       return()
     }
-   
+    if (length(insamples)>1&(length(inclusts)>1)){
+      layout(matrix(1:2,2,1),widths=c(1,10))
+ 
+    }
     zlim=c(-5,5)
     par(mar=c(1,tab3_left_margin,1,9))
-    ext_profmat<-ext_prof[match(toupper(ingenes),toupper(rownames(ext_prof))),]
+    ext_profmat<-session$userData$ext_prof[match(toupper(ingenes),toupper(rownames(session$userData$ext_prof))),]
     mat1=as.matrix(ext_profmat[,external_profiles,drop=F])
     break1=-1e3
     break2=1e3
@@ -1290,7 +1281,7 @@ tab3_left_margin=12
     })
     box()
     
- #   mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
+ #   mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
   #  mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =external_profiles, side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
@@ -1363,7 +1354,7 @@ tab3_left_margin=12
     if (input$inTruthShowSeparatorBars){
       abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
     }
-    mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1,col=gcol[toupper(rownames(pmat))])
+    mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1,col=session$userData$gcol[toupper(rownames(pmat))])
     a=cumsum(ncells)
     b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
     mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1)
@@ -1634,7 +1625,7 @@ tab3_left_margin=12
         yv=seq(yusr[1],yusr[2],l=dim(mat1)[2]+1)
      
         sapply(yv,function(y){arrows(xusr[1],y,xusr[2],y,length=0,col="gray")})
-        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
+        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
         mtext(text =paste(" ",colnames(mat1)," (",percents_ref,"% /",percents_projected,"% )",sep=""), side=4, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
       }
@@ -1645,7 +1636,7 @@ tab3_left_margin=12
         yusr=par("usr")[3:4]
         xusr=par("usr")[1:2]
         yv=seq(yusr[1],yusr[2],l=dim(mat1)[2]+1)
-        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
+        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_ref,"%)",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
@@ -1653,7 +1644,7 @@ tab3_left_margin=12
         yusr=par("usr")[3:4]
         xusr=par("usr")[1:2]
         yv=seq(yusr[1],yusr[2],l=dim(mat1)[2]+1)
-        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
+        mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_projected,"%)",sep=""), side=4,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
