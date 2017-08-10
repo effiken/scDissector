@@ -108,18 +108,18 @@ mainPanel(
               #                actionButton("inSelectHighlyCorrelatedProfiles", "Select Highly Correleted")
                             ))
                           
-                         ),
-                    fluidRow(column(12,
-                            wellPanel(
-                            downloadButton("downloadExprsTable","Download Full Expression Table"),
-                            downloadButton("downloadCellCountsTable","Download Cell Counts Table")),
-                            wellPanel(
-                            actionButton("detectDiffExrs","screen Diff. expressed Genes"),
-                            downloadButton("downloadSignifExprsTable","Download Diffrential Expression Table"),
-                            selectInput("inputFDR",label="FDR=",choices=c(1e-1,5e-2,1e-2,1e-3,1e-4,1e-5),selected = 1e-2,width=100),
-                            selectInput("inputMinFC",label="Fold Change >",choices=c(1.5,2,4,8),selected = 2,width=100),
-                            selectInput("inMinAvgExprs",label="Avg. Exprs >",choices=c(1e-3,5e-3,1e-2,5e-2,1e-1),selected = 2,width=100))
-                            ))
+                         )#,
+#                    fluidRow(column(12,
+#                            wellPanel(
+#                            downloadButton("downloadExprsTable","Download Full Expression Table"),
+#                            downloadButton("downloadCellCountsTable","Download Cell Counts Table")),
+#                            wellPanel(
+#                            actionButton("detectDiffExrs","screen Diff. expressed Genes"),
+#                            downloadButton("downloadSignifExprsTable","Download Diffrential Expression Table"),
+#                            selectInput("inputFDR",label="FDR=",choices=c(1e-1,5e-2,1e-2,1e-3,1e-4,1e-5),selected = 1e-2,width=100),
+#                            selectInput("inputMinFC",label="Fold Change >",choices=c(1.5,2,4,8),selected = 2,width=100),
+#                            selectInput("inMinAvgExprs",label="Avg. Exprs >",choices=c(1e-3,5e-3,1e-2,5e-2,1e-1),selected = 2,width=100))
+#                            ))
                         ), 
                 tabPanel("Truth", fluidRow(
                       plotOutput("truthplot",width="150%",height = "700"),

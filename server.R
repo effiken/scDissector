@@ -5,44 +5,16 @@ source("projector.r")
 set.seed(3505)
 
 
-clean_all=function(){
-  if (exists("projected")){
-    rm(projected,envir = .GlobalEnv)  
-  }
-  if (exists("ext_prof")){
-    rm(ext_prof,envir= .GlobalEnv)
-  }
-  if (exists("modules")){
-    rm(modules,envir=.GlobalEnv)
-  }
-  if (exists("model")){
-    rm(model,envir =.GlobalEnv)
-  }
-  if (exists("dataset")){
-    rm(dataset,envir =.GlobalEnv)
-  }
-  
-  if (exists("scDissector_params")){
-    rm(scDissector_params,envir =.GlobalEnv)
-  }
-}
-
-
-
-clean_all()
-
 cap <- function(x) {
   paste(toupper(substring(x, 1,1)), tolower(substring(x, 2)),sep="", collapse=" ")
 }
 colgrad=c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
-click_flag<<-T
-loaded_flag<<-F
-loaded_version=NA
 
-prev_inModelColorScale_abs<<-c(-5,-2)
-prev_inModelColorScale_rel<<-c(-2,4)
+
+
+
 print(getwd())
 genesetsfile="gene_sets.txt"
 geneList<<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
@@ -64,10 +36,15 @@ names(gene_symbol_new2old)<<-new_symbol
 referenceSets<-read.csv(file="ReferenceProfiles/refereceSets.csv",header=T,stringsAsFactors = F)
 tab3_left_margin=12
   function(input, output, session) {
+    session$userData$loaded_flag<-F
+    session$userData$loaded_model_version=NA
+    session$userData$prev_inModelColorScale_rel<-c(-2,4)
+    session$userData$prev_inModelColorScale_abs<-c(-5,-2)
+    session$userData$click_flag<-T
     
     update_clusters=function(new_clusts,delete_old=F){
       if(delete_old){
-        scDissector_params$previous_clusters<<-new_clusts
+        session$userData$scDissector_params$previous_clusters<-new_clusts
       }
       updateTextInput(session,"inClusters",value=paste(new_clusts,collapse=",")) 
     }
@@ -90,13 +67,13 @@ tab3_left_margin=12
     }
     
     if (read_flag){
-      vers_tab<<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-      samples_tab<<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
+      session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+      session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
   
-      scDissector_datadir<<-input$inDatapath
-      updateSelectInput(session,"inModelVer", "Model Version:",choices = vers_tab$title)
-      updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_tab$index)
-      updateSelectInput(session,"inProjectedDataset","Projected Version:",choices = vers_tab$title)
+      session$userData$scDissector_datadir<-input$inDatapath
+      updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
+      updateSelectInput(session,"inSampleToAdd", "Samples:",choices =session$userData$samples_tab$index)
+      updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
     }
     else{
       updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
@@ -116,24 +93,24 @@ tab3_left_margin=12
         else{
           rownames(added_gene_list)=added_gene_list_tmp[,1]
           if (colnames(added_gene_list)=="genes"){
-            geneList<<-rbind(added_gene_list,geneList)
+            session$userData$geneList<-rbind(added_gene_list,geneList)
           }
           else{
             message(myGeneListFile, " was not loaded due to parsing errors.")
           }
         }
       }  
-    updateSelectInput(session,"inGeneSets",choices = rownames(geneList))
+    updateSelectInput(session,"inGeneSets",choices = rownames(session$userData$geneList))
     
     
     mySampleSetsFile= paste(input$inDatapath,"sample_sets.txt",sep="/")
     
     if (file.exists(mySampleSetsFile)){
       sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
-      sample_sets<<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
-      names(sample_sets)<<-rownames(sample_sets_tab)
+      session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
+      names(session$userData$sample_sets)<-rownames(sample_sets_tab)
       
-      updateSelectInput(session,"inSampleToAdd", "Samples:",choices = c(names(sample_sets),samples_tab$index))
+      updateSelectInput(session,"inSampleToAdd", "Samples:",choices = c(names(session$userData$sample_sets),session$userData$samples_tab$index))
     }
     
     tfs_file="tfs.csv"
@@ -165,8 +142,8 @@ tab3_left_margin=12
       return()
     }
     
-    i=match(input$inModelVer,vers_tab$title)
-    f=paste(input$inDatapath,vers_tab$path[ifelse(is.na(i),1,i)],sep="/")
+    i=match(input$inModelVer, session$userData$vers_tab$title)
+    f=paste(input$inDatapath, session$userData$vers_tab$path[ifelse(is.na(i),1,i)],sep="/")
     
     if (!file.exists(f)){
       message(f, " not found")
@@ -174,31 +151,31 @@ tab3_left_margin=12
     }
   
     #rm(c())
-    clean_all()
-    scDissector_params<<-list()
+  #  clean_all()
+    session$userData$scDissector_params<-list()
     message("Loading ",f)
-    model<<-new.env(parent = globalenv())
-    load(file=f,model)
+    session$userData$model<-new.env(parent = globalenv())
+    load(file=f,session$userData$model)
     
     
-    loaded_file<<-f
+    session$userData$loaded_model_file<-f
  
-    loaded_version<<-input$inModelVer
-    scDissector_params$excluded_clusters<<-c()
-    clusterset_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_clustersets.txt",sep="")
+    session$userData$loaded_model_version<-input$inModelVer
+    session$userData$scDissector_params$excluded_clusters<-c()
+    clusterset_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_clustersets.txt",sep="")
     if (file.exists(clusterset_fn)){
       cluster_sets_tab=read.table(file=clusterset_fn,header = T,stringsAsFactors = F)
       if (nrow(cluster_sets_tab)>0){
-        scDissector_params$cluster_sets<<-strsplit(cluster_sets_tab[,2],",")
-        scDissector_params$excluded_cluster_sets<<-cluster_sets_tab[cluster_sets_tab[,3],1]
-        names(scDissector_params$cluster_sets)<<-cluster_sets_tab[,1]
-        if (length(scDissector_params$excluded_cluster_sets)>0){
-          scDissector_params$excluded_clusters<<-unlist(scDissector_params$cluster_sets[[scDissector_params$excluded_cluster_sets]])
+        session$userData$scDissector_params$cluster_sets<-strsplit(cluster_sets_tab[,2],",")
+        session$userData$scDissector_params$excluded_cluster_sets<-cluster_sets_tab[cluster_sets_tab[,3],1]
+        names(session$userData$scDissector_params$cluster_sets)<-cluster_sets_tab[,1]
+        if (length(session$userData$scDissector_params$excluded_cluster_sets)>0){
+          session$userData$scDissector_params$excluded_clusters<-unlist(session$userData$scDissector_params$cluster_sets[[session$userData$scDissector_params$excluded_cluster_sets]])
        }
       }
     }
     else{
-      scDissector_params$cluster_sets<<-list()
+      session$userData$scDissector_params$cluster_sets<-list()
     }
     
     
@@ -207,36 +184,37 @@ tab3_left_margin=12
     annnot_fn=paste(strsplit(f,"\\.")[[1]][1],"_annots.txt",sep="")
     if (file.exists(annnot_fn)){
       a=read.delim(annnot_fn,header=F,stringsAsFactors = F,row.names = 1)
-      clustAnnots<<-a[,1]
-      clustAnnots[is.na(clustAnnots)]<<-""
-      names(clustAnnots)<<-rownames(a)
+      clustAnnots<-a[,1]
+      clustAnnots[is.na(clustAnnots)]<-""
+      names(clustAnnots)<-rownames(a)
     }
     else{
-      clustAnnots<<-rep("",ncol(model$models))
-      names(clustAnnots)<<-colnames(model$models)
+      clustAnnots<-rep("",ncol(session$userData$model$models))
+      names(clustAnnots)<-colnames(session$userData$model$models)
     }    
-   
-    order_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_order.txt",sep="")
+    session$userData$clustAnnots=clustAnnots
+    
+    order_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_order.txt",sep="")
     if (file.exists(order_fn)){
       cluster_order=as.character(read.table(file=order_fn,header = F)[,1])
     }
     else{
-      cluster_order=colnames(model$models)
+      cluster_order=colnames(session$userData$model$models)
     }
    
-    cluster_order=cluster_order[!cluster_order%in%scDissector_params$excluded_clusters]
+    cluster_order=cluster_order[!cluster_order%in%session$userData$scDissector_params$excluded_clusters]
     
     
     samples=strsplit(input$inSamples,",| ,|, ")[[1]]
     tmp_samples=as.list(samples)
   
-    if (exists("sample_sets")){
-      mask=samples%in%names(sample_sets)
-      tmp_samples[mask]=sample_sets[samples[mask]]
+    if (!is.null(session$userData$sample_sets)){
+      mask=samples%in%names(session$userData$sample_sets)
+      tmp_samples[mask]=session$userData$sample_sets[samples[mask]]
     }
     samples=unique(unlist(tmp_samples))
-    if (!all(samples%in%samples_tab$index)){
-      message("Error: These samples could not be recognized: ",paste(samples[!(samples%in%samples_tab$index)],collapse=","),". Loading failed!")
+    if (!all(samples%in%session$userData$samples_tab$index)){
+      message("Error: These samples could not be recognized: ",paste(samples[!(samples%in%session$userData$samples_tab$index)],collapse=","),". Loading failed!")
       message("")
       return()
     }
@@ -250,17 +228,17 @@ tab3_left_margin=12
     tmp_dataset$ds_numis=NULL
     tmp_dataset$counts=list()
    
-    genes=rownames(model$models)
+    genes=rownames(session$userData$model$models)
     for (sampi in samples){
       message("Loading sample ",sampi)
-      i=match(sampi,samples_tab$index)
-      f=paste(input$inDatapath,samples_tab$path[i],sep="/")
+      i=match(sampi,session$userData$samples_tab$index)
+      f=paste(input$inDatapath,session$userData$samples_tab$path[i],sep="/")
       tmp_env=new.env()
       load(f,envir = tmp_env)
       
-      colnames(tmp_env$umitab)=paste(samples[sampi],colnames(tmp_env$umitab),sep="_")
+      colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
       for (ds_i in 1:length(tmp_env$ds)){
-        colnames(tmp_env$ds[[ds_i]])=paste(samples[sampi],colnames(tmp_env$ds[[ds_i]]),sep="_")
+        colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
       }
   
       if (is.null(tmp_dataset$ds_numis)){
@@ -274,19 +252,19 @@ tab3_left_margin=12
       }
       tmp_dataset$umitab[[sampi]]=tmp_env$umitab
       message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
-      genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
+      genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(session$userData$model$models))
       
       genes=intersect(genemask,genes)
     #  print(length(genes))
-      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = 1e-5)#params$reg)
+      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =session$userData$model$models[genemask,],reg = 1e-5)#params$reg)
       tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
       
-      cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%scDissector_params$excluded_clusters]
+      cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%session$userData$scDissector_params$excluded_clusters]
       
       tmp_dataset$cell_to_cluster[[sampi]]=tmp_dataset$cell_to_cluster[[sampi]][cells_to_include]
       tmp_dataset$ll[[sampi]]=tmp_dataset$ll[[sampi]][cells_to_include,]
       tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,cells_to_include]
-      tmp_models=model$models[,setdiff(colnames(model$models),scDissector_params$excluded_clusters)]
+      tmp_models=session$userData$model$models[,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters)]
       
       tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
       tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
@@ -310,31 +288,31 @@ tab3_left_margin=12
     
     message("One more minute...")
     
-    dataset<<-new.env()
+    dataset<-new.env()
     dataset$ds_numis=tmp_dataset$ds_numis
-    dataset$umitab<<-tmp_dataset$umitab[[samples[1]]][genes,]
-    dataset$ll<<-tmp_dataset$ll[[samples[1]]]
-    dataset$cell_to_cluster<<-tmp_dataset$cell_to_cluster[[samples[1]]]
+    dataset$umitab<-tmp_dataset$umitab[[samples[1]]][genes,]
+    dataset$ll<-tmp_dataset$ll[[samples[1]]]
+    dataset$cell_to_cluster<-tmp_dataset$cell_to_cluster[[samples[1]]]
     names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
-    dataset$cell_to_sample<<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
+    dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
     names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
-    dataset$avg<<-tmp_dataset$avg
-    dataset$counts<<-tmp_dataset$counts
+    dataset$avg<-tmp_dataset$avg
+    dataset$counts<-tmp_dataset$counts
     dataset$samples=samples
-    dataset$ds<<-list()
-    dataset$randomly_selected_cells<<-list()
+    dataset$ds<-list()
+    dataset$randomly_selected_cells<-list()
     
     for (ds_i in 1:length(tmp_env$ds_numis)){
       ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
       dataset$ds[[ds_i]]=ds_sampi
-      dataset$randomly_selected_cells[[ds_i]]<<-list()
+      dataset$randomly_selected_cells[[ds_i]]<-list()
       for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
         nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
         if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-          dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-colnames(ds_sampi)
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-colnames(ds_sampi)
         }
         else{
-          dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
         }
       }
     }
@@ -344,10 +322,10 @@ tab3_left_margin=12
         cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
         dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
         dataset$ll<-rbind(dataset$ll,tmp_dataset$ll[[sampi]])
-        dataset$cell_to_cluster<<-c(dataset$cell_to_cluster,tmp_dataset$cell_to_cluster[[sampi]])
+        dataset$cell_to_cluster<-c(dataset$cell_to_cluster,tmp_dataset$cell_to_cluster[[sampi]])
         cell_to_sampi=rep(sampi,length(cellids))
         names(cell_to_sampi)=cellids
-        dataset$cell_to_sample<<-c(dataset$cell_to_sample,cell_to_sampi)
+        dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
         
         for (ds_i in 1:length(dataset$ds_numis)){
           ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
@@ -357,27 +335,30 @@ tab3_left_margin=12
           for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
             nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
             if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-              dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
             }
             else{
-              dataset$randomly_selected_cells[[ds_i]][[randomi]]<<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
             }
           }
         }
       }
     }
     
-    ncells_per_cluster<<-rep(0,dim(model$models)[2])
-    names(ncells_per_cluster)<<-colnames(model$models)
-    temptab=table(model$cell_to_cluster)
-    temptab=temptab[setdiff(names(temptab),scDissector_params$excluded_cluster_sets)]
-    ncells_per_cluster[names(temptab)]<<-temptab
+    session$userData$dataset=dataset
+    
+    ncells_per_cluster<-rep(0,dim(session$userData$model$models)[2])
+    names(ncells_per_cluster)<-colnames(session$userData$model$models)
+    temptab=table(session$userData$model$cell_to_cluster)
+    temptab=temptab[setdiff(names(temptab),session$userData$scDissector_params$excluded_cluster_sets)]
+    ncells_per_cluster[names(temptab)]<-temptab
+    session$userData$ncells_per_cluster=ncells_per_cluster
     
     ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
     ncells_per_sample=ncells_choices[which.min(abs((2000/length(samples))-ncells_choices))]
     
-    clust_title=paste(cluster_order," - ",clustAnnots[cluster_order],sep="") 
-    default_clusters<<-cluster_order
+    clust_title=paste(cluster_order," - ",session$userData$clustAnnots[cluster_order],sep="") 
+    session$userData$default_clusters<-cluster_order
     
     update_clusters(cluster_order,T)
     updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
@@ -394,7 +375,8 @@ tab3_left_margin=12
     updateSelectInput(session,"inModulesDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
     
     message("Successfully finished loading.")
-    loaded_flag<<-T
+    
+    session$userData$loaded_flag<-T
   })
   
   
@@ -407,20 +389,20 @@ tab3_left_margin=12
   observeEvent(input$inAbsOrRel,{
     if (input$inAbsOrRel=="Absolute"){
       
-      prev_inModelColorScale_rel<<-input$inModelColorScale
+      session$userData$prev_inModelColorScale_rel<-input$inModelColorScale
       
-      updateSliderInput(session,"inModelColorScale",label="Log10(expression)",min = -12,max=-.5,step = .5,value = prev_inModelColorScale_abs)
+      updateSliderInput(session,"inModelColorScale",label="Log10(expression)",min = -12,max=-.5,step = .5,value = session$userData$prev_inModelColorScale_abs)
     }
     else if (input$inAbsOrRel=="Relative"){
-      prev_inModelColorScale_abs<<-input$inModelColorScale
-      updateSliderInput(session,"inModelColorScale",label="Log2(expression/mean)",min = -8,max = 8,step = 1,value = prev_inModelColorScale_rel)
+      session$userData$prev_inModelColorScale_abs<-input$inModelColorScale
+      updateSliderInput(session,"inModelColorScale",label="Log2(expression/mean)",min = -8,max = 8,step = 1,value = session$userData$prev_inModelColorScale_rel)
       
     }
   })
   
   genes_reactive <-reactive({
     
-    if (!loaded_flag){
+    if (!session$userData$loaded_flag){
       return()
     }
     
@@ -429,16 +411,16 @@ tab3_left_margin=12
   
   clusters_reactive <-reactive({
     clusts=strsplit(input$inClusters,",")[[1]]
-    clusts=intersect(clusts,setdiff(colnames(model$models),scDissector_params$excluded_clusters))
+    clusts=intersect(clusts,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters))
     return(clusts)
   })
   
   truth_samples_reactive <-reactive({
     samples=strsplit(input$inTruthSamples,",")[[1]]
-     if (!exists("dataset")){
+     if (is.null(session$userData$dataset)){
       return(c())
     }
-    samples=intersect(samples,dataset$samples)
+    samples=intersect(samples,session$userData$dataset$samples)
     return(samples)
   })
   
@@ -451,10 +433,11 @@ tab3_left_margin=12
   ds_QC_reactive <-reactive({
     clust=strsplit(input$inQCClust," - ")[[1]][1]
     samples=truth_samples_reactive()
-    if (!exists("dataset")){
+    
+    if (is.null(session$userData$dataset)){
       return()
     }
-    
+    dataset=session$userData$dataset
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
     sampling_mask=dataset$randomly_selected_cells[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
@@ -464,12 +447,12 @@ tab3_left_margin=12
   observeEvent(input$inGeneSets,{
     geneSets=input$inGeneSets
     
- #   if (!loaded_flag){
+ #   if (!session$userData$loaded_flag){
 #      return()
   #  }
-    updateTextInput(session,"inGenes",value=geneList[geneSets,1])
-    #  genes=strsplit(geneList[geneSets,1],",")[[1]]
-  #  if (loaded_flag){
+    updateTextInput(session,"inGenes",value=session$userData$geneList[geneSets,1])
+    #  genes=strsplit(session$userData$geneList[geneSets,1],",")[[1]]
+  #  if (session$userData$loaded_flag){
   #    init_genes(genes)
   #  }
     
@@ -478,13 +461,13 @@ tab3_left_margin=12
   
   init_genes=function(genes_string){
     genes=strsplit(genes_string,",|, | ,")[[1]]
-    mask1=toupper(genes)%in%rownames(model$models)
+    mask1=toupper(genes)%in%rownames(session$userData$model$models)
     genes[mask1]=toupper(genes[mask1])
-    mask2=unlist(sapply(genes,cap))%in%rownames(model$models)
+    mask2=unlist(sapply(genes,cap))%in%rownames(session$userData$model$models)
     genes[mask2]=unlist(sapply(genes[mask2],cap))
-    mask3=gene_symbol_old2new[genes]%in%rownames(model$models)
+    mask3=gene_symbol_old2new[genes]%in%rownames(session$userData$model$models)
     genes[mask3]=gene_symbol_old2new[genes[mask3]]
-    mask4=gene_symbol_new2old[genes]%in%rownames(model$models)
+    mask4=gene_symbol_new2old[genes]%in%rownames(session$userData$model$models)
     genes[mask4]=gene_symbol_new2old[genes[mask4]]
     
    # genes=genes[(mask1|mask2|mask3)]
@@ -499,15 +482,15 @@ tab3_left_margin=12
  
   
   observeEvent(input$inAnnotateCluster, {
-    clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<<-input$inClustAnnot
+    session$userData$clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<-input$inClustAnnot
     updateTextInput(session,"inClustAnnot",value="")
   })
   
   observeEvent(input$inSaveAnnot, {
-    f=paste(input$inDatapath,vers_tab$path[vers_tab$title==loaded_version],sep="/")
+    f=paste(input$inDatapath, session$userData$vers_tab$path[ session$userData$vers_tab$title==session$userData$loaded_model_version],sep="/")
  
     annot_fn=paste(strsplit(f,"\\.")[[1]][1],"_annots.txt",sep="")
-    write.table(file=annot_fn,clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
+    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
     message("Cluster annotations saved to ",annot_fn,".")
     
   })
@@ -526,9 +509,9 @@ tab3_left_margin=12
     }
     clusts=clusters_reactive()
     genes=genes_reactive()
-    gmask=intersect(genes,intersect(toupper(rownames(model$models)),rownames(ext_prof)))
+    gmask=intersect(genes,intersect(toupper(rownames(session$userData$model$models)),rownames(ext_prof)))
   
-    cormat=cor(model$models[match(gmask,toupper(rownames(model$models))),clusts],ext_prof[gmask,],method="spearman",use="comp")
+    cormat=cor(session$userData$model$models[match(gmask,toupper(rownames(session$userData$model$models))),clusts],ext_prof[gmask,],method="spearman",use="comp")
     profs=unique(as.vector(apply(cormat,1,function(x){colnames(ext_prof)[order(x,decreasing=T)[1:2]]})))
   
     updateTextInput(session, "inRefProfiles",value=paste(profs,collapse=","))
@@ -559,6 +542,14 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inClusterModules, {
+    inclusts=clusters_reactive()
+    modulemat<-module_counts_reactive()
+    if(is.null(modulemat)){
+      return()
+    }
+    inmodules=modules_reactive()
+    modulemat<-modulemat[inmodules,inclusts]
+    
     if (input$inReorderingModulesMethod=="Hierarchical clustering"){
       cormat=cor(t(modulemat),use="comp")
       mask=rowSums(!is.na(cormat))>1
@@ -587,7 +578,7 @@ tab3_left_margin=12
 #    gene_scores<<-1-vs/apply(ds[,mask],1,var)
      
 #    m1=apply(counts[,names(gene_scores)],2,max)>=50&gene_scores>0.02
-#    lgenes=split(names(m1)[m1],apply(model$models[names(m1),][m1,],1,which.max))
+#    lgenes=split(names(m1)[m1],apply(session$userData$model$models[names(m1),][m1,],1,which.max))
 #    isolate({
 #    ngenes_to_show=as.numeric(input$inNgenes)
 #    })
@@ -595,7 +586,7 @@ tab3_left_margin=12
   observeEvent(input$inBlindChisq, {
        message("screening for variable ",input$inSelectGenesFrom)
         clusters=clusters_reactive()
-        chisq_res=model$chisq_res
+        chisq_res=session$userData$model$chisq_res
         if (input$inSelectGenesFrom=="All genes"){
           pref="Var"
           genes=rownames(chisq_res)
@@ -606,7 +597,7 @@ tab3_left_margin=12
           pref="Surf"
           genes=surface_markers
         }
-        mask=rownames(chisq_res)%in%genes&chisq_res[,3]<0.05&(apply(model$models[rownames(chisq_res),]/(rowSums(model$umitab[rownames(chisq_res),])/sum(model$umitab)),1,max)>4|apply(model$models[rownames(chisq_res),]/rowMeans(model$models[rownames(chisq_res),]),1,max)>4)
+        mask=rownames(chisq_res)%in%genes&chisq_res[,3]<0.05&(apply(session$userData$model$models[rownames(chisq_res),]/(rowSums(session$userData$model$umitab[rownames(chisq_res),])/sum(session$userData$model$umitab)),1,max)>4|apply(session$userData$model$models[rownames(chisq_res),]/rowMeans(session$userData$model$models[rownames(chisq_res),]),1,max)>4)
          isolate({
           ngenes_to_show=as.numeric(input$inNgenes)
         })
@@ -614,11 +605,11 @@ tab3_left_margin=12
           genes_to_show=head(rownames(a)[order(a[,2],decreasing=T)],ngenes_to_show)
     message("done")
   
-    geneList2=rbind(geneList,paste(genes_to_show,collapse=","))
-    rownames(geneList2)[1:nrow(geneList)]=rownames(geneList)
+    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
+    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
-    geneList<<-geneList2
-    updateSelectInput(session,"inGeneSets",choices=rownames(geneList),selected = rownames(geneList)[nrow(geneList)])
+    session$userData$geneList<-geneList2
+    updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
     
   })
   
@@ -630,18 +621,18 @@ tab3_left_margin=12
     clusters=clusters_reactive()
     if (input$inSelectGenesFrom=="All genes"){
       pref="Var"
-      genes=rownames(model$models)
+      genes=rownames(session$userData$model$models)
     } else if (input$inSelectGenesFrom=="TFs"){
       pref="Tfs"
-      genes=intersect(tfs,rownames(model$models))
+      genes=intersect(tfs,rownames(session$userData$model$models))
     } else if(input$inSelectGenesFrom=="Surface markers"){
       pref="Surf"
-      genes=intersect(surface_markers,rownames(model$models))
+      genes=intersect(surface_markers,rownames(session$userData$model$models))
       
     }
-    cells=names(model$cell_to_cluster[model$cell_to_cluster%in%clusters])
-    chisq_res2=chisq_genes(model$umitab,model$cell_to_cluster,genes,cells)
-    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&(apply(model$models[rownames(chisq_res2),]/(rowSums(model$umitab[rownames(chisq_res2),])/sum(model$umitab)),1,max)>4|apply(model$models[rownames(chisq_res2),]/rowMeans(model$models[rownames(chisq_res2),]),1,max)>4)
+    cells=names(session$userData$model$cell_to_cluster[session$userData$model$cell_to_cluster%in%clusters])
+    chisq_res2=chisq_genes(session$userData$model$umitab,session$userData$model$cell_to_cluster,genes,cells)
+    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&(apply(session$userData$model$models[rownames(chisq_res2),]/(rowSums(session$userData$model$umitab[rownames(chisq_res2),])/sum(session$userData$model$umitab)),1,max)>4|apply(session$userData$model$models[rownames(chisq_res2),]/rowMeans(session$userData$model$models[rownames(chisq_res2),]),1,max)>4)
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
@@ -650,11 +641,11 @@ tab3_left_margin=12
     
     message("done")
     
-    geneList2=rbind(geneList,paste(genes_to_show,collapse=","))
+    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
     rownames(geneList2)[1:nrow(geneList)]=rownames(geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
-    geneList<<-geneList2
-    updateSelectInput(session,"inGeneSets",choices=rownames(geneList),selected = rownames(geneList)[nrow(geneList)])
+    geneList<-geneList2
+    updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
     # updateTextInput(session,"inGenes",value=paste(genes_to_show,collapse=","))
     
   })
@@ -677,7 +668,7 @@ tab3_left_margin=12
   observeEvent(input$inFC, {
     if (input$inSelectGenesFrom=="All genes"){
       pref="Var"
-      genes=rownames(model$models)
+      genes=rownames(session$userData$model$models)
     } else if (input$inSelectGenesFrom=="TFs"){
       pref="Tfs"
       genes=tfs
@@ -685,14 +676,14 @@ tab3_left_margin=12
       pref="Surf"
       genes=surface_markers
     }
-    mask=rownames(model$umitab)%in%genes
+    mask=rownames(session$userData$model$umitab)%in%genes
     
     clusts_fg=strsplit(input$inFC_fgClusts,",")[[1]]
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
-    mask_fg=model$cell_to_cluster%in%clusts_fg
-    mask_bg=model$cell_to_cluster%in%clusts_bg
+    mask_fg=session$userData$model$cell_to_cluster%in%clusts_fg
+    mask_bg=session$userData$model$cell_to_cluster%in%clusts_bg
     reg=50
-    fc=(rowSums(reg+model$umitab[mask,mask_fg])/sum(reg+model$umitab[,mask_fg]))/(rowSums(reg+model$umitab[mask,mask_bg])/sum(reg+model$umitab[,mask_bg]))
+    fc=(rowSums(reg+session$userData$model$umitab[mask,mask_fg])/sum(reg+session$userData$model$umitab[,mask_fg]))/(rowSums(reg+session$userData$model$umitab[mask,mask_bg])/sum(reg+session$userData$model$umitab[,mask_bg]))
     
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
@@ -701,17 +692,17 @@ tab3_left_margin=12
     genes_to_show=head(names(sort(fc,decreasing=T)),floor(ngenes_to_show/2))
     genes_to_show=c(genes_to_show,tail(names(sort(fc,decreasing=T)),ceiling(ngenes_to_show/2)))
     
-    geneList2=rbind(geneList,paste(genes_to_show,collapse=","))
-    rownames(geneList2)[1:nrow(geneList)]=rownames(geneList)
+    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
+    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("FC_",pref,"_",ngenes_to_show,"_",paste(clusts_fg,collapse="_"),"_VS_",paste(clusts_bg,collapse="_"),sep="")
-    geneList<<-geneList2
-     updateSelectInput(session,"inGeneSets",choices=rownames(geneList),selected = rownames(geneList)[nrow(geneList)])
+    session$userData$geneList<-geneList2
+     updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
   })
   
   
   observeEvent(input$inResetClusters, {
-     clust_title=paste(default_clusters," - ",clustAnnots[default_clusters],sep="") 
-    update_clusters(default_clusters)
+     clust_title=paste(session$userData$default_clusters," - ",session$userData$clustAnnots[session$userData$default_clusters],sep="") 
+    update_clusters(session$userData$default_clusters)
     updateSelectInput(session,"inQCClust",choices=clust_title)
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title)
     
@@ -720,9 +711,9 @@ tab3_left_margin=12
   observeEvent(input$inSaveClusterOrder, {
     clusters=clusters_reactive()
    
-    order_fn=paste(strsplit(loaded_file,"\\.")[[1]][1],"_order.txt",sep="")
-    if (all(colnames(model$models)%in%clusters)){
-      default_clusters<<-clusters
+    order_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_order.txt",sep="")
+    if (all(colnames(session$userData$model$models)%in%clusters)){
+      session$userData$default_clusters<-clusters
       write.table(clusters,file=order_fn,quote = F,sep="\t",row.names = F,col.names = F)
       message("Order has been successfully saved.")
     }else{
@@ -731,22 +722,22 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inUndoClusterChanges, {
-    update_clusters(scDissector_params$previous_clusters,T)
+    update_clusters(session$userData$scDissector_params$previous_clusters,T)
   })
   
   observeEvent(input$detectDiffExrs, {
-    if (!exists('model$models')){
+    if (is.null(session$userData$model$models)){
       return()
     }
     clusters=clusters_reactive()
-    cell_mask=model$cell_to_cluster%in%clusters
+    cell_mask=session$userData$model$cell_to_cluster%in%clusters
    #tot (=#mols per cluster)
-     tot=sapply(split(colSums(model$umitab[rownames(model$ds),cell_mask]),model$cell_to_cluster[cell_mask][colnames(model$umitab)[cell_mask]]),sum)
+     tot=sapply(split(colSums(session$userData$model$umitab[rownames(session$userData$model$ds),cell_mask]),session$userData$model$cell_to_cluster[cell_mask][colnames(session$userData$model$umitab)[cell_mask]]),sum)
  
-    fc=model$models[rownames(model$ds),]/(rowSums(model$ds)/sum(model$ds))
-    fc_mask=apply(fc,1,max)>input$inputMinFC&rowMeans(model$ds)>input$inMinAvgExprs
+    fc=session$userData$model$models[rownames(session$userData$model$ds),]/(rowSums(session$userData$model$ds)/sum(session$userData$model$ds))
+    fc_mask=apply(fc,1,max)>input$inputMinFC&rowMeans(session$userData$model$ds)>input$inMinAvgExprs
     print(sum(fc_mask))
-    counts=sapply(split(as.data.frame(t(model$umitab[rownames(model$ds)[fc_mask],cell_mask])),model$cell_to_cluster[cell_mask][colnames(model$umitab)[cell_mask]]),colSums,na.rm=T)
+    counts=sapply(split(as.data.frame(t(session$userData$model$umitab[rownames(session$userData$model$ds)[fc_mask],cell_mask])),session$userData$model$cell_to_cluster[cell_mask][colnames(session$userData$model$umitab)[cell_mask]]),colSums,na.rm=T)
   
     arrcont=array(c(counts,matrix(tot,dim(counts)[1],dim(counts)[2],byrow=T)-counts),dim=c(dim(counts),2))
     res=t(apply(arrcont,1,function(x){unlist(chisq.test(x)[c("p.value","statistic")])}))
@@ -754,14 +745,14 @@ tab3_left_margin=12
     res=res[!is.na(res[,1]),]
     res=cbind(res,adjp=p.adjust(res[,1],method="BH"))
     
-    chisq.res<<-res[res[,3]<0.05,]
-    chisq.res<<-chisq.res[order(chisq.res[,2],decreasing=T),]
+    chisq.res<-res[res[,3]<0.05,]
+    session$userData$chisq.res<-chisq.res[order(chisq.res[,2],decreasing=T),]
   
     fdrmask=res[,3]<input$inputFDR
     names(fdrmask)=rownames(res)
     
-    signiftab<<-log2(2^-20+model$models[names(fdrmask),])
-    signiftab<<-round(signiftab[order(apply(signiftab,1,which.max)),],digits=1)
+    signiftab<-log2(2^-20+session$userData$model$models[names(fdrmask),])
+    session$userData$signiftab<-round(signiftab[order(apply(signiftab,1,which.max)),],digits=1)
     print("done.")
   })
   
@@ -769,7 +760,7 @@ tab3_left_margin=12
     filename = function() { paste("DiffExprs", '.csv', sep='') },
     
     content = function(file) {
-      write.csv(signiftab, file)
+      write.csv(session$userData$signiftab, file)
     }
   )
   outputOptions(output, 'downloadSignifTable', suspendWhenHidden=FALSE)  
@@ -777,7 +768,7 @@ tab3_left_margin=12
   output$downloadExprsTable <- downloadHandler(
     filename = function() { paste("Exprs", '.csv', sep='') },
     content = function(file) {
-      write.csv(model$models, file)
+      write.csv(session$userData$model$models, file)
     }
   )
   outputOptions(output, 'downloadExprsTable', suspendWhenHidden=FALSE)   
@@ -798,10 +789,11 @@ tab3_left_margin=12
   
   observeEvent(input$inOrderClusters, {
     inclusts=clusters_reactive()
-    
+    ingenes=genes_reactive
+    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
     if (input$inReorderingClustersMethod=="Hierarchical clustering"){
   
-    cormat=cor(mat[,inclusts],use="comp")
+    cormat=cor(mat,use="comp")
     d1=dist(1-cormat)
     d1[is.na(d1)]=100
     reorderv1=hclust(d1)$order
@@ -831,7 +823,7 @@ tab3_left_margin=12
       
       reorderv1=order(score)
     }
-    clust_title=paste(inclusts," - ",clustAnnots[inclusts],sep="") 
+    clust_title=paste(inclusts," - ",session$userData$clustAnnots[inclusts],sep="") 
     
     update_clusters(inclusts[reorderv1])
     updateSelectInput(session,"inQCClust",choices=clust_title[reorderv1])
@@ -861,7 +853,7 @@ tab3_left_margin=12
 #  })
   
 #  observeEvent(input$inTweezersSaveVersion, {
-#    if (input$inTweezers_new_version_name%in%vers_tab$title){
+#    if (input$inTweezers_new_version_name%in% session$userData$vers_tab$title){
 #      message("Version name already exists. Version was not saved!")
 #      return()
 #    }
@@ -874,48 +866,48 @@ tab3_left_margin=12
 #    write.csv(vers,file=paste(input$inDatapath,"model_versions.csv",sep="/"),row.names = F,quote=F)
     
 #    annot_fn=paste(input$inDatapath,strsplit(input$inTweezers_new_version_filename,"\\.")[[1]][1],"_annots.txt",sep="")
-#    write.table(file=annot_fn,clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
-#    updateSelectInput(session,"inModelVer", "Clustering Version:",choices = vers_tab$title)
-#    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices = vers_tab$title)
+#    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
+#    updateSelectInput(session,"inModelVer", "Clustering Version:",choices =  session$userData$vers_tab$title)
+#    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
 #    message("Done.")
 #  })
   ###########################################################
   observeEvent(input$inBirdDefineClusterSet,{
     clusts_to_add=strsplit(input$inBirdAddClusters,",| ,|, ")[[1]]
-    if (!all(clusts_to_add%in%colnames(model$models))){
-      updateTextInput(session,"inBirdAddClusters","Clusters:",value = paste(clusts_to_add[clusts_to_add%in%colnames(model$models)],collapse = ","))  
+    if (!all(clusts_to_add%in%colnames(session$userData$model$models))){
+      updateTextInput(session,"inBirdAddClusters","Clusters:",value = paste(clusts_to_add[clusts_to_add%in%colnames(session$userData$model$models)],collapse = ","))  
       message("Warning! Cluster list contained unknown clusters. Cluster-set was not defined.")
       return()
     }
-    intersect_with_defined=intersect(clusts_to_add,unlist(scDissector_params$cluster_sets))
+    intersect_with_defined=intersect(clusts_to_add,unlist(session$userData$scDissector_params$cluster_sets))
     if (length(intersect_with_defined)>0){
       message("warning! Cluster list contained clusters that have been already defined as cluster sets: ",paste(intersect_with_defined,collapse=","),". Cluster-set was not defined.")
       return()
     }
     
-    if (input$inBirdAddClusterSetName%in%names(scDissector_params$cluster_sets)){
+    if (input$inBirdAddClusterSetName%in%names(session$userData$scDissector_params$cluster_sets)){
       message("warning! Name has already been used. Cluster-set was not defined.")
       return()
     }
     
-    scDissector_params$cluster_sets[[input$inBirdAddClusterSetName]]<<-clusts_to_add
-    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
+    session$userData$scDissector_params$cluster_sets[[input$inBirdAddClusterSetName]]<-clusts_to_add
+    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
    })
   
   observeEvent(input$inBirdUndefineClusterSet,{
-    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
-    scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]<<-NULL
-    scDissector_params$excluded_cluster_sets<<-setdiff(scDissector_params$excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
-    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(scDissector_params$cluster_sets)) 
+    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
+    session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]<-NULL
+    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(session$userData$scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
+    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =session$userData$scDissector_params$excluded_cluster_sets)
+    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
   })
   
   observeEvent(input$inBirdSaveClusterSets,{
-    f=paste(input$inDatapath,vers_tab$path[vers_tab$title==loaded_version],sep="/")
+    f=paste(input$inDatapath, session$userData$vers_tab$path[ session$userData$vers_tab$title==session$userData$loaded_model_version],sep="/")
   
-    clusters_set_tab=data.frame(name=names(scDissector_params$cluster_sets),clusters=sapply(scDissector_params$cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(scDissector_params$cluster_sets)%in%scDissector_params$excluded_cluster_sets,"T","F"))
+    clusters_set_tab=data.frame(name=names(session$userData$scDissector_params$cluster_sets),clusters=sapply(session$userData$scDissector_params$cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(session$userData$scDissector_params$cluster_sets)%in%session$userData$scDissector_params$excluded_cluster_sets,"T","F"))
     clusterset_fn=paste(strsplit(f,"\\.")[[1]][1],"_clustersets.txt",sep="")
     write.table(file=clusterset_fn,clusters_set_tab,row.names=F,col.names=T,quote=F,sep="\t")
    
@@ -923,26 +915,27 @@ tab3_left_margin=12
   
   observeEvent(input$inBirdClusterSetExclude,{
     
-    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<<-T
-    scDissector_params$excluded_cluster_sets<<-unique(c(scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
+    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<-T
+    session$userData$scDissector_params$excluded_cluster_sets<-unique(c(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
+    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
     updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
     
   })
   
   observeEvent(input$inBirdClusterSetInclude,{
     
-    scDissector_params$is_cluster_excluded[scDissector_params$cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<<-F
-    scDissector_params$excluded_cluster_sets<<-setdiff(scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
+    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<-F
+    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
     updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
     updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
   })
   
   ###########################################################
   modules_varmean_reactive=reactive({
+    dataset=session$userData$dataset
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     
-    if (!loaded_flag)
+    if (!session$userData$loaded_flag)
     {
       return(data.frame(m=0,v=0,gene=""))
     }
@@ -958,7 +951,7 @@ tab3_left_margin=12
   })
   
   geneModuleMask_reactive<-reactive({
-    if (!loaded_flag)
+    if (!session$userData$loaded_flag)
     {
       return()
     }
@@ -972,7 +965,7 @@ tab3_left_margin=12
   
   
   output$varMeanThreshPlot <- renderPlot({
-    if (!loaded_flag)
+    if (!session$userData$loaded_flag)
     {
       return()
     }
@@ -989,11 +982,12 @@ tab3_left_margin=12
   
   
   module_cor_reactive=reactive({
-    if (!loaded_flag)
+    if (!session$userData$loaded_flag)
     {
       return()
     }
     inclusts=clusters_reactive()
+    dataset=session$userData$dataset
     cluster_cells_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts]
     
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
@@ -1008,7 +1002,7 @@ tab3_left_margin=12
   
   
   observeEvent(input$inGetModules,{
-    if (!loaded_flag)
+    if (!session$userData$loaded_flag)
     {
       return()
     }
@@ -1023,16 +1017,16 @@ tab3_left_margin=12
     
     c2c=cutree(hclust(as.dist(1-cormat)),k=as.numeric(input$inNUmberOfGeneModules))
  
-    modules<<-(split(names(c2c),c2c))
-    updateTextInput(session,"inModules",value=paste(names(modules),collapse=","))
-    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(modules))
-    print(modules)
+    session$userData$modules<-(split(names(c2c),c2c))
+    updateTextInput(session,"inModules",value=paste(names(session$userData$modules),collapse=","))
+    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(session$userData$modules))
+    print(session$userData$modules)
   })
   
   output$textModuleGenes<- renderText({
     input$inModules
-    if (exists("modules")){
-      paste(modules[[input$inModuleSelect]],collapse=",")
+    if (!is.null(session$userData$modules)){
+      paste(session$userData$modules[[input$inModuleSelect]],collapse=",")
     }
   })
   
@@ -1041,8 +1035,8 @@ tab3_left_margin=12
   output$ncells_barplot <-renderPlot({
     input$inModelVer
     clusters=clusters_reactive()
-    cells=names(model$cell_to_cluster)[model$cell_to_cluster%in%clusters]
-    ncells=table(model$cell_to_cluster[cells])[clusters]
+    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
+    ncells=table(session$userData$model$cell_to_cluster[cells])[clusters]
     par(mar=c(1,7,2,2))
     barplot(ncells,xaxs = "i",log="y",ylab="#cells",names.arg ="")
   })
@@ -1051,21 +1045,21 @@ tab3_left_margin=12
     input$inModelVer
     par(xaxs="i")
     clusters=clusters_reactive()
-    cells=names(model$cell_to_cluster)[model$cell_to_cluster%in%clusters]
+    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
     par(mar=c(2,7,1,2))
-    boxplot(split(log10(colSums(model$umitab[,cells])),model$cell_to_cluster[cells])[clusters],las=2,ylab="log10(#UMIs)")
+    boxplot(split(log10(colSums(session$userData$model$umitab[,cells])),session$userData$model$cell_to_cluster[cells])[clusters],las=2,ylab="log10(#UMIs)")
   })
   
   output$BatchHeatmap <- renderPlot({
     clusters=clusters_reactive()
-    cells=names(model$cell_to_cluster)[model$cell_to_cluster%in%clusters]
-     if(length(unique(model$cell_to_batch[cells]))==1){
+    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
+     if(length(unique(session$userData$model$cell_to_batch[cells]))==1){
       return()
      }
-    if (is.null(unique(model$cell_to_batch[cells]))){
+    if (is.null(unique(session$userData$model$cell_to_batch[cells]))){
       return(NULL)
     }
-    obs=table(model$cell_to_cluster[cells],model$cell_to_batch[cells])[clusters,]
+    obs=table(session$userData$model$cell_to_cluster[cells],session$userData$model$cell_to_batch[cells])[clusters,]
     cs=colSums(obs)
     rs=rowSums(obs)
     expected=(matrix(cs,nrow(obs),ncol(obs),byrow=T)/sum(cs))*rs
@@ -1075,7 +1069,7 @@ tab3_left_margin=12
     
    # sort(apply(obs,1,function(x){chisq.test(x,simulate.p.value = 1000)$p.value}))
     image(logr[,ncol(logr):1],col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=c(-100,seq(-2,2,l=99),100),main="Batch enrichment")
-    mtext(text = clustAnnots[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
+    mtext(text = session$userData$clustAnnots[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
     # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =colnames(logr), side=2,  at=seq(1,0,l=dim(logr)[2]),las=2,cex=1)
     #print(obs)
@@ -1085,6 +1079,7 @@ tab3_left_margin=12
   output$BasicsSampleClusterNumisNcellsHeatmaps<- renderPlot({
     inclusts=clusters_reactive()
     insamples=truth_samples_reactive()
+    dataset=session$userData$dataset
     numis_bin=1+floor(log2(pmax(100,colSums(dataset$umitab))/100))
     dataset$cell_to_sample
     dataset$cell_to_cluster
@@ -1099,7 +1094,7 @@ tab3_left_margin=12
 #    mtext(side = 2,text = 100*2^(0:(max_numis_bin)),at=seq(1-(yusr[2]-1),-1*yusr[1],l=max_numis_bin+1),las=2)
     d=1/(2*(max_numis_bin+1))
     mtext(side = 2,text = 100*2^(0:(max_numis_bin)),at=seq(-d,1+d,l=max_numis_bin+1),las=2)
-    mtext(text = clustAnnots[colnames(tab)],side = 1,at = seq(0,1,l=dim(tab)[2]),las= 2,cex=1)
+    mtext(text = session$userData$clustAnnots[colnames(tab)],side = 1,at = seq(0,1,l=dim(tab)[2]),las= 2,cex=1)
 
         box()
   })
@@ -1150,7 +1145,7 @@ tab3_left_margin=12
     inclusts=clusters_reactive()
     ingenes=genes_reactive()#genes_reactive()
     insamples=truth_samples_reactive()
-     if (!loaded_flag){
+     if (!session$userData$loaded_flag){
       return()
     }
   
@@ -1166,14 +1161,14 @@ tab3_left_margin=12
     if (length(insamples)>1&(length(inclusts)>1)){
       layout(matrix(1:2,1,2),widths=c(1,10))
       par(mar=c(7,1,1,.1))
-      tab=table(dataset$cell_to_cluster,dataset$cell_to_sample)
+      tab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
       tab=t(t(tab)/colSums(tab))[,insamples]
       tab=(tab/rowSums(tab))[intersect(inclusts,rownames(tab)),,drop=F]
       barplot(t(tab[nrow(tab):1,insamples]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     }
     par(mar=c(7,tab3_left_margin,1,9))
     
-    mat<<-model$models[match(ingenes,rownames(model$models)),]
+    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
     mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
       if (ncol(mat1)>1){
@@ -1191,20 +1186,20 @@ tab3_left_margin=12
       break2=1e-1
     }
     isolate({
-      image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=paste("Model:",loaded_version))
+      image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=paste("Model:",session$userData$loaded_model_version))
     })
     box()
    
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
-    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster[setdiff(names(ncells_per_cluster),scDissector_params$excluded_clusters)]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
   
   module_counts_reactive<-reactive({
     input$inGetModules
-    if (!exists("modules")){
+    if (is.null(session$userData$modules)){
       return()
     }
 
@@ -1212,7 +1207,7 @@ tab3_left_margin=12
     for (i in 1:length(dataset$counts)){
       counts=counts+dataset$counts[[i]]
     }
-    return(t(sapply(modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
+    return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
   
     
   })
@@ -1225,17 +1220,17 @@ tab3_left_margin=12
     inclusts=clusters_reactive()
     inmodules=modules_reactive()
    
-    if (!loaded_flag){
+    if (!session$userData$loaded_flag){
       return()
     }
     if (!exists("modules")){
       return()
     }
-    modulemat<<-module_counts_reactive()
+    modulemat<-module_counts_reactive()
     if(is.null(modulemat)){
       return()
     }
-    modulemat<<-modulemat[inmodules,inclusts]
+    modulemat<-modulemat[inmodules,inclusts]
     
     zlim=input$inModelColorScale
     par(mar=c(7,tab3_left_margin,1,9))
@@ -1255,13 +1250,13 @@ tab3_left_margin=12
       break2=1e-1
     }
   
-    image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=loaded_version)
+    image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=session$userData$loaded_model_version)
   
     box()
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
-    mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
@@ -1274,7 +1269,7 @@ tab3_left_margin=12
     if (!exists("ext_prof")){
       read_reference_set()
     }
-    if (!loaded_flag){
+    if (!session$userData$loaded_flag){
       return()
     }
     
@@ -1296,7 +1291,7 @@ tab3_left_margin=12
     box()
     
  #   mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=gcol[toupper(rownames(mat1))])
-  #  mtext(text =paste(" ",colnames(mat1)," (n=",ncells_per_cluster[inclusts]," ; ",round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+  #  mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =external_profiles, side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
@@ -1325,33 +1320,30 @@ tab3_left_margin=12
     ingenes=genes_reactive()
     insamples=truth_samples_reactive()
     nclust=length(inclusts)
-    if (!loaded_flag){
+    if (!session$userData$loaded_flag){
       return()
     }
     if (length(ingenes)==0){
-      updateSelectInput(session,"inGeneSets",selected = rownames(geneList)[1])
-      updateTextInput(session,"inGenes",value = init_genes(geneList[1,1]))
+      updateSelectInput(session,"inGeneSets",selected = rownames(session$userData$geneList)[1])
+      updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1,1]))
       
       return()
     }
 
     samps_cl=list() 
-    ds=dataset$ds[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]]
+    ds=session$userData$dataset$ds[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]]
     
     cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
-                                                                                                            
-    cell_mask=dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
-              dataset$cell_to_sample[colnames(ds)]%in%insamples &
-              colnames(ds)%in%cells_selected
+    cells_selected=session$userData$dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
+    session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[genes,cell_mask]
-    ds=ds[,order(match(dataset$cell_to_cluster[colnames(ds)],inclusts))]
-    samps=dataset$cell_to_sample[colnames(ds)]
-
+    ds=ds[,order(match(session$userData$dataset$cell_to_cluster[colnames(ds)],inclusts))]
+    samps=session$userData$dataset$cell_to_sample[colnames(ds)]
     ncells=rep(0,length(inclusts))
     names(ncells)=inclusts
-    tmp_ncells=sapply(split(colnames(ds),dataset$cell_to_cluster[colnames(ds)]),length)
+    tmp_ncells=sapply(split(colnames(ds),session$userData$dataset$cell_to_cluster[colnames(ds)]),length)
     ncells[names(tmp_ncells)]=tmp_ncells
    
     #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
@@ -1383,9 +1375,10 @@ tab3_left_margin=12
     varmean_reactive <- reactive({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       samples=truth_samples_reactive()
-      if (!exists("dataset")){
+      if (is.null(session$userData$dataset)){
         return(data.frame(m=0,varmean=0,gene=""))
       }
+      dataset=session$userData$dataset
       ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
       cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
       ds=ds[,intersect(colnames(ds),cluster_mask),drop=F]
@@ -1410,7 +1403,7 @@ tab3_left_margin=12
       insamples=truth_samples_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
-      leg=samples_tab[match(insamples,samples_tab$index),"title"]
+      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
       if(length(leg)==0){
         return()
       }
@@ -1425,7 +1418,7 @@ tab3_left_margin=12
       insamples=truth_samples_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
-      leg=samples_tab[match(insamples,samples_tab$index),"title"]
+      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
       if(length(leg)==0){
         return()
       }
@@ -1458,6 +1451,7 @@ tab3_left_margin=12
       # but since the inputs are strings, we need to do a little more work.
       #   xvar <- prop("x", as.symbol(input$xvar))
       #    yvar <- prop("y", as.symbol(input$yvar))
+      dataset=session$userData$dataset
       varmean_reactive %>%
         ggvis(x = ~m, y = ~varmean) %>%
         layer_points(size := 50, size.hover := 200,
@@ -1466,7 +1460,7 @@ tab3_left_margin=12
         add_tooltip(click_tooltip, "click")%>% 
         add_axis("x", title = "log10(mean)") %>%
         add_axis("y", title = "log2(var/mean)") %>%
-        add_axis("x", orient = "top", ticks = 0, title = paste(loaded_version,clust),
+        add_axis("x", orient = "top", ticks = 0, title = paste(session$userData$loaded_model_version,clust),
                  properties = axis_props(
                    axis = list(stroke = "white"),
                    labels = list(fontSize = 0))) %>%
@@ -1483,6 +1477,7 @@ tab3_left_margin=12
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       insamples=truth_samples_reactive()
       ds=ds_QC_reactive()
+      dataset=session$userData$dataset
       if (is.null(ds)){
         return()
       }
@@ -1541,13 +1536,13 @@ tab3_left_margin=12
       if (is.null(x)) return(NULL)
       if (is.null(x$gene)) return(NULL)
       
-      if (click_flag){
+      if (session$userData$click_flag){
         updateTextInput(session,"inGene1",,x$gene)
       }
       else{
         updateTextInput(session,"inGene2",,x$gene)
       }
-      click_flag<<-!click_flag
+      session$userData$click_flag<-!click_flag
     } 
     
     output$n_movies <- renderText({ nrow(movies()) })
@@ -1556,10 +1551,11 @@ tab3_left_margin=12
     output$gene1 <- renderText({ input$inGene1})  
    
     output$table <- renderTable({
-      if (!loaded_flag){
+      if (!session$userData$loaded_flag){
         return()
       }
       clust=strsplit(input$inQCClust," - ")[[1]][1]
+      dataset=session$userData$dataset
       ds=ds_QC_reactive()
       if (ncol(ds)==0){
         return()
@@ -1597,15 +1593,15 @@ tab3_left_margin=12
       samples1=strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]]
       samples2=strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]]
 
-      if (!((samples1%in%insamples|all(sample_sets[[samples1]]%in%insamples))&&input$inProjectSampleGroup2%in%insamples|all(sample_sets[[samples2]]%in%insamples))){
+      if (!((samples1%in%insamples|all(session$userData$sample_sets[[samples1]]%in%insamples))&&input$inProjectSampleGroup2%in%insamples|all(session$userData$sample_sets[[samples2]]%in%insamples))){
          return()
       }
       
       # Lables for axes
       if (length(ingenes)==0){
         
-        updateSelectInput(session,"inGeneSets",selected = rownames(geneList)[1])
-        updateTextInput(session,"inGenes",value = init_genes(geneList[1,1]))
+        updateSelectInput(session,"inGeneSets",selected = rownames(session$userData$geneList)[1])
+        updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1,1]))
         
         return()
       }
@@ -1614,7 +1610,7 @@ tab3_left_margin=12
       zlim=input$inModelColorScale
       par(mar=c(7,7,1,9))
       
-      mat1<-model$models[match(ingenes,rownames(model$models)),inclusts]
+      mat1<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
    
       n=ncol(mat1)
       ncells_per_projected_cluster=rep(0,length(inclusts))
@@ -1622,7 +1618,7 @@ tab3_left_margin=12
       t1=table(projected$cell_to_cluster)
       ncells_per_projected_cluster[names(t1)]=t1
       
-      percents_ref=round(100*ncells_per_cluster[inclusts]/sum(ncells_per_cluster),digits=1)
+      percents_ref=round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1)
       percents_projected=round(100*ncells_per_projected_cluster[inclusts]/sum(ncells_per_projected_cluster),digits=1)
       
       
@@ -1630,7 +1626,7 @@ tab3_left_margin=12
         if (input$inProjectPlotType=="Tile"){
         matc=cbind(mat1,mat1p)[,rep(1:n,each=2)+rep(c(0,n),n)]
         isolate({
-          image(log2(1e-5+matc/pmax(1e-5,rowMeans(matc)))[,ncol(matc):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=paste(loaded_version,input$inProjectedDataset,sep="/"))
+          image(log2(1e-5+matc/pmax(1e-5,rowMeans(matc)))[,ncol(matc):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=paste(session$userData$loaded_model_version,input$inProjectedDataset,sep="/"))
         })
         box()
         yusr=par("usr")[3:4]
@@ -1640,11 +1636,11 @@ tab3_left_margin=12
         sapply(yv,function(y){arrows(xusr[1],y,xusr[2],y,length=0,col="gray")})
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
         mtext(text =paste(" ",colnames(mat1)," (",percents_ref,"% /",percents_projected,"% )",sep=""), side=4, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
       }
       else if (input$inProjectPlotType=="Side by Side"){
         avg=rowMeans(cbind(mat1,mat1p))
-        image(log2(1e-5+mat1/pmax(1e-5,avg))[,ncol(mat1):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=loaded_version)
+        image(log2(1e-5+mat1/pmax(1e-5,avg))[,ncol(mat1):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=session$userData$loaded_model_version)
         box()
         yusr=par("usr")[3:4]
         xusr=par("usr")[1:2]
@@ -1652,7 +1648,7 @@ tab3_left_margin=12
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_ref,"%)",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         image(log2(1e-5+mat1p/pmax(1e-5,avg))[,ncol(mat1p):1],col=colgrad,breaks=c(-1e6,seq(zlim[1],zlim[2],l=99),1e6),axes=F,main=input$inProjectedDataset)
         yusr=par("usr")[3:4]
         xusr=par("usr")[1:2]
@@ -1660,7 +1656,7 @@ tab3_left_margin=12
         mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las= 2,cex=1,col=gcol[toupper(rownames(mat1))])
        # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
         mtext(text =paste(" (",percents_projected,"%)",sep=""), side=4,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-        mtext(text =paste(clustAnnots[inclusts]," ",sep=""), side=2,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+        mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2,  at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
         
         box()
       }
@@ -1673,12 +1669,13 @@ tab3_left_margin=12
       inclusters=clusters_reactive()
       ingenes=genes_reactive()
       
-      
+      dataset=session$userData$dataset
+     
       samples1=as.list(strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]])
       samples2=as.list(strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]])
-      if (exists("sample_sets")){
-        samples1[!(samples1%in%insamples)]=sample_sets[unlist(samples1[!samples1%in%insamples])]
-        samples2[!(samples2%in%insamples)]=sample_sets[unlist(samples2[!samples2%in%insamples])]
+      if (!is.null(session$userData$sample_sets)){
+        samples1[!(samples1%in%insamples)]=session$userData$sample_sets[unlist(samples1[!samples1%in%insamples])]
+        samples2[!(samples2%in%insamples)]=session$userData$sample_sets[unlist(samples2[!samples2%in%insamples])]
       }
       samples1=unlist(samples1)
       samples2=unlist(samples2)
@@ -1689,7 +1686,9 @@ tab3_left_margin=12
       if (!(all(samples1%in%insamples)&&all(samples2%in%insamples))){
         return()
       }
-    
+      if (is.null(dataset)){
+        return()
+      }
       full_table=function(cell_to_cluster,clusters){
         tab=rep(0,length(clusters)+1)
         names(tab)=c("-1",clusters)
@@ -1722,11 +1721,11 @@ tab3_left_margin=12
       m[2,names(percents2)]=percents2
       
       par(mar=c(5,10,1,1))
-      barplot(m[,dim(m)[2]:1],beside=T,names.arg = rev(paste(clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2)
+      barplot(m[,dim(m)[2]:1],beside=T,names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2)
       legend("bottomright",pch=15,col= gray.colors(2),legend=c("1","2"),border=T)
     #  reg=100*10/((ncol(model$umitab)+ncol(projected$umitab))/2)
       reg=1e-3
-      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(1/2)")
+      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(1/2)")
     })
     
     click_tooltip_gene_proj_vs_ref <- function(x) {
@@ -1743,22 +1742,23 @@ tab3_left_margin=12
       clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
       samples1=as.list(strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]])
       samples2=as.list(strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]])
-      if (!exists("dataset")){
+      dataset=session$userData$dataset
+      if (is.null(session$userData$dataset)){
         return(data.frame(x=0,y=0,gene=0))
       }
-      if (exists("sample_sets")){
-        samples1[!(samples1%in%insamples)]=sample_sets[unlist(samples1[!samples1%in%insamples])]
-        samples2[!(samples2%in%insamples)]=sample_sets[unlist(samples2[!samples2%in%insamples])]
+      if (!is.null(session$userData$sample_sets)){
+        samples1[!(samples1%in%insamples)]=session$userData$sample_sets[unlist(samples1[!samples1%in%insamples])]
+        samples2[!(samples2%in%insamples)]=session$userData$sample_sets[unlist(samples2[!samples2%in%insamples])]
       }
       samples1=unlist(samples1)
       samples2=unlist(samples2)
       
-      if(length(samples1)==0||length(samples2)==0||(!(all(samples1%in%insamples)&&all(samples2%in%insamples)))){
+      if(length(samples1)==0||length(samples2)==0||(!(all(samples1%in%insamples)&&all(samples2%in%insamples)))||is.null(dataset)){
         return(data.frame(x=0,y=0,gene=0))
       }
       
-      counts1=model$models*0
-      counts2=model$models*0
+      counts1=session$userData$model$models*0
+      counts2=session$userData$model$models*0
       for (sampi in 1:length(samples1)){
           tmp_counts=dataset$counts[[samples1[sampi]]]
          counts1[,colnames(tmp_counts)]=counts1[,colnames(tmp_counts)]+tmp_counts  
@@ -1772,7 +1772,7 @@ tab3_left_margin=12
       model1=t(t(counts1)/colSums(counts1))
       model2=t(t(counts2)/colSums(counts2))
       
-      df=data.frame(x=log10(model1[,clust]),y=log2(model2[,clust]/model1[,clust]),gene=rownames(model$models))
+      df=data.frame(x=log10(model1[,clust]),y=log2(model2[,clust]/model1[,clust]),gene=rownames(session$userData$model$models))
       
     })
     # A reactive expression with the ggvis plot
@@ -1788,7 +1788,7 @@ tab3_left_margin=12
         add_tooltip(click_tooltip_gene_proj_vs_ref, "click")%>% 
         add_axis("x", title = "log10(mean)") %>%
         add_axis("y", title = "log2(samples_gr2/samples_gr1)") %>%
-        add_axis("x", orient = "top", ticks = 0, title = paste(loaded_version," ",clust),
+        add_axis("x", orient = "top", ticks = 0, title = paste(session$userData$loaded_model_version," ",clust),
                  properties = axis_props(
                    axis = list(stroke = "white"),
                    labels = list(fontSize = 0))) %>%
@@ -1803,7 +1803,7 @@ tab3_left_margin=12
 
     
     output$Gene1ExprsTableRefVsProj<- renderTable({
-      if (!loaded_flag){
+      if (!session$userData$loaded_flag){
         return()
       }
       if (!exists("projected")){
@@ -1814,7 +1814,7 @@ tab3_left_margin=12
       clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
       
       if ((g%in%rownames(ds))&(g%in%rownames(projected$ds))){
-        mask1=model$cell_to_cluster[colnames(ds)]==clust
+        mask1=session$userData$model$cell_to_cluster[colnames(ds)]==clust
         mask2=projected$cell_to_cluster[colnames(projected$ds)]==clust
         x1=table(floor(log2(1+data.frame(ds[g,mask1]))))
         x2=table(floor(log2(1+data.frame(projected$ds[g,mask2]))))
@@ -1831,13 +1831,13 @@ tab3_left_margin=12
     },rownames=T,colnames=T,width=18)
     
     output$ClusteringsComparisonTable<- renderTable({
-      if (!loaded_flag){
+      if (!session$userData$loaded_flag){
         return()
       }
-      if (!all(names(model$cell_to_cluster)==names(projected$source_cell_to_cluster))){
+      if (!all(names(session$userData$model$cell_to_cluster)==names(projected$source_cell_to_cluster))){
         return() 
       }
-      tab=table(model$cell_to_cluster,projected$source_cell_to_cluster)
+      tab=table(session$userData$model$cell_to_cluster,projected$source_cell_to_cluster)
       x=matrix(tab,nrow(tab),ncol(tab),dimnames=list(rownames(tab),colnames(tab)))
       print(x)
       x
@@ -1870,7 +1870,7 @@ tab3_left_margin=12
    
 #      print(llx)
 #      print(lly)
-#      if (is.na(clust)|!loaded_flag){return(data.frame(x=0,y=0,gene=0))}
+#      if (is.na(clust)|!session$userData$loaded_flag){return(data.frame(x=0,y=0,gene=0))}
       
 #      print(llx)
 #      print(lly)
@@ -1890,7 +1890,7 @@ tab3_left_margin=12
 #        add_tooltip(click_tooltip_ll, "click")%>% 
 #        add_axis("x", title = "llx") %>%
 #        add_axis("y", title = "lly") %>%
-#        add_axis("x", orient = "top", ticks = 0, title = paste(loaded_version," ",clust),
+#        add_axis("x", orient = "top", ticks = 0, title = paste(session$userData$loaded_model_version," ",clust),
 #                 properties = axis_props(
 #                   axis = list(stroke = "white"),
 #                   labels = list(fontSize = 0))) %>%
@@ -1903,8 +1903,8 @@ tab3_left_margin=12
 #    })
     
     
-    if (exists("scDissector_datadir")){
-      updateTextInput(session,"inDatapath",,scDissector_datadir)
+    if (!is.null(session$userData$scDissector_datadir)){
+      updateTextInput(session,"inDatapath",,session$userData$scDissector_datadir)
     }
     
   }
