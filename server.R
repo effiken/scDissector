@@ -51,36 +51,28 @@ tab3_left_margin=12
     }
    
     updateSelectInput(session,"inReferenceSets",label = "Reference Set:",choices = referenceSets$title)  
-  observeEvent(input$inDatapath,{
-    if (input$inDatapath==""){
-      return()
-    }
-    verfile=paste(input$inDatapath,"model_versions.csv",sep="/")
-    samples_file=paste(input$inDatapath,"samples.csv",sep="/")
-    read_flag=T
-    if (!file.exists(verfile)){
-      message(verfile ," not found")
-      read_flag=F
-    }
-    if  (!file.exists(samples_file)){
-      message(samples_file ," not found")
-      read_flag=F
-    }
+
+    observeEvent(input$inDatapath,{
+      if (input$inDatapath==""){
+        return()
+      }
+      verfile=paste(input$inDatapath,"model_versions.csv",sep="/")
+      samples_file=paste(input$inDatapath,"samples.csv",sep="/")
+      read_flag=T
+      if (!file.exists(verfile)){
+        message(verfile ," not found")
+        read_flag=F
+      }
+      if  (!file.exists(samples_file)){
+        message(samples_file ," not found")
+        read_flag=F
+      }
     
-    if (read_flag){
-      session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-      session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
-  
-      session$userData$scDissector_datadir<-input$inDatapath
-      updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
-      updateSelectInput(session,"inSampleToAdd", "Samples:",choices =session$userData$samples_tab$index)
-      updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
-    }
-    else{
-      updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
-      updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
-      return()
-    }
+      if (!read_flag){
+        updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
+        updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
+        return()
+      }
 
    
       myGeneListFile= paste(input$inDatapath,"gene_sets.txt",sep="/")
@@ -101,20 +93,24 @@ tab3_left_margin=12
           }
         }
       }  
-    updateSelectInput(session,"inGeneSets",choices = rownames(session$userData$geneList))
     
     
     mySampleSetsFile= paste(input$inDatapath,"sample_sets.txt",sep="/")
-    
+    samples_to_show=session$userData$samples_tab$index
     if (file.exists(mySampleSetsFile)){
       sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
       session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
       names(session$userData$sample_sets)<-rownames(sample_sets_tab)
-      
-      updateSelectInput(session,"inSampleToAdd", "Samples:",choices = c(names(session$userData$sample_sets),session$userData$samples_tab$index))
-    }
+      samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
+     }
+    session$userData$scDissector_datadir<-input$inDatapath
     
- 
+    session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+    session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
+    updateSelectInput(session,"inGeneSets",choices = rownames(session$userData$geneList))
+    updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
+    updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_to_show)
+    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
   })
   
   observeEvent(input$inLoad,{
@@ -774,7 +770,7 @@ tab3_left_margin=12
   
   observeEvent(input$inOrderClusters, {
     inclusts=clusters_reactive()
-    ingenes=genes_reactive
+    ingenes=genes_reactive()
     mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
     if (input$inReorderingClustersMethod=="Hierarchical clustering"){
   
@@ -1894,21 +1890,11 @@ tab3_left_margin=12
 #    })
     
     
-    if (!is.null(session$userData$scDissector_datadir)){
-      updateTextInput(session,"inDatapath",,session$userData$scDissector_datadir)
+    if (exists("scDissector_datadir")){
+      updateTextInput(session,"inDatapath",,scDissector_datadir)
     }
     
   }
-#table(projected$source_cell_to_cluster,projected$cell_to_cluster)
-
-#import_alternative_clustering=function(cell_to_cluster,fn){
-#  umitab=umitab[,names(cell_to_cluster)]
-#  model$models=update_model$models(umitab,cell_to_cluster)
-#  l_cells_per_cluster=NULL
-#  cell_to_batch=NULL
-#  ds=downsample(umitab,params$min_umis)
-#  save(umitab,ds,model$models,cell_to_cluster,ll,l_cells_per_cluster,cell_to_batch,chisq_res,params,file=fn)
-#}
 
 
 
