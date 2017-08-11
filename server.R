@@ -73,7 +73,9 @@ tab3_left_margin=12
         updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
         return()
       }
-
+      session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+      session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
+      
    
       myGeneListFile= paste(input$inDatapath,"gene_sets.txt",sep="/")
    
@@ -105,8 +107,6 @@ tab3_left_margin=12
      }
     session$userData$scDissector_datadir<-input$inDatapath
     
-    session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-    session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
     updateSelectInput(session,"inGeneSets",choices = rownames(session$userData$geneList))
     updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
     updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_to_show)
@@ -260,7 +260,7 @@ tab3_left_margin=12
         tmp_dataset$ds[[ds_i]][[sampi]]=tmp_env$ds[[ds_i]][,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)]
       }
       message("")
-     
+      rm("tmp_env")
     }
     
     message("One more minute...")
@@ -279,7 +279,7 @@ tab3_left_margin=12
     dataset$ds<-list()
     dataset$randomly_selected_cells<-list()
     
-    for (ds_i in 1:length(tmp_env$ds_numis)){
+    for (ds_i in 1:length(dataset$ds_numis)){
       ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
       dataset$ds[[ds_i]]=ds_sampi
       dataset$randomly_selected_cells[[ds_i]]<-list()
@@ -323,7 +323,7 @@ tab3_left_margin=12
     }
     
     session$userData$dataset=dataset
-    
+    rm("tmp_dataset","dataset")
     ncells_per_cluster<-rep(0,dim(session$userData$model$models)[2])
     names(ncells_per_cluster)<-colnames(session$userData$model$models)
     temptab=table(session$userData$model$cell_to_cluster)
@@ -346,10 +346,10 @@ tab3_left_margin=12
 #    updateSelectInput(session,"inTweezersLLY",choices = clust_title)
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
-    updateSelectInput(session,"inTruthDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+    updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
-     updateSelectInput(session,"inQCDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
-    updateSelectInput(session,"inModulesDownSamplingVersion",choices=dataset$ds_numis,selected = max(dataset$ds_numis))
+     updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+    updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     
     message("Successfully finished loading.")
     
@@ -506,6 +506,10 @@ tab3_left_margin=12
   })
     
   observeEvent(input$inClusterGenes, {
+    inclusts=clusters_reactive()
+    ingenes=genes_reactive()
+    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
+    
     if (input$inReorderingMethod=="Hierarchical clustering"){
       mat2=mat[!rowSums(is.na(mat))==ncol(mat),]
       cormat=cor(t(mat2),use="comp")
@@ -623,7 +627,7 @@ tab3_left_margin=12
     message("done")
     
     geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
-    rownames(geneList2)[1:nrow(geneList)]=rownames(geneList)
+    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
     geneList<-geneList2
     updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
