@@ -20,8 +20,7 @@ mainPanel(
   fluidPage(
    
       h4("scDissector v0.2"),
-     tabsetPanel(
-#       tabPanel("I/O", fluidRow(textInput("inDatapath",width=1000, "Data path:", value ="~/GoogleDrive/work/IBD_scRNA_analysis"), 
+     tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
                                   textInput("inDatapath",width=1000, "Data path:", value =""), 

@@ -2,6 +2,7 @@ library(ggvis)
 library(dplyr)
 library(gplots)
 source("projector.r")
+source("load_dataset.R")
 set.seed(3505)
 
 
@@ -32,6 +33,8 @@ names(gene_symbol_old2new)<<-old_symbol2
 gene_symbol_new2old<<-old_symbol
 names(gene_symbol_new2old)<<-new_symbol
 
+source("load_on_startup.r")
+
 
 referenceSets<-read.csv(file="ReferenceProfiles/refereceSets.csv",header=T,stringsAsFactors = F)
 tab3_left_margin=12
@@ -42,6 +45,7 @@ tab3_left_margin=12
     session$userData$prev_inModelColorScale_rel<-c(-2,4)
     session$userData$prev_inModelColorScale_abs<-c(-5,-2)
     session$userData$click_flag<-T
+    updateSelectInput(session,"inReferenceSets",label = "Reference Set:",choices = referenceSets$title)  
     
     update_clusters=function(new_clusts,delete_old=F){
       if(delete_old){
@@ -49,8 +53,6 @@ tab3_left_margin=12
       }
       updateTextInput(session,"inClusters",value=paste(new_clusts,collapse=",")) 
     }
-   
-    updateSelectInput(session,"inReferenceSets",label = "Reference Set:",choices = referenceSets$title)  
 
     observeEvent(input$inDatapath,{
       if (input$inDatapath==""){
@@ -120,71 +122,18 @@ tab3_left_margin=12
     }
     
     i=match(input$inModelVer, session$userData$vers_tab$title)
-    f=paste(input$inDatapath, session$userData$vers_tab$path[ifelse(is.na(i),1,i)],sep="/")
+    model_fn=paste(input$inDatapath, session$userData$vers_tab$path[ifelse(is.na(i),1,i)],sep="/")
     
-    if (!file.exists(f)){
-      message(f, " not found")
+    if (!file.exists(model_fn)){
+      message(model_fn, " not found")
       return()
     }
-  
-    #rm(c())
-  #  clean_all()
-    session$userData$scDissector_params<-list()
-    message("Loading ",f)
-    session$userData$model<-new.env(parent = globalenv())
-    load(file=f,session$userData$model)
-    
-    
-    session$userData$loaded_model_file<-f
- 
-    session$userData$loaded_model_version<-input$inModelVer
-    session$userData$scDissector_params$excluded_clusters<-c()
-    clusterset_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_clustersets.txt",sep="")
-    if (file.exists(clusterset_fn)){
-      cluster_sets_tab=read.table(file=clusterset_fn,header = T,stringsAsFactors = F)
-      if (nrow(cluster_sets_tab)>0){
-        session$userData$scDissector_params$cluster_sets<-strsplit(cluster_sets_tab[,2],",")
-        session$userData$scDissector_params$excluded_cluster_sets<-cluster_sets_tab[cluster_sets_tab[,3],1]
-        names(session$userData$scDissector_params$cluster_sets)<-cluster_sets_tab[,1]
-        if (length(session$userData$scDissector_params$excluded_cluster_sets)>0){
-          session$userData$scDissector_params$excluded_clusters<-unlist(session$userData$scDissector_params$cluster_sets[[session$userData$scDissector_params$excluded_cluster_sets]])
-       }
-      }
-    }
-    else{
-      session$userData$scDissector_params$cluster_sets<-list()
-    }
-    
-    
-    
-    
-    annnot_fn=paste(strsplit(f,"\\.")[[1]][1],"_annots.txt",sep="")
-    if (file.exists(annnot_fn)){
-      a=read.delim(annnot_fn,header=F,stringsAsFactors = F,row.names = 1)
-      clustAnnots<-a[,1]
-      clustAnnots[is.na(clustAnnots)]<-""
-      names(clustAnnots)<-rownames(a)
-    }
-    else{
-      clustAnnots<-rep("",ncol(session$userData$model$models))
-      names(clustAnnots)<-colnames(session$userData$model$models)
-    }    
-    session$userData$clustAnnots=clustAnnots
-    
-    order_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_order.txt",sep="")
-    if (file.exists(order_fn)){
-      cluster_order=as.character(read.table(file=order_fn,header = F)[,1])
-    }
-    else{
-      cluster_order=colnames(session$userData$model$models)
-    }
-   
-    cluster_order=cluster_order[!cluster_order%in%session$userData$scDissector_params$excluded_clusters]
-    
+
+    session$userData$loaded_model_file<-model_fn
     
     samples=strsplit(input$inSamples,",| ,|, ")[[1]]
     tmp_samples=as.list(samples)
-  
+    
     if (!is.null(session$userData$sample_sets)){
       mask=samples%in%names(session$userData$sample_sets)
       tmp_samples[mask]=session$userData$sample_sets[samples[mask]]
@@ -196,159 +145,27 @@ tab3_left_margin=12
       return()
     }
     
-    tmp_dataset=new.env()
-    tmp_dataset$umitab=list()
-    tmp_dataset$ll=list()
-    tmp_dataset$cell_to_cluster
-    tmp_dataset$avg=list()
-    tmp_dataset$ds=list()
-    tmp_dataset$ds_numis=NULL
-    tmp_dataset$counts=list()
-   
-    genes=rownames(session$userData$model$models)
-    for (sampi in samples){
-      message("Loading sample ",sampi)
-      i=match(sampi,session$userData$samples_tab$index)
-      f=paste(input$inDatapath,session$userData$samples_tab$path[i],sep="/")
-      tmp_env=new.env()
-      load(f,envir = tmp_env)
-      
-      colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
-      for (ds_i in 1:length(tmp_env$ds)){
-        colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
-      }
-  
-      if (is.null(tmp_dataset$ds_numis)){
-        tmp_dataset$ds_numis=tmp_env$ds_numis
-      }
-      else{
-        if (!all(tmp_dataset$ds_numis==tmp_env$ds_numis)){
-          message("Warning! Some of the samples don't share the same downsampling UMIs values")
-          tmp_dataset$ds_numis=intersect(tmp_dataset$ds_numis,tmp_env$ds_numis)
-        }
-      }
-      tmp_dataset$umitab[[sampi]]=tmp_env$umitab
-      message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
-      genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(session$userData$model$models))
-      
-      genes=intersect(genemask,genes)
-    #  print(length(genes))
-      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =session$userData$model$models[genemask,],reg = 1e-5)#params$reg)
-      tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
-      
-      cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%session$userData$scDissector_params$excluded_clusters]
-      
-      tmp_dataset$cell_to_cluster[[sampi]]=tmp_dataset$cell_to_cluster[[sampi]][cells_to_include]
-      tmp_dataset$ll[[sampi]]=tmp_dataset$ll[[sampi]][cells_to_include,]
-      tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,cells_to_include]
-      tmp_models=session$userData$model$models[,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters)]
-      
-      tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
-      tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
-      tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
-      tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
-      tmp_dataset$counts[[sampi]]=tmp_models*0
-      tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
-      
-      
-      if (length(tmp_dataset$ds)==0){
-        for (ds_i in 1:length(tmp_env$ds_numis)){
-          tmp_dataset$ds[[ds_i]]=list()
-        }
-      }
-      for (ds_i in 1:length(tmp_env$ds_numis)){
-        tmp_dataset$ds[[ds_i]][[sampi]]=tmp_env$ds[[ds_i]][,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)]
-      }
-      message("")
-      rm("tmp_env")
+    sample_paths=paste(input$inDatapath,session$userData$samples_tab$path[match(samples,session$userData$samples_tab$index)],sep="/")
+    names(sample_paths)=samples
+
+    x=load_dataset_and_model(model_fn,sample_paths)
+    for (item in names(x)){
+      session$userData[[item]]=x[[item]]
     }
-    
-    message("One more minute...")
-    
-    dataset<-new.env()
-    dataset$ds_numis=tmp_dataset$ds_numis
-    dataset$umitab<-tmp_dataset$umitab[[samples[1]]][genes,]
-    dataset$ll<-tmp_dataset$ll[[samples[1]]]
-    dataset$cell_to_cluster<-tmp_dataset$cell_to_cluster[[samples[1]]]
-    names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
-    dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
-    names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
-    dataset$avg<-tmp_dataset$avg
-    dataset$counts<-tmp_dataset$counts
-    dataset$samples=samples
-    dataset$ds<-list()
-    dataset$randomly_selected_cells<-list()
-    
-    for (ds_i in 1:length(dataset$ds_numis)){
-      ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
-      dataset$ds[[ds_i]]=ds_sampi
-      dataset$randomly_selected_cells[[ds_i]]<-list()
-      for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
-        nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
-        if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-colnames(ds_sampi)
-        }
-        else{
-          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
-        }
-      }
-    }
-   
-    if (length(samples)>1){
-      for (sampi in samples[-1]){
-        cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
-        dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
-        dataset$ll<-rbind(dataset$ll,tmp_dataset$ll[[sampi]])
-        dataset$cell_to_cluster<-c(dataset$cell_to_cluster,tmp_dataset$cell_to_cluster[[sampi]])
-        cell_to_sampi=rep(sampi,length(cellids))
-        names(cell_to_sampi)=cellids
-        dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
-        
-        for (ds_i in 1:length(dataset$ds_numis)){
-          ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
-          dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
-         
-          
-          for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
-            nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
-            if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
-            }
-            else{
-              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
-            }
-          }
-        }
-      }
-    }
-    
-    session$userData$dataset=dataset
-    rm("tmp_dataset","dataset")
-    ncells_per_cluster<-rep(0,dim(session$userData$model$models)[2])
-    names(ncells_per_cluster)<-colnames(session$userData$model$models)
-    temptab=table(session$userData$model$cell_to_cluster)
-    temptab=temptab[setdiff(names(temptab),session$userData$scDissector_params$excluded_cluster_sets)]
-    ncells_per_cluster[names(temptab)]<-temptab
-    session$userData$ncells_per_cluster=ncells_per_cluster
     
     ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
     ncells_per_sample=ncells_choices[which.min(abs((2000/length(samples))-ncells_choices))]
+    clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
     
-    clust_title=paste(cluster_order," - ",session$userData$clustAnnots[cluster_order],sep="") 
-    session$userData$default_clusters<-cluster_order
-    
-    update_clusters(cluster_order,T)
+    session$userData$loaded_model_version<-input$inModelVer
+    update_clusters(session$userData$default_clusters,T)
     updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
-#    updateSelectInput(session,"inTweezersFromCluster",choices = clust_title)
-#    updateSelectInput(session,"inTweezersToCluster",choices = clust_title)
     updateSelectInput(session,"inQCClust",choices =clust_title)
-#    updateSelectInput(session,"inTweezersLLX",choices = clust_title)
-#    updateSelectInput(session,"inTweezersLLY",choices = clust_title)
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
     updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
-     updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+    updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     
     message("Successfully finished loading.")
@@ -1896,6 +1713,32 @@ tab3_left_margin=12
     
     if (exists("scDissector_datadir")){
       updateTextInput(session,"inDatapath",,scDissector_datadir)
+    }
+    
+    if (exists("default_model_dataset")){
+      for (item in names(default_model_dataset)){
+        session$userData[[item]]=default_model_dataset[[item]]
+      }
+      
+      ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
+      ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userData$dataset$samples))-ncells_choices))]
+      clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
+      
+      session$userData$loaded_model_version<-""
+      update_clusters(session$userData$default_clusters,T)
+      updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
+      updateSelectInput(session,"inQCClust",choices =clust_title)
+      updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
+      updateTextInput(session,"inTruthSamples",value = paste(session$userData$dataset$samples,collapse=","))
+      updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+      updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
+      updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+      updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+      updateTabsetPanel(session, "inMain", selected = "Model")
+      message("Successfully finished loading default model and samples.")
+      
+      session$userData$loaded_flag<-T
+      
     }
     
   }
