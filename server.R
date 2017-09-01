@@ -83,6 +83,7 @@ tab3_left_margin=12
    
       if (file.exists(myGeneListFile)){
         added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
+    
         added_gene_list=added_gene_list_tmp[,2,drop=F]
         if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
           message(myGeneListFile, " was not loaded since gene sets names are not unique.")
@@ -1350,7 +1351,7 @@ tab3_left_margin=12
       else{
         updateTextInput(session,"inGene2",,x$gene)
       }
-      session$userData$click_flag<-!click_flag
+      session$userData$click_flag<-!session$userData$click_flag
     } 
     
     output$n_movies <- renderText({ nrow(movies()) })
