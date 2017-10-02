@@ -1,3 +1,8 @@
+
+
+
+
+
 load_dataset_and_model=function(model_fn,sample_fns){
 
   model<-new.env()
@@ -58,6 +63,7 @@ load_dataset_and_model=function(model_fn,sample_fns){
   tmp_dataset$ds=list()
   tmp_dataset$ds_numis=NULL
   tmp_dataset$counts=list()
+  tmp_dataset$bulksum=list()
 
   genes=rownames(model$models)
   for (sampi in samples){
@@ -66,7 +72,9 @@ load_dataset_and_model=function(model_fn,sample_fns){
 
     tmp_env=new.env()
     load(sample_fns[i],envir = tmp_env)
-  
+    
+    
+    
     colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
     for (ds_i in 1:length(tmp_env$ds)){
       colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
@@ -103,7 +111,7 @@ load_dataset_and_model=function(model_fn,sample_fns){
     tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
-  
+    tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$umitab[[sampi]][genemask,])
   
     if (length(tmp_dataset$ds)==0){
       for (ds_i in 1:length(tmp_env$ds_numis)){
@@ -132,7 +140,9 @@ load_dataset_and_model=function(model_fn,sample_fns){
   dataset$samples=samples
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
+  dataset$bulk_avg=matrix(0,length(genes),length(samples));rownames(dataset$bulk_avg)=genes;colnames(dataset$bulk_avg)=samples
 
+  
   for (ds_i in 1:length(dataset$ds_numis)){
     ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
     dataset$ds[[ds_i]]=ds_sampi
@@ -150,6 +160,8 @@ load_dataset_and_model=function(model_fn,sample_fns){
 
   if (length(samples)>1){
     for (sampi in samples[-1]){
+    
+      dataset$bulk_avg[genes,sampi]=tmp_dataset$bulksum[[sampi]][genes]/sum(tmp_dataset$bulksum[[sampi]][genes])
       cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
       dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
       dataset$ll<-rbind(dataset$ll,tmp_dataset$ll[[sampi]])

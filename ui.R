@@ -182,22 +182,21 @@ mainPanel(
                       )
               )
               ),
-                tabPanel("SampDiff",fluidRow(
-                        wellPanel(  
+                tabPanel("Samples",fluidRow(
+                  column(12, uiOutput("sample_avg_profile_plot")),
+                  sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)),
                            textInput("inProjectSampleGroup1","Samples Group 1:"),
                            textInput("inProjectSampleGroup2","Samples Group 2:"),
-                           selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile"))
-                       #    actionButton("inProjChisqTest","Projected/Ref Chi Sq. test")
-                         )),
-                         fluidRow(column(12,
+                           selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
+                         column(12,
                                 #         uiOutput("projection_kellisogram_plot"),
                                          uiOutput("projection_barplot_plot")
-                                         )),
+                                         ),
                  #  tableOutput("ClusteringsComparisonTable"),
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
                    tableOutput("Gene1ExprsTableRefVsProj")),
-                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500)),
+                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))),
 #             tabPanel("Tweezers",fluidRow(column(6,
 #                wellPanel(
 #                selectInput("inTweezersFromCluster","Select Cells From Cluster:",choices=c()),

@@ -914,6 +914,11 @@ tab3_left_margin=12
     plotOutput("kellisogram_modules", width = "150%", height = he)
   })
   
+  output$sample_avg_profile_plot <- renderUI({
+    he=max(c(500,12*length(truth_samples_reactive())),na.rm=T)
+    plotOutput("kellisogram_samples", width = "150%", height = he)
+  })
+  
   output$external_profiles_plot <- renderUI({
     external_profiles<-external_profiles_reactive()
      if (length(external_profiles)==0){
@@ -1062,6 +1067,44 @@ tab3_left_margin=12
     mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
+  
+  output$kellisogram_samples <- renderPlot({
+    
+    ingenes=genes_reactive()#genes_reactive()
+    insamples=truth_samples_reactive()
+    if (!session$userData$loaded_flag){
+      return()
+    }
+    
+    # Lables for axes
+    if (length(ingenes)==0){
+      return()
+    }
+    
+    zlim=input$inSamplesColorScale
+    
+    par(mar=c(7,tab3_left_margin,1,9))
+    
+    mat1<-session$userData$dataset$bulk_avg[match(ingenes,rownames(session$userData$dataset$bulk_avg)),insamples]
+      if (ncol(mat1)>1){
+        mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
+        break1=-1e6
+        break2=1e6
+      }
+      else{
+        return()
+      }
+
+    isolate({
+      image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main="Pooled sample Average")
+    })
+    box()
+    
+    mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1,col=session$userData$gcol[toupper(rownames(mat1))])
+    mtext(text =colnames(mat1),side=2,at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    
+  })
+  
   
   
   
