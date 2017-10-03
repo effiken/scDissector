@@ -73,10 +73,11 @@ load_dataset_and_model=function(model_fn,sample_fns){
     tmp_env=new.env()
     load(sample_fns[i],envir = tmp_env)
     
-    
+    tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
     
     colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
     for (ds_i in 1:length(tmp_env$ds)){
+      tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
       colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
     }
   
