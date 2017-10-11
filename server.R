@@ -447,7 +447,7 @@ tab3_left_margin=12
     geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
     rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
-    geneList<-geneList2
+    session$userData$geneList<-geneList2
     updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
     # updateTextInput(session,"inGenes",value=paste(genes_to_show,collapse=","))
     
@@ -1577,7 +1577,7 @@ tab3_left_margin=12
       legend("bottomright",pch=15,col= gray.colors(2),legend=c("1","2"),border=T)
     #  reg=100*10/((ncol(model$umitab)+ncol(projected$umitab))/2)
       reg=1e-3
-      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(1/2)")
+      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(2/1)")
     })
     
     click_tooltip_gene_proj_vs_ref <- function(x) {
