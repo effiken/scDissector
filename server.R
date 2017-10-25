@@ -1581,7 +1581,7 @@ tab3_left_margin=12
       legend("bottomright",pch=15,col= gray.colors(2),legend=c("1","2"),border=T)
     #  reg=100*10/((ncol(model$umitab)+ncol(projected$umitab))/2)
       reg=1e-3
-      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(1/2)")
+      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusters]," - ",inclusters,sep="")),horiz = T,las=2,xlab="log2(2/1)")
     })
     
     click_tooltip_gene_proj_vs_ref <- function(x) {
