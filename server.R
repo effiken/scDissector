@@ -435,7 +435,10 @@ tab3_left_margin=12
     }
     cells=names(session$userData$model$cell_to_cluster[session$userData$model$cell_to_cluster%in%clusters])
     chisq_res2=chisq_genes(session$userData$model$umitab,session$userData$model$cell_to_cluster,genes,cells)
-    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&(apply(session$userData$model$models[rownames(chisq_res2),]/(rowSums(session$userData$model$umitab[rownames(chisq_res2),])/sum(session$userData$model$umitab)),1,max)>4|apply(session$userData$model$models[rownames(chisq_res2),]/rowMeans(session$userData$model$models[rownames(chisq_res2),]),1,max)>4)
+    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&
+      rowSums(session$userData$model$umitab[rownames(chisq_res2),cells]>1)>=10&
+      (apply(session$userData$model$models[rownames(chisq_res2),]/(rowSums(session$userData$model$umitab[rownames(chisq_res2),])/sum(session$userData$model$umitab)),1,max)>4|
+      apply(session$userData$model$models[rownames(chisq_res2),]/rowMeans(session$userData$model$models[rownames(chisq_res2),]),1,max)>4)
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
@@ -447,10 +450,11 @@ tab3_left_margin=12
     geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
     rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
     rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
-    geneList<-geneList2
+    session$userData$geneList<-geneList2
     updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
     # updateTextInput(session,"inGenes",value=paste(genes_to_show,collapse=","))
-    
+   
+     
   })
   
   chisq_genes=function(umitab,cell_to_cluster,genes,cells){
@@ -892,7 +896,7 @@ tab3_left_margin=12
     tmp_tab=log2((.1+tmp_tab)/(.1+colSums(tmp_tab)))
     tab[rownames(tmp_tab),intersect(inclusts,colnames(tmp_tab))]=tmp_tab[,intersect(inclusts,colnames(tmp_tab))]
     par(mar=c(10,7,1,2))
-    image(t(tab[,ncol(tab):1]),axes=F,col=colorRampPalette(c("white","blue"))(100),ylab="#UMIs bins")
+    image(t(tab[nrow(tab):1,ncol(tab):1]),axes=F,col=colorRampPalette(c("white","blue"))(100),ylab="#UMIs bins")
     yusr=par("usr")[3:4]
 #    mtext(side = 2,text = 100*2^(0:(max_numis_bin)),at=seq(1-(yusr[2]-1),-1*yusr[1],l=max_numis_bin+1),las=2)
     d=1/(2*(max_numis_bin+1))

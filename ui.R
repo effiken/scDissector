@@ -29,6 +29,7 @@ mainPanel(
                                           selectInput("inSampleToAdd", "Samples:",choices = c()),
                                           actionButton("inAddSample","Add"),
                                           textInput("inSamples", width=2000, "Samples To Load:"),
+                                          textInput("inMinUmis", width=100, "Minimum #UMIs/cell:",value = 250),
                                           actionButton("inLoad","Load")
                                   ),
                                   br(),br(),

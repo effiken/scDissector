@@ -1,9 +1,22 @@
+insilco_sorter=function(umitab,insilico_gating){
+  
+  if (!is.null(insilico_gating)){
+    for (i in 1:length(insilico_gating)){
+      score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
+      insilico_gating[[i]]$mask=names(which(score_i>insilico_gating[[i]]$threshold))
+      message("Gating out ",length(insilico_gating[[i]]$mask)," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
+      
+      umitab=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask)]
+    }
+  }
+  return(umitab)
+}
 
 
 
 
 
-load_dataset_and_model=function(model_fn,sample_fns){
+load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
 
   model<-new.env()
   load(file=model_fn,model)
@@ -72,7 +85,6 @@ load_dataset_and_model=function(model_fn,sample_fns){
 
     tmp_env=new.env()
     load(sample_fns[i],envir = tmp_env)
-    
     tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
     
     colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
@@ -90,7 +102,14 @@ load_dataset_and_model=function(model_fn,sample_fns){
         tmp_dataset$ds_numis=intersect(tmp_dataset$ds_numis,tmp_env$ds_numis)
       }
     }
-    tmp_dataset$umitab[[sampi]]=tmp_env$umitab
+    tmp_env$umitab=tmp_env$umitab[,colSums(tmp_env$umitab)>min_umis]
+                                    
+    if (is.null(model$insilico_gating)){
+      tmp_dataset$umitab[[sampi]]=tmp_env$umitab
+    }
+    else{
+      tmp_dataset$umitab[[sampi]]=insilco_sorter(tmp_env$umitab,model$insilico_gating)
+    }
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
   
@@ -141,8 +160,11 @@ load_dataset_and_model=function(model_fn,sample_fns){
   dataset$samples=samples
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
-  dataset$bulk_avg=matrix(0,length(genes),length(samples));rownames(dataset$bulk_avg)=genes;colnames(dataset$bulk_avg)=samples
-
+  dataset$bulk_avg=matrix(0,length(genes),length(samples))
+  rownames(dataset$bulk_avg)=genes
+  colnames(dataset$bulk_avg)=samples
+  dataset$bulk_avg[genes,samples[1]]=tmp_dataset$bulksum[[samples[1]]][genes]/sum(tmp_dataset$bulksum[[samples[1]]][genes])
+  
   
   for (ds_i in 1:length(dataset$ds_numis)){
     ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
