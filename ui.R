@@ -42,6 +42,11 @@ mainPanel(
                   #                ),
                   br(),br(),br(),br(),br(),br(),br(),br())
                                   )),
+                  tabPanel("Gating",
+                           fluidRow(
+                     #        plotOutput("ncells_barplot",width="150%",height=200)
+                           )
+                  ),
                   tabPanel("Basics", 
                            fluidRow(
                              plotOutput("ncells_barplot",width="150%",height=200),

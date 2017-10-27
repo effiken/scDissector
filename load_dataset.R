@@ -1,5 +1,5 @@
 insilco_sorter=function(umitab,insilico_gating){
-  
+  scores=list()
   if (!is.null(insilico_gating)){
     for (i in 1:length(insilico_gating)){
       score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
@@ -7,9 +7,10 @@ insilco_sorter=function(umitab,insilico_gating){
       message("Gating out ",length(insilico_gating[[i]]$mask)," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
       
       umitab=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask)]
+      scores[[i]]=score_i
     }
   }
-  return(umitab)
+  return(list(umitab=umitab,scores=scores))
 }
 
 
@@ -108,7 +109,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       tmp_dataset$umitab[[sampi]]=tmp_env$umitab
     }
     else{
-      tmp_dataset$umitab[[sampi]]=insilco_sorter(tmp_env$umitab,model$insilico_gating)
+      is_res=insilco_sorter(tmp_env$umitab,model$insilico_gating)
+      tmp_dataset$umitab[[sampi]]=is_res$umitab
+      inslico_gaiting_scores=is_res$scores
     }
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
@@ -164,7 +167,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   rownames(dataset$bulk_avg)=genes
   colnames(dataset$bulk_avg)=samples
   dataset$bulk_avg[genes,samples[1]]=tmp_dataset$bulksum[[samples[1]]][genes]/sum(tmp_dataset$bulksum[[samples[1]]][genes])
-  
+  if (!is.null(inslico_gaiting_scores)){
+    dataset$inslico_gaiting_scores=inslico_gaiting_scores
+  }
   
   for (ds_i in 1:length(dataset$ds_numis)){
     ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]

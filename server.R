@@ -148,7 +148,7 @@ tab3_left_margin=12
     
     sample_paths=paste(input$inDatapath,session$userData$samples_tab$path[match(samples,session$userData$samples_tab$index)],sep="/")
     names(sample_paths)=samples
-
+    message("Loading ",model_fn)
     x=load_dataset_and_model(model_fn,sample_paths)
     for (item in names(x)){
       session$userData[[item]]=x[[item]]
