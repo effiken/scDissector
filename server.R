@@ -906,6 +906,27 @@ tab3_left_margin=12
         box()
   })
   
+  output$gaiting_plots_dynamic <- renderUI({
+    if (!is.null(session$userData$dataset$insilico_gating_scores)){
+      nplots=length(session$userData$dataset$insilico_gating_scores)
+      he=max(c(500,500*nplots,na.rm=T))
+      plotOutput("gating_plots", width = "150%", height = he)
+    }
+  })
+  
+  
+  output$gating_plots <- renderPlot({
+    nplots=length(session$userData$dataset$insilico_gating_scores)
+    numis=session$userData$dataset$numis_before_filtering
+    layout(matrix(1:nplots,nplots,1))
+    for (i in 1:nplots){
+      mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
+      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]))
+      abline(h=session$userData$model$insilico_gating[[i]]$threshold,col=2,lty=3,lwd=2)
+      abline(v=input$inMinUmis,col=2,lty=3,lwd=2)
+    }
+  })
+  
   
   output$avg_profile_plot <- renderUI({
     he=max(c(500,12*length(clusters_reactive())),na.rm=T)

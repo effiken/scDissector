@@ -44,7 +44,7 @@ mainPanel(
                                   )),
                   tabPanel("Gating",
                            fluidRow(
-                     #        plotOutput("ncells_barplot",width="150%",height=200)
+                             uiOutput("gaiting_plots_dynamic")
                            )
                   ),
                   tabPanel("Basics", 

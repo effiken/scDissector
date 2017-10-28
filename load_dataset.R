@@ -1,4 +1,4 @@
-insilco_sorter=function(umitab,insilico_gating){
+insilico_sorter=function(umitab,insilico_gating){
   scores=list()
   if (!is.null(insilico_gating)){
     for (i in 1:length(insilico_gating)){
@@ -78,7 +78,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   tmp_dataset$ds_numis=NULL
   tmp_dataset$counts=list()
   tmp_dataset$bulksum=list()
-
+  tmp_dataset$insilico_gating_scores=list()
   genes=rownames(model$models)
   for (sampi in samples){
     message("Loading sample ",sampi)
@@ -103,15 +103,15 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
         tmp_dataset$ds_numis=intersect(tmp_dataset$ds_numis,tmp_env$ds_numis)
       }
     }
-    tmp_env$umitab=tmp_env$umitab[,colSums(tmp_env$umitab)>min_umis]
-                                    
+    tmp_env$numis_before_filtering=colSums(tmp_env$umitab)    
+    tmp_env$umitab=tmp_env$umitab[,tmp_env$numis_before_filtering>min_umis]
     if (is.null(model$insilico_gating)){
       tmp_dataset$umitab[[sampi]]=tmp_env$umitab
     }
     else{
-      is_res=insilco_sorter(tmp_env$umitab,model$insilico_gating)
+      is_res=insilico_sorter(tmp_env$umitab,model$insilico_gating)
       tmp_dataset$umitab[[sampi]]=is_res$umitab
-      inslico_gaiting_scores=is_res$scores
+      tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
     }
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
@@ -135,6 +135,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
     tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$umitab[[sampi]][genemask,])
+    tmp_dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
   
     if (length(tmp_dataset$ds)==0){
       for (ds_i in 1:length(tmp_env$ds_numis)){
@@ -158,19 +159,22 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
   names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
+  dataset$numis_before_filtering=tmp_dataset$numis_before_filtering[[1]]
   dataset$avg<-tmp_dataset$avg
   dataset$counts<-tmp_dataset$counts
   dataset$samples=samples
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
+  if (!is.null(model$insilico_gating)){
+    for (score_i in 1:length(model$insilico_gating)){
+      dataset$insilico_gating_scores[[score_i]]=tmp_dataset$insilico_gating_scores[[1]][[score_i]]
+    }
+  }
   rownames(dataset$bulk_avg)=genes
   colnames(dataset$bulk_avg)=samples
   dataset$bulk_avg[genes,samples[1]]=tmp_dataset$bulksum[[samples[1]]][genes]/sum(tmp_dataset$bulksum[[samples[1]]][genes])
-  if (!is.null(inslico_gaiting_scores)){
-    dataset$inslico_gaiting_scores=inslico_gaiting_scores
-  }
-  
+ 
   for (ds_i in 1:length(dataset$ds_numis)){
     ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
     dataset$ds[[ds_i]]=ds_sampi
@@ -197,7 +201,12 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       cell_to_sampi=rep(sampi,length(cellids))
       names(cell_to_sampi)=cellids
       dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
-    
+      if (!is.null(model$insilico_gating)){
+        for (score_i in 1:length(model$insilico_gating)){
+          dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],tmp_dataset$insilico_gating_scores[[score_i]])
+      }
+    }
+      dataset$numis_before_filtering<-c(dataset$numis_before_filtering,tmp_dataset$numis_before_filtering[[1]])
       for (ds_i in 1:length(dataset$ds_numis)){
         ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
         dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
