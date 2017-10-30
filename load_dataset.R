@@ -3,10 +3,10 @@ insilico_sorter=function(umitab,insilico_gating){
   if (!is.null(insilico_gating)){
     for (i in 1:length(insilico_gating)){
       score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
-      insilico_gating[[i]]$mask=names(which(score_i>insilico_gating[[i]]$threshold))
-      message("Gating out ",length(insilico_gating[[i]]$mask)," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
+      insilico_gating[[i]]$mask=names(which(score_i>=insilico_gating[[i]]$interval[1]&score_i<=insilico_gating[[i]]$interval[2]))
+      message("Gating out ",length(setdiff(names(score_i),insilico_gating[[i]]$mask))," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
       
-      umitab=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask)]
+      umitab=umitab[,insilico_gating[[i]]$mask]
       scores[[i]]=score_i
     }
   }
