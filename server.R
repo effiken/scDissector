@@ -386,37 +386,6 @@ tab3_left_margin=12
 #    ngenes_to_show=as.numeric(input$inNgenes)
 #    })
   
-  observeEvent(input$inBlindChisq, {
-       message("screening for variable ",input$inSelectGenesFrom)
-        clusters=clusters_reactive()
-        chisq_res=session$userData$model$chisq_res
-        if (input$inSelectGenesFrom=="All genes"){
-          pref="Var"
-          genes=rownames(chisq_res)
-        } else if (input$inSelectGenesFrom=="TFs"){
-          pref="Tfs"
-          genes=tfs
-        } else if(input$inSelectGenesFrom=="Surface markers"){
-          pref="Surf"
-          genes=surface_markers
-        }
-        mask=rownames(chisq_res)%in%genes&chisq_res[,3]<0.05&(apply(session$userData$model$models[rownames(chisq_res),]/(rowSums(session$userData$model$umitab[rownames(chisq_res),])/sum(session$userData$model$umitab)),1,max)>4|apply(session$userData$model$models[rownames(chisq_res),]/rowMeans(session$userData$model$models[rownames(chisq_res),]),1,max)>4)
-         isolate({
-          ngenes_to_show=as.numeric(input$inNgenes)
-        })
-        a=chisq_res[mask,]
-          genes_to_show=head(rownames(a)[order(a[,2],decreasing=T)],ngenes_to_show)
-    message("done")
-  
-    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
-    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
-    rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
-    session$userData$geneList<-geneList2
-    updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
-    
-  })
-  
-  
   
   
   observeEvent(input$inBlindChisqSelectedClusters, {
@@ -921,7 +890,7 @@ tab3_left_margin=12
     layout(matrix(1:nplots,nplots,1))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
-      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]))
+      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs")
       abline(h=session$userData$model$insilico_gating[[i]]$threshold,col=2,lty=3,lwd=2)
       abline(v=input$inMinUmis,col=2,lty=3,lwd=2)
     }
@@ -940,7 +909,7 @@ tab3_left_margin=12
   })
   
   output$sample_avg_profile_plot <- renderUI({
-    he=max(c(500,12*length(truth_samples_reactive())),na.rm=T)
+    he=max(c(300,12*length(truth_samples_reactive())),na.rm=T)
     plotOutput("kellisogram_samples", width = "150%", height = he)
   })
   
