@@ -891,8 +891,7 @@ tab3_left_margin=12
     for (i in 1:nplots){
       mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
       plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs")
-      abline(h=session$userData$model$insilico_gating[[i]]$threshold,col=2,lty=3,lwd=2)
-      abline(v=input$inMinUmis,col=2,lty=3,lwd=2)
+      rect(xleft = input$inMinUmis,session$userData$model$insilico_gating[[i]]$interval[1],max(numis[mask]),session$userData$model$insilico_gating[[i]]$interval[2],col=2,lty=3,lwd=3)
     }
   })
   
