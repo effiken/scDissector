@@ -5,7 +5,6 @@ insilico_sorter=function(umitab,insilico_gating){
       score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
       insilico_gating[[i]]$mask=names(which(score_i>=insilico_gating[[i]]$interval[1]&score_i<=insilico_gating[[i]]$interval[2]))
       message("Gating out ",length(setdiff(names(score_i),insilico_gating[[i]]$mask))," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
-      
       umitab=umitab[,insilico_gating[[i]]$mask]
       scores[[i]]=score_i
     }
@@ -104,7 +103,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       }
     }
     tmp_env$numis_before_filtering=colSums(tmp_env$umitab)    
-    tmp_env$umitab=tmp_env$umitab[,tmp_env$numis_before_filtering>min_umis]
+  
     if (is.null(model$insilico_gating)){
       tmp_dataset$umitab[[sampi]]=tmp_env$umitab
     }
@@ -113,6 +112,8 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       tmp_dataset$umitab[[sampi]]=is_res$umitab
       tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
     }
+    tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis]
+    
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
   
@@ -206,7 +207,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
           dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],tmp_dataset$insilico_gating_scores[[score_i]])
       }
     }
-      dataset$numis_before_filtering<-c(dataset$numis_before_filtering,tmp_dataset$numis_before_filtering[[1]])
+      dataset$numis_before_filtering<-c(dataset$numis_before_filtering,tmp_dataset$numis_before_filtering[[sampi]])
       for (ds_i in 1:length(dataset$ds_numis)){
         ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
         dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
