@@ -898,18 +898,18 @@ tab3_left_margin=12
   
   output$avg_profile_plot <- renderUI({
     he=max(c(500,12*length(clusters_reactive())),na.rm=T)
-    plotOutput("kellisogram", width = "150%", height = he)
+    plotOutput("avg_heatmap", width = "150%", height = he)
    })
   
   
   output$avg_module_plot <- renderUI({
     he=max(c(500,12*length(clusters_reactive())),na.rm=T)
-    plotOutput("kellisogram_modules", width = "150%", height = he)
+    plotOutput("avg_heatmap_modules", width = "150%", height = he)
   })
   
   output$sample_avg_profile_plot <- renderUI({
     he=max(c(300,12*length(truth_samples_reactive())),na.rm=T)
-    plotOutput("kellisogram_samples", width = "150%", height = he)
+    plotOutput("avg_heatmap_samples", width = "150%", height = he)
   })
   
   output$external_profiles_plot <- renderUI({
@@ -919,12 +919,12 @@ tab3_left_margin=12
     }
     
     he=12*length(external_profiles)
-    plotOutput("kellisogram_external_profiles", width = "150%", height = he)
+    plotOutput("avg_heatmap_external_profiles", width = "150%", height = he)
   })
   
-  output$projection_kellisogram_plot <- renderUI({
+  output$projection_avg_heatmap_plot <- renderUI({
     he=max(c(500,12*length(clusters_reactive())),na.rm=T)
-    plotOutput("kellisogram_projection",width="200%",height=he)
+    plotOutput("avg_heatmap_projection",width="200%",height=he)
   })
   
   output$projection_barplot_plot <- renderUI({
@@ -935,7 +935,7 @@ tab3_left_margin=12
                   
   
   # A reactive expression with the ggvis plot
-  output$kellisogram <- renderPlot({
+  output$avg_heatmap <- renderPlot({
   ##### Don't delete!!
     input$inAnnotateCluster
     input$inModelVer
@@ -1013,7 +1013,7 @@ tab3_left_margin=12
     
   })
 
-  output$kellisogram_modules <- renderPlot({
+  output$avg_heatmap_modules <- renderPlot({
     ##### Don't delete!!
     input$inModelVer
     #####
@@ -1061,7 +1061,7 @@ tab3_left_margin=12
     
   })
   
-  output$kellisogram_samples <- renderPlot({
+  output$avg_heatmap_samples <- renderPlot({
     
     ingenes=genes_reactive()#genes_reactive()
     insamples=truth_samples_reactive()
@@ -1101,7 +1101,7 @@ tab3_left_margin=12
   
   
   
-  output$kellisogram_external_profiles<- renderPlot({
+  output$avg_heatmap_external_profiles<- renderPlot({
     input$inRefProfiles
     ingenes=genes_reactive()
     insamples=truth_samples_reactive()
@@ -1254,7 +1254,7 @@ tab3_left_margin=12
       }
       ncol=ceiling(length(insamples)/10)
       leg[is.na(leg)]=insamples[is.na(leg)]
-
+      leg[leg==""]=insamples[leg==""]
       legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
@@ -1427,7 +1427,7 @@ tab3_left_margin=12
     
     
     # A reactive expression with the ggvis plot
-    output$kellisogram_projection <- renderPlot({
+    output$avg_heatmap_projection <- renderPlot({
       ##### Don't delete!!
       #####
       insamples=truth_samples_reactive()

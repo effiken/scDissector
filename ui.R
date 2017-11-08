@@ -194,7 +194,7 @@ mainPanel(
                            textInput("inProjectSampleGroup2","Samples Group 2:"),
                            selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
                          column(12,
-                                #         uiOutput("projection_kellisogram_plot"),
+                                #         uiOutput("projection_avg_heatmap_plot"),
                                          uiOutput("projection_barplot_plot")
                                          ),
                  #  tableOutput("ClusteringsComparisonTable"),
