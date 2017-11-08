@@ -16,12 +16,49 @@ get_one_likelihood=function(model_v,umitab,reg){
 }
 
 getLikelihood=function(umitab,models,reg){
-#  res=apply(models,2,get_one_likelihood,umitab,reg)/colSums(umitab)
-#  colnames(res)=colnames(models)
-#  rownames(res)=colnames(umitab)
      return(t(umitab)%*%log2(reg+models)/colSums(umitab))
   return(res)
 }
+
+update_beta=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75){
+  if (nrow(models)!=length(noise_model)){
+    stop("noise_models and models have different number of genes")
+  }
+  get_ll_b=function(numis_noise_b,models,noise_model,umitab,reg){
+    alpha=pmin(numis_noise_b/avg_numis_per_model,max_noise_fraction)
+    
+    adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
+    ll_b=getLikelihood(umitab,adjusted_models,reg=reg)
+    return(ll_b)
+  }
+  func_to_opt=function(x){
+    tot_ll=get_total_likelihood(get_ll_b(x,models,noise_model,umitab,reg))
+    return(tot_ll)
+  }
+  
+  #   message("Updating noise params")
+
+    optim_val=optimize(func_to_opt,c(0,1000),maximum = T,tol=5)
+    beta_noise=optim_val$maximum
+  
+  return(beta_noise)
+}
+
+
+getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,beta_noise=NULL,  avg_numis_per_model,reg,max_noise_fraction=.75){
+  
+  ll=matrix(NA,ncol(umitab),ncol(models))
+  rownames(ll)=colnames(umitab)
+  colnames(ll)=colnames(models)
+  
+  beta_noise=update_beta(umitab,models,noise_model,avg_numis_per_model,reg=reg)
+  alpha=pmin(beta_noise/avg_numis_per_model,max_noise_fraction)
+  adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
+  ll[,colnames(adjusted_models)]=as.matrix(getLikelihood(umitab,adjusted_models,reg=reg))
+  
+  return(ll)
+}
+
 
 MAP=function(likelihood){
   v=colnames(likelihood)[apply(likelihood,1,which.max)]

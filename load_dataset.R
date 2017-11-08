@@ -14,8 +14,6 @@ insilico_sorter=function(umitab,insilico_gating){
 
 
 
-
-
 load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
 
   model<-new.env()
@@ -119,7 +117,15 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   
     genes=intersect(genemask,genes)
     #  print(length(genes))
-    tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = 1e-5)#params$reg)
+    
+    if (is.null(model$beta_noise)){
+      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = 1e-5)#params$reg)
+    }
+    else {
+      
+      beta_noise=update_beta(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=.75){
+      tmp_dataset$ll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=.75)
+    }
     tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
   
     cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%output$scDissector_params$excluded_clusters]
