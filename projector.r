@@ -10,6 +10,10 @@ split_sparse=function(sparse_umitab,cell_to_cluster){
   return(l)
 }
 
+get_total_likelihood=function(ll){
+  return(mean(apply(ll,1,max)))
+}
+
 
 get_one_likelihood=function(model_v,umitab,reg){
   return(colSums(umitab*log2(reg+model_v)))
