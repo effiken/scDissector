@@ -1,4 +1,4 @@
-source("~/Documents/GitHub/scDissector/projector.r")
+
 
 insilico_sorter=function(umitab,insilico_gating){
   scores=list()
