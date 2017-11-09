@@ -197,18 +197,19 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   for (ds_i in 1:length(dataset$ds_numis)){
     ds_sampi=tmp_dataset$ds[[ds_i]][[samples[1]]][genes,]
     dataset$ds[[ds_i]]=ds_sampi
-    dataset$randomly_selected_cells[[ds_i]]<-list()
-    for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
-      nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
-      if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-        dataset$randomly_selected_cells[[ds_i]][[randomi]]<-colnames(ds_sampi)
-      }
-      else{
-        dataset$randomly_selected_cells[[ds_i]][[randomi]]<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
+    if (exists("params")){
+      dataset$randomly_selected_cells[[ds_i]]<-list()
+      for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
+        nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
+        if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-colnames(ds_sampi)
+        }
+        else{
+          dataset$randomly_selected_cells[[ds_i]][[randomi]]<-sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F)
+        }
       }
     }
   }
-
   if (length(samples)>1){
     for (sampi in samples[-1]){
     
@@ -230,14 +231,15 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
         ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
         dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)
       
-      
-        for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
-          nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
-          if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
-            dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
-          }
-          else{
-            dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
+        if (exists("params")){
+          for (randomi in 1:length(params$nrandom_cells_per_sample_choices)){
+            nrandom_cells=params$nrandom_cells_per_sample_choices[randomi]
+            if (nrandom_cells=="All"||as.numeric(nrandom_cells)>=ncol(ds_sampi)){
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],colnames(ds_sampi))
+            }
+            else{
+              dataset$randomly_selected_cells[[ds_i]][[randomi]]<-c(dataset$randomly_selected_cells[[ds_i]][[randomi]],sample(colnames(ds_sampi),size=as.numeric(nrandom_cells),replace=F))
+            }
           }
         }
       }
