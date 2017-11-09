@@ -259,14 +259,15 @@ tab3_left_margin=12
   
   
   init_genes=function(genes_string){
+    data_genes=rownames(session$userData$dataset$umitab)
     genes=strsplit(genes_string,",|, | ,")[[1]]
-    mask1=toupper(genes)%in%rownames(session$userData$model$models)
+    mask1=toupper(genes)%in%data_genes
     genes[mask1]=toupper(genes[mask1])
-    mask2=unlist(sapply(genes,cap))%in%rownames(session$userData$model$models)
+    mask2=unlist(sapply(genes,cap))%in%data_genes
     genes[mask2]=unlist(sapply(genes[mask2],cap))
-    mask3=gene_symbol_old2new[genes]%in%rownames(session$userData$model$models)
+    mask3=gene_symbol_old2new[genes]%in%data_genes
     genes[mask3]=gene_symbol_old2new[genes[mask3]]
-    mask4=gene_symbol_new2old[genes]%in%rownames(session$userData$model$models)
+    mask4=gene_symbol_new2old[genes]%in%data_genes
     genes[mask4]=gene_symbol_new2old[genes[mask4]]
     
    # genes=genes[(mask1|mask2|mask3)]
