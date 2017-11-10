@@ -130,8 +130,6 @@ mainPanel(
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
-                      
-                      textInput("inTruthSamples", width=2000, "Samples:"),
                       selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                       checkboxInput("inTruthShowSeparatorBars",label = "Show Separator Bars",value = T),
                       selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
@@ -189,15 +187,14 @@ mainPanel(
               )
               ),
                 tabPanel("Samples",fluidRow(
-                  column(12, uiOutput("sample_avg_profile_plot")),
+                         textInput("inSamplesToShow", width=2000, "Samples:"),
+                         actionButton("inResetSamples","Reset"),
+                         uiOutput("sample_avg_profile_plot"),
                   sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)),
                            textInput("inProjectSampleGroup1","Samples Group 1:"),
                            textInput("inProjectSampleGroup2","Samples Group 2:"),
                            selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
-                         column(12,
-                                #         uiOutput("projection_avg_heatmap_plot"),
-                                         uiOutput("projection_barplot_plot")
-                                         ),
+                           uiOutput("projection_barplot_plot"),
                  #  tableOutput("ClusteringsComparisonTable"),
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
