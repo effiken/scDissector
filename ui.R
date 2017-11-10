@@ -129,7 +129,7 @@ mainPanel(
                       plotOutput("truthplot",width="150%",height = "700"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
-                      sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,3)),
+                      sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
                       
                       textInput("inTruthSamples", width=2000, "Samples:"),
                       selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
@@ -169,7 +169,8 @@ mainPanel(
                   plotOutput("varMeanThreshPlot"),
                   selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                   textInput("inVarMean_MeanThresh",  "Min Log10(mean):", value = "-2"),
-                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15")
+                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15"),
+                  sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range")
                 ),
                 wellPanel(
                   selectInput("inNUmberOfGeneModules","Number of Modules:",c(10,20,50,100,200)),

@@ -722,10 +722,32 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-rowMeans(ds)
+    genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
+    ds=ds[genemask,]
+    ds_mean=ds_mean[genemask]
     message("Estimating variance for ",nrow(ds)," genes")
     ds_var<-apply(ds,1,var)
-    return(data.frame(m=ds_mean,v=ds_var,gene=rownames(ds)))
+    df=data.frame(m=ds_mean,v=ds_var,gene=rownames(ds))
+    rownames(df)=names(ds_mean)
+    return(df)
   })
+  
+  reactiveLoess<-reactive({
+    varmean_df=modules_varmean_reactive()
+    m=varmean_df$m
+    v=varmean_df$v
+    x=log10(m)
+    breaks=seq(min(x),max(x),.2)
+    lv=log2(v/m)
+    z=sapply(split(lv,cut(x,breaks)),min,na.rm=T)
+    maskinf=is.infinite(z)
+    z=z[!maskinf]
+    b=breaks[-length(breaks)]
+    b=b[!maskinf]
+    lo=loess(z~b)
+    return(lo)
+  })
+  
   
   geneModuleMask_reactive<-reactive({
     if (!session$userData$loaded_flag)
@@ -733,9 +755,11 @@ tab3_left_margin=12
       return()
     }
     df=modules_varmean_reactive()
-    
-    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>as.numeric(input$inVarMean_varmeanThresh)
+    lo=reactiveLoess()
+    lline=predict(lo,newdata =log10(df$m))
+    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>lline+as.numeric(input$inVarMean_varmeanThresh)
     geneModuleMask[is.na(geneModuleMask)]<-F
+    names(geneModuleMask)=rownames(df)
     return(geneModuleMask)
     
   })
@@ -747,10 +771,14 @@ tab3_left_margin=12
       return()
     }
     df=modules_varmean_reactive()
+    lo=reactiveLoess()
     plot(log10(df$m),log2(df$v/df$m),xlab="Log10(mean)",ylab="log2(var/mean)",panel.first=grid())
+    x1=seq(input$inVarMeanXlim[1],input$inVarMeanXlim[2],l=100)
+    lline=predict(lo,newdata =x1)
+    lines(x1,lline+as.numeric(input$inVarMean_varmeanThresh),col=2)
     abline(v=input$inVarMean_MeanThresh,col=2)
     
-    abline(h=input$inVarMean_varmeanThresh,col=2)
+    #abline(h=input$inVarMean_varmeanThresh,col=2)
     
     n=sum(geneModuleMask_reactive())
     legend("topright", paste(n,"genes"), bty="n",text.col=2) 
@@ -772,7 +800,7 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
-    cormat=cor(as.matrix(t(log2(.1+ds[geneModuleMask_reactive(),]))),use="comp")
+    cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
     return(cormat)
   })
   
@@ -791,7 +819,6 @@ tab3_left_margin=12
     if (is.null(cormat)){
       return()
     }
-    
     c2c=cutree(hclust(as.dist(1-cormat)),k=as.numeric(input$inNUmberOfGeneModules))
  
     session$userData$modules<-(split(names(c2c),c2c))
@@ -1225,6 +1252,7 @@ tab3_left_margin=12
         return(data.frame(m=0,varmean=0,gene=""))
       }
       dataset=session$userData$dataset
+
       ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
       cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
       ds=ds[,intersect(colnames(ds),cluster_mask),drop=F]
