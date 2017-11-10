@@ -1033,8 +1033,8 @@ tab3_left_margin=12
     }
 
     counts=0
-    for (i in 1:length(dataset$counts)){
-      counts=counts+dataset$counts[[i]]
+    for (i in 1:length(session$userData$dataset$counts)){
+      counts=counts+session$userData$dataset$counts[[i]]
     }
     return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
   
@@ -1048,11 +1048,10 @@ tab3_left_margin=12
 
     inclusts=clusters_reactive()
     inmodules=modules_reactive()
-   
     if (!session$userData$loaded_flag){
       return()
     }
-    if (!exists("modules")){
+    if (is.null(session$userData$modules)){
       return()
     }
     modulemat<-module_counts_reactive()
