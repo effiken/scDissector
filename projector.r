@@ -24,7 +24,7 @@ getLikelihood=function(umitab,models,reg){
   return(res)
 }
 
-update_beta=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75){
+update_beta_single_batch=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75){
   if (nrow(models)!=length(noise_model)){
     stop("noise_models and models have different number of genes")
   }
