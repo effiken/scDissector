@@ -55,7 +55,7 @@ getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,beta_noise=NUL
   rownames(ll)=colnames(umitab)
   colnames(ll)=colnames(models)
   
-  beta_noise=update_beta(umitab,models,noise_model,avg_numis_per_model,reg=reg)
+  beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg)
   alpha=pmin(beta_noise/avg_numis_per_model,max_noise_fraction)
   adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
   ll[,colnames(adjusted_models)]=as.matrix(getLikelihood(umitab,adjusted_models,reg=reg))
