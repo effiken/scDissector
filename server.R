@@ -163,7 +163,7 @@ tab3_left_margin=12
     updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
     updateSelectInput(session,"inQCClust",choices =clust_title)
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
-    updateTextInput(session,"inTruthSamples",value = paste(samples,collapse=","))
+    updateTextInput(session,"inSamplesToShow",value = paste(samples,collapse=","))
     updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
     updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
@@ -180,6 +180,10 @@ tab3_left_margin=12
     updateTextInput(session,"inSamples",value=s1) 
   })
   
+  observeEvent(input$inResetSamples,{
+    samples=colnames(session$userData$dataset$bulk_avg)
+    updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
+  })
   
   observeEvent(input$inAbsOrRel,{
     if (input$inAbsOrRel=="Absolute"){
@@ -214,11 +218,11 @@ tab3_left_margin=12
     return(strsplit(input$inRefProfiles,",")[[1]])
   })
   
-  truth_samples_reactive <-reactive({
-    samples=strsplit(input$inTruthSamples,",")[[1]]
+  samples_reactive <-reactive({
+    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
      if (is.null(session$userData$dataset)){
       return(c())
-    }
+     }
     samples=intersect(samples,session$userData$dataset$samples)
     return(samples)
   })
@@ -231,7 +235,7 @@ tab3_left_margin=12
   
   ds_QC_reactive <-reactive({
     clust=strsplit(input$inQCClust," - ")[[1]][1]
-    samples=truth_samples_reactive()
+    samples=samples_reactive()
     
     if (is.null(session$userData$dataset)){
       return()
@@ -259,14 +263,15 @@ tab3_left_margin=12
   
   
   init_genes=function(genes_string){
+    data_genes=rownames(session$userData$dataset$umitab)
     genes=strsplit(genes_string,",|, | ,")[[1]]
-    mask1=toupper(genes)%in%rownames(session$userData$model$models)
+    mask1=toupper(genes)%in%data_genes
     genes[mask1]=toupper(genes[mask1])
-    mask2=unlist(sapply(genes,cap))%in%rownames(session$userData$model$models)
+    mask2=unlist(sapply(genes,cap))%in%data_genes
     genes[mask2]=unlist(sapply(genes[mask2],cap))
-    mask3=gene_symbol_old2new[genes]%in%rownames(session$userData$model$models)
+    mask3=gene_symbol_old2new[genes]%in%data_genes
     genes[mask3]=gene_symbol_old2new[genes[mask3]]
-    mask4=gene_symbol_new2old[genes]%in%rownames(session$userData$model$models)
+    mask4=gene_symbol_new2old[genes]%in%data_genes
     genes[mask4]=gene_symbol_new2old[genes[mask4]]
     
    # genes=genes[(mask1|mask2|mask3)]
@@ -721,10 +726,32 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-rowMeans(ds)
+    genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
+    ds=ds[genemask,]
+    ds_mean=ds_mean[genemask]
     message("Estimating variance for ",nrow(ds)," genes")
     ds_var<-apply(ds,1,var)
-    return(data.frame(m=ds_mean,v=ds_var,gene=rownames(ds)))
+    df=data.frame(m=ds_mean,v=ds_var,gene=rownames(ds))
+    rownames(df)=names(ds_mean)
+    return(df)
   })
+  
+  reactiveLoess<-reactive({
+    varmean_df=modules_varmean_reactive()
+    m=varmean_df$m
+    v=varmean_df$v
+    x=log10(m)
+    breaks=seq(min(x),max(x),.2)
+    lv=log2(v/m)
+    z=sapply(split(lv,cut(x,breaks)),min,na.rm=T)
+    maskinf=is.infinite(z)
+    z=z[!maskinf]
+    b=breaks[-length(breaks)]
+    b=b[!maskinf]
+    lo=loess(z~b)
+    return(lo)
+  })
+  
   
   geneModuleMask_reactive<-reactive({
     if (!session$userData$loaded_flag)
@@ -732,9 +759,11 @@ tab3_left_margin=12
       return()
     }
     df=modules_varmean_reactive()
-    
-    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>as.numeric(input$inVarMean_varmeanThresh)
+    lo=reactiveLoess()
+    lline=predict(lo,newdata =log10(df$m))
+    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>lline+as.numeric(input$inVarMean_varmeanThresh)
     geneModuleMask[is.na(geneModuleMask)]<-F
+    names(geneModuleMask)=rownames(df)
     return(geneModuleMask)
     
   })
@@ -746,10 +775,14 @@ tab3_left_margin=12
       return()
     }
     df=modules_varmean_reactive()
+    lo=reactiveLoess()
     plot(log10(df$m),log2(df$v/df$m),xlab="Log10(mean)",ylab="log2(var/mean)",panel.first=grid())
+    x1=seq(input$inVarMeanXlim[1],input$inVarMeanXlim[2],l=100)
+    lline=predict(lo,newdata =x1)
+    lines(x1,lline+as.numeric(input$inVarMean_varmeanThresh),col=2)
     abline(v=input$inVarMean_MeanThresh,col=2)
     
-    abline(h=input$inVarMean_varmeanThresh,col=2)
+    #abline(h=input$inVarMean_varmeanThresh,col=2)
     
     n=sum(geneModuleMask_reactive())
     legend("topright", paste(n,"genes"), bty="n",text.col=2) 
@@ -771,7 +804,7 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
-    cormat=cor(as.matrix(t(log2(.1+ds[geneModuleMask_reactive(),]))),use="comp")
+    cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
     return(cormat)
   })
   
@@ -790,7 +823,6 @@ tab3_left_margin=12
     if (is.null(cormat)){
       return()
     }
-    
     c2c=cutree(hclust(as.dist(1-cormat)),k=as.numeric(input$inNUmberOfGeneModules))
  
     session$userData$modules<-(split(names(c2c),c2c))
@@ -854,7 +886,7 @@ tab3_left_margin=12
   
   output$BasicsSampleClusterNumisNcellsHeatmaps<- renderPlot({
     inclusts=clusters_reactive()
-    insamples=truth_samples_reactive()
+    insamples=samples_reactive()
     dataset=session$userData$dataset
     numis_bin=1+floor(log2(pmax(100,colSums(dataset$umitab))/100))
     dataset$cell_to_sample
@@ -908,7 +940,7 @@ tab3_left_margin=12
   })
   
   output$sample_avg_profile_plot <- renderUI({
-    he=max(c(300,12*length(truth_samples_reactive())),na.rm=T)
+    he=max(c(300,12*length(samples_reactive())),na.rm=T)
     plotOutput("avg_heatmap_samples", width = "150%", height = he)
   })
   
@@ -945,7 +977,7 @@ tab3_left_margin=12
     
     inclusts=clusters_reactive()
     ingenes=genes_reactive()#genes_reactive()
-    insamples=truth_samples_reactive()
+    insamples=samples_reactive()
      if (!session$userData$loaded_flag){
       return()
     }
@@ -1003,10 +1035,15 @@ tab3_left_margin=12
     if (is.null(session$userData$modules)){
       return()
     }
-
+    samps=samples_reactive()
+    if (length(samps)==0){
+      return()
+    }
     counts=0
-    for (i in 1:length(dataset$counts)){
-      counts=counts+dataset$counts[[i]]
+    
+  
+    for (samp in samps){
+      counts=counts+session$userData$dataset$counts[[samp]]
     }
     return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
   
@@ -1016,15 +1053,15 @@ tab3_left_margin=12
   output$avg_heatmap_modules <- renderPlot({
     ##### Don't delete!!
     input$inModelVer
+    samps=samples_reactive()
     #####
-
+    
     inclusts=clusters_reactive()
     inmodules=modules_reactive()
-   
     if (!session$userData$loaded_flag){
       return()
     }
-    if (!exists("modules")){
+    if (is.null(session$userData$modules)){
       return()
     }
     modulemat<-module_counts_reactive()
@@ -1064,7 +1101,8 @@ tab3_left_margin=12
   output$avg_heatmap_samples <- renderPlot({
     
     ingenes=genes_reactive()#genes_reactive()
-    insamples=truth_samples_reactive()
+    insamples=samples_reactive()
+    print(insamples)
     if (!session$userData$loaded_flag){
       return()
     }
@@ -1078,7 +1116,7 @@ tab3_left_margin=12
     
     par(mar=c(7,tab3_left_margin,1,9))
     
-    mat1<-session$userData$dataset$bulk_avg[match(ingenes,rownames(session$userData$dataset$bulk_avg)),insamples]
+    mat1<-session$userData$dataset$bulk_avg[match(ingenes,rownames(session$userData$dataset$bulk_avg)),insamples,drop=F]
       if (ncol(mat1)>1){
         mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
         break1=-1e6
@@ -1089,7 +1127,7 @@ tab3_left_margin=12
       }
 
     isolate({
-      image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main="Pooled sample Average")
+      image(mat_to_show[,ncol(mat1):1,drop=F],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main="Pooled sample Average")
     })
     box()
     
@@ -1104,7 +1142,7 @@ tab3_left_margin=12
   output$avg_heatmap_external_profiles<- renderPlot({
     input$inRefProfiles
     ingenes=genes_reactive()
-    insamples=truth_samples_reactive()
+    insamples=samples_reactive()
     inclusts=clusters_reactive()
     external_profiles<-external_profiles_reactive()
     
@@ -1163,7 +1201,7 @@ tab3_left_margin=12
     zlim=input$inTruthColorScale
     inclusts=clusters_reactive()
     ingenes=genes_reactive()
-    insamples=truth_samples_reactive()
+    insamples=samples_reactive()
     nclust=length(inclusts)
     if (!session$userData$loaded_flag){
       return()
@@ -1219,11 +1257,12 @@ tab3_left_margin=12
 
     varmean_reactive <- reactive({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
-      samples=truth_samples_reactive()
+      samples=samples_reactive()
       if (is.null(session$userData$dataset)){
         return(data.frame(m=0,varmean=0,gene=""))
       }
       dataset=session$userData$dataset
+
       ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
       cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
       ds=ds[,intersect(colnames(ds),cluster_mask),drop=F]
@@ -1245,7 +1284,7 @@ tab3_left_margin=12
     
     output$modelSampleLegend <- renderPlot({
     
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
@@ -1260,7 +1299,7 @@ tab3_left_margin=12
     
     
     output$truthSampleLegend <- renderPlot({
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
@@ -1320,7 +1359,7 @@ tab3_left_margin=12
 
     output$cellcor<-renderPlot({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       ds=ds_QC_reactive()
       dataset=session$userData$dataset
       if (is.null(ds)){
@@ -1430,7 +1469,7 @@ tab3_left_margin=12
     output$avg_heatmap_projection <- renderPlot({
       ##### Don't delete!!
       #####
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       inclusts=clusters_reactive()
       ingenes=genes_reactive()
       
@@ -1510,7 +1549,7 @@ tab3_left_margin=12
     output$projection_barplot=renderPlot({
       ##### Don't delete!!
       #####
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       inclusters=clusters_reactive()
       ingenes=genes_reactive()
       
@@ -1583,7 +1622,7 @@ tab3_left_margin=12
     } 
     
     ge_proj_vs_ref <- reactive({
-      insamples=truth_samples_reactive()
+      insamples=samples_reactive()
       clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
       samples1=as.list(strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]])
       samples2=as.list(strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]])
@@ -1766,7 +1805,7 @@ tab3_left_margin=12
       updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
       updateSelectInput(session,"inQCClust",choices =clust_title)
       updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
-      updateTextInput(session,"inTruthSamples",value = paste(session$userData$dataset$samples,collapse=","))
+      updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=","))
       updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
       updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
       updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))

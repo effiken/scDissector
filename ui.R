@@ -129,9 +129,7 @@ mainPanel(
                       plotOutput("truthplot",width="150%",height = "700"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
-                      sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,3)),
-                      
-                      textInput("inTruthSamples", width=2000, "Samples:"),
+                      sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
                       selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                       checkboxInput("inTruthShowSeparatorBars",label = "Show Separator Bars",value = T),
                       selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
@@ -169,7 +167,8 @@ mainPanel(
                   plotOutput("varMeanThreshPlot"),
                   selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                   textInput("inVarMean_MeanThresh",  "Min Log10(mean):", value = "-2"),
-                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15")
+                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15"),
+                  sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range")
                 ),
                 wellPanel(
                   selectInput("inNUmberOfGeneModules","Number of Modules:",c(10,20,50,100,200)),
@@ -188,15 +187,14 @@ mainPanel(
               )
               ),
                 tabPanel("Samples",fluidRow(
-                  column(12, uiOutput("sample_avg_profile_plot")),
+                         textInput("inSamplesToShow", width=2000, "Samples:"),
+                         actionButton("inResetSamples","Reset"),
+                         uiOutput("sample_avg_profile_plot"),
                   sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)),
                            textInput("inProjectSampleGroup1","Samples Group 1:"),
                            textInput("inProjectSampleGroup2","Samples Group 2:"),
                            selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
-                         column(12,
-                                #         uiOutput("projection_avg_heatmap_plot"),
-                                         uiOutput("projection_barplot_plot")
-                                         ),
+                           uiOutput("projection_barplot_plot"),
                  #  tableOutput("ClusteringsComparisonTable"),
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
