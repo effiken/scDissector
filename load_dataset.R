@@ -117,7 +117,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     tmp_dataset$noise_model[[sampi]]=tmp_env$noise_model
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
-   
+    genemask=setdiff(genemask,model$params$genes_excluded)   
     genes=intersect(rownames(tmp_dataset$umitab[[sampi]]),genes)
     #  print(length(genes))
     
