@@ -37,6 +37,7 @@ update_beta_single_batch=function(umitab,models,noise_model,avg_numis_per_model,
   }
   func_to_opt=function(x){
     tot_ll=get_total_likelihood(get_ll_b(x,models,noise_model,umitab,reg))
+ #   message(x," ",tot_ll)
     return(tot_ll)
   }
   

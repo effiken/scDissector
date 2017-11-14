@@ -126,7 +126,10 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     }
     else {
       noise_model=tmp_dataset$noise_model[[sampi]]
-      avg_numis_per_model=sapply(split(colSums(model$umitab[genemask,]),model$cell_to_cluster[colnames(model$umitab)]),mean)
+      avg_numis_per_model=rep(mean(colSums(model$umitab[genemask,])),ncol(model$models))
+      names(avg_numis_per_model)=colnames(model$models)
+      tmptab=sapply(split(colSums(model$umitab[genemask,]),model$cell_to_cluster[colnames(model$umitab)]),mean)
+      avg_numis_per_model[names(tmptab)]=tmptab
       beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
       print(beta_noise)
       tmp_dataset$ll[[sampi]]=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
