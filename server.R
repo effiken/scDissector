@@ -1045,7 +1045,7 @@ tab3_left_margin=12
     for (samp in samps){
       counts=counts+session$userData$dataset$counts[[samp]]
     }
-    return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,])})/colSums(counts)))
+    return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,,drop=F])})/colSums(counts)))
   
     
   })
