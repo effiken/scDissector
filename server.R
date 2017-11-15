@@ -1099,7 +1099,7 @@ tab3_left_margin=12
   })
   
   output$avg_heatmap_samples <- renderPlot({
-    
+    inclusts=clusters_reactive()
     ingenes=genes_reactive()#genes_reactive()
     insamples=samples_reactive()
     print(insamples)
@@ -1115,8 +1115,9 @@ tab3_left_margin=12
     zlim=input$inSamplesColorScale
     
     par(mar=c(7,7,1,9))
-    
-    mat1<-session$userData$dataset$bulk_avg[match(ingenes,rownames(session$userData$dataset$bulk_avg)),insamples,drop=F]
+    cellmask=session$userData$dataset$cell_to_cluster%in%inclusts&session$userData$dataset$cell_to_sample%in%insamples
+    mat1<-sapply(split_sparse(session$userData$dataset$umitab[match(ingenes,rownames(session$userData$dataset$umitab)),cellmask,drop=F],session$userData$dataset$cell_to_sample[cellmask]),rowSums)
+    mat1=t(t(mat1)/colSums(mat1))
       if (ncol(mat1)>1){
         mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
         break1=-1e6
@@ -1127,7 +1128,13 @@ tab3_left_margin=12
       }
 
     isolate({
-      image(mat_to_show[,ncol(mat1):1,drop=F],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main="Pooled sample Average")
+      if (length(inclusts)==ncol(session$userData$model$models)){
+        clusters_string="All Cells"
+      }
+      else{
+        clusters_string=paste("Clusters ",paste(inclusts,collapse=","))
+      }
+      image(mat_to_show[,ncol(mat1):1,drop=F],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=paste("Pooled Sample Averages over",clusters_string))
     })
     box()
     
