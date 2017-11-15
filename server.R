@@ -1114,7 +1114,7 @@ tab3_left_margin=12
     
     zlim=input$inSamplesColorScale
     
-    par(mar=c(7,tab3_left_margin,1,9))
+    par(mar=c(7,7,1,9))
     
     mat1<-session$userData$dataset$bulk_avg[match(ingenes,rownames(session$userData$dataset$bulk_avg)),insamples,drop=F]
       if (ncol(mat1)>1){
