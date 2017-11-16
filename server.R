@@ -214,6 +214,7 @@ tab3_left_margin=12
     return(clusts)
   })
   
+  
   external_profiles_reactive <-reactive({
     return(strsplit(input$inRefProfiles,",")[[1]])
   })
@@ -371,7 +372,6 @@ tab3_left_margin=12
       ord=order(apply(modulemat[,clusters],1,which.max))
       updateTextInput(session,"inModules",value=paste(rownames(modulemat)[ord],collapse=","))
     }
-    print(modules[ord])
   })
   
   
