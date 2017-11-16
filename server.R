@@ -998,6 +998,7 @@ tab3_left_margin=12
       rownames(tab)=inclusts
       colnames(tab)=insamples
       tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
+      tmptab=tmptab[intersect(rownames(tmptab),inclusts),]
       tab[rownames(tmptab),colnames(tmptab)]=tmptab
       tab=t(t(tab)/colSums(tab))[,insamples]
       tab=(tab/rowSums(tab))
