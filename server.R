@@ -994,9 +994,13 @@ tab3_left_margin=12
     if (length(insamples)>1&(length(inclusts)>1)){
       layout(matrix(1:2,1,2),widths=c(1,10))
       par(mar=c(7,1,1,.1))
-      tab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
+      tab=matrix(0,length(inclusts),length(insamples))
+      rownames(tab)=inclusts
+      colnames(tab)=insamples
+      tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
+      tab[rownames(tmptab),colnames(tmptab)]=tmptab
       tab=t(t(tab)/colSums(tab))[,insamples]
-      tab=(tab/rowSums(tab))[intersect(inclusts,rownames(tab)),,drop=F]
+      tab=(tab/rowSums(tab))
       barplot(t(tab[nrow(tab):1,insamples]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     }
     par(mar=c(7,tab3_left_margin,1,9))
