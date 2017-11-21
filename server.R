@@ -463,8 +463,10 @@ tab3_left_margin=12
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
     mask_fg=session$userData$model$cell_to_cluster%in%clusts_fg
     mask_bg=session$userData$model$cell_to_cluster%in%clusts_bg
-    reg=50
-    fc=(rowSums(reg+session$userData$model$umitab[mask,mask_fg])/sum(reg+session$userData$model$umitab[,mask_fg]))/(rowSums(reg+session$userData$model$umitab[mask,mask_bg])/sum(reg+session$userData$model$umitab[,mask_bg]))
+    reg=20
+    sfg=reg+rowSums(session$userData$model$umitab[mask,mask_fg])
+    sbg=reg+rowSums(session$userData$model$umitab[mask,mask_bg])
+    fc=(sfg/sum(sfg))/(sbg/sum(sbg))
     
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
