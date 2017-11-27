@@ -79,6 +79,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   tmp_dataset$bulksum=list()
   tmp_dataset$insilico_gating_scores=list()
   tmp_dataset$noise_model=list()
+  tmp_dataset$beta_noise=list()
   genes=rownames(model$models)
   for (sampi in samples){
     message("Loading sample ",sampi)
@@ -139,6 +140,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       
       beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
       print(beta_noise)
+      tmp_dataset$beta_noise[[sampi]]=beta_noise
       tmp_dataset$ll[[sampi]]=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
     }
     tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
@@ -188,6 +190,10 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
+  dataset$noise_model=as.data.frame(tmp_dataset$noise_model)
+  colnames(dataset$noise_model)=names(tmp_dataset$noise_model)
+  dataset$beta_noise=unlist(tmp_dataset$beta_noise)
+  names(dataset$beta_noise)=names(tmp_dataset$beta_noise)
   if (!is.null(model$insilico_gating)){
     for (score_i in 1:length(model$insilico_gating)){
       dataset$insilico_gating_scores[[score_i]]=tmp_dataset$insilico_gating_scores[[1]][[score_i]]
