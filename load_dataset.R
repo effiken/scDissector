@@ -153,6 +153,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     tmp_models=model$models[,setdiff(colnames(model$models),output$scDissector_params$excluded_clusters)]
   
     tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
+    
     tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
     tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
     tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
@@ -190,8 +191,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
-  dataset$noise_model=as.data.frame(tmp_dataset$noise_model)
+  dataset$noise_model=matrix(0,length(genes),length(samples))
   colnames(dataset$noise_model)=names(tmp_dataset$noise_model)
+  rownames(dataset$noise_model)=genes
   dataset$beta_noise=unlist(tmp_dataset$beta_noise)
   names(dataset$beta_noise)=names(tmp_dataset$beta_noise)
   if (!is.null(model$insilico_gating)){
@@ -221,7 +223,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   }
   if (length(samples)>1){
     for (sampi in samples[-1]){
-    
+      dataset$noise_model[genes,sampi]=tmp_dataset$noise_model[[sampi]][genes,1]
       dataset$bulk_avg[genes,sampi]=tmp_dataset$bulksum[[sampi]][genes]/sum(tmp_dataset$bulksum[[sampi]][genes])
       cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
       dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
