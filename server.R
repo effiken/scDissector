@@ -1,3 +1,4 @@
+library(Matrix)
 library(ggvis)
 library(dplyr)
 library(gplots)

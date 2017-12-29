@@ -1,4 +1,5 @@
 library(Matrix)
+library(Matrix.utils)
 
 split_sparse=function(sparse_umitab,cell_to_cluster){
   clusters=sort(as.character(unique(cell_to_cluster)))
