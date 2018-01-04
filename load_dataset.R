@@ -114,8 +114,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       tmp_dataset$umitab[[sampi]]=is_res$umitab
       tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
     }
-
-    tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis]
+    barcode_mask=tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis
+   
+    tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,barcode_mask]
     tmp_dataset$noise_model[[sampi]]=tmp_env$noise_model
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
@@ -138,7 +139,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
         
   #      }else{
         beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        print(beta_noise)
         res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         
         tmp_dataset$ll[[sampi]]=  res_boll$ll
@@ -197,7 +197,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
   names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
-  dataset$numis_before_filtering=tmp_dataset$numis_before_filtering[[1]]
+  dataset$numis_before_filtering=tmp_dataset$numis_before_filtering
   dataset$avg<-tmp_dataset$avg
   dataset$counts<-tmp_dataset$counts
   dataset$samples=samples
@@ -247,10 +247,10 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
       if (!is.null(model$insilico_gating)){
         for (score_i in 1:length(model$insilico_gating)){
-          dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],tmp_dataset$insilico_gating_scores[[score_i]])
+          dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],tmp_dataset$insilico_gating_scores[[sampi]][[score_i]])
         }
       }
-      dataset$numis_before_filtering<-c(dataset$numis_before_filtering,tmp_dataset$numis_before_filtering[[sampi]])
+      
       for (ds_i in 1:length(dataset$ds_numis)){
         ds_sampi=tmp_dataset$ds[[ds_i]][[sampi]][genes,]
         dataset$ds[[ds_i]]=cBind(dataset$ds[[ds_i]],ds_sampi)

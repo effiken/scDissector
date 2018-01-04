@@ -150,7 +150,10 @@ tab3_left_margin=12
     sample_paths=paste(input$inDatapath,session$userData$samples_tab$path[match(samples,session$userData$samples_tab$index)],sep="/")
     names(sample_paths)=samples
     message("Loading ",model_fn)
-    x=load_dataset_and_model(model_fn,sample_paths)
+    
+    isolate({min_umis=as.numeric(input$inMinUmis)})
+    
+    x=load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis)
     for (item in names(x)){
       session$userData[[item]]=x[[item]]
     }
@@ -166,6 +169,8 @@ tab3_left_margin=12
     updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
     updateTextInput(session,"inSamplesToShow",value = paste(samples,collapse=","))
     updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+    updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
+    updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
     updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
     updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
     updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
@@ -921,13 +926,20 @@ tab3_left_margin=12
   
   output$gating_plots <- renderPlot({
     nplots=length(session$userData$dataset$insilico_gating_scores)
-    numis=session$userData$dataset$numis_before_filtering
+    samp=input$inGatingSample
+    numis=session$userData$dataset$numis_before_filtering[[samp]]
+    
+    clust=strsplit(input$inGatingShowClusters," ")[[1]][1]
+    cell_to_cluster=session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_sample==samp]
     layout(matrix(1:nplots,nplots,1))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
-      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs")
+      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
+      points(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
       rect(xleft = input$inMinUmis,session$userData$model$insilico_gating[[i]]$interval[1],max(numis[mask]),session$userData$model$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
     }
+    
+    ##TODO: add noise model plot
   })
   
   
@@ -1820,6 +1832,8 @@ tab3_left_margin=12
       updateSelectInput(session,"inQCClust",choices =clust_title)
       updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
       updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=","))
+      updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
+      updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
       updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
       updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
       updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))

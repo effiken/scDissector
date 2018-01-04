@@ -19,7 +19,7 @@ actionLink <- function(inputId, ...) {
 mainPanel(     
   fluidPage(
    
-      h4("scDissector v0.25"),
+      h4("scDissector v0.3"),
      tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
@@ -44,6 +44,8 @@ mainPanel(
                                   )),
                   tabPanel("Gating",
                            fluidRow(
+                             selectInput("inGatingSample", "Sample:",choices = c()),
+                             selectInput("inGatingShowClusters", "Cluster to highlight:",choices = c()),
                              uiOutput("gaiting_plots_dynamic")
                            )
                   ),
