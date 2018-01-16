@@ -71,7 +71,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   tmp_dataset=new.env()
   tmp_dataset$umitab=list()
   tmp_dataset$ll=list()
-  tmp_dataset$ll_noise=list()
   tmp_dataset$cell_to_cluster=list()
   tmp_dataset$avg=list()
   tmp_dataset$ds=list()
@@ -143,7 +142,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
         res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         
         tmp_dataset$ll[[sampi]]=  res_boll$ll
-        tmp_dataset$ll_noise[[sampi]]=res_boll$ll_noise
           cell_to_cluster=MAP(tmp_dataset$ll[[sampi]])
         tmptab=sapply(split(colSums(tmp_dataset$umitab[[sampi]][genemask,]),cell_to_cluster[colnames(tmp_dataset$umitab[[sampi]])]),mean)
         avg_numis_per_model[names(tmptab)]=tmptab
@@ -174,7 +172,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
-    print(length(tmp_dataset$counts))
     tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$umitab[[sampi]][genemask,])
     tmp_dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
   
@@ -196,14 +193,13 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   dataset$ds_numis=tmp_dataset$ds_numis
   dataset$umitab<-tmp_dataset$umitab[[samples[1]]][genes,]
   dataset$ll<-tmp_dataset$ll[[samples[1]]]
-  dataset$ll_noise<-tmp_dataset$ll_noise[[samples[1]]]
   dataset$cell_to_cluster<-tmp_dataset$cell_to_cluster[[samples[1]]]
   names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
   names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$numis_before_filtering=tmp_dataset$numis_before_filtering
   dataset$avg<-tmp_dataset$avg
-    
+  dataset$counts<-tmp_dataset$counts
   dataset$samples=samples
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
@@ -245,9 +241,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
       dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
       dataset$ll<-rbind(dataset$ll,tmp_dataset$ll[[sampi]])
-      if (!is.null(tmp_dataset$ll_noise[[sampi]])){
-        dataset$ll_noise<-rbind(dataset$ll_noise,tmp_dataset$ll_noise[[sampi]])
-      }
       dataset$cell_to_cluster<-c(dataset$cell_to_cluster,tmp_dataset$cell_to_cluster[[sampi]])
       cell_to_sampi=rep(sampi,length(cellids))
       names(cell_to_sampi)=cellids
@@ -276,13 +269,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
       }
     }
   }
-
-  dataset$counts<-array(0,dim=c(length(tmp_dataset$counts),nrow(tmp_dataset$counts[[1]]),ncol(tmp_dataset$counts[[1]])),dimnames = list(names(tmp_dataset$counts),rownames(tmp_dataset$counts[[1]]),colnames(tmp_dataset$counts[[1]])))
-  for (si in 1:length(tmp_dataset$counts)){
-    dataset$counts[si,,]=tmp_dataset$counts[[si]]
-  }
-  
-  
   output$dataset=dataset
   rm("tmp_dataset","dataset")
   ncells_per_cluster<-rep(0,dim(model$models)[2])

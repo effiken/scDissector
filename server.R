@@ -3,29 +3,38 @@ library(ggvis)
 library(dplyr)
 library(gplots)
 source("projector.r")
-source("gene_symbol_convertors.r")
 source("load_dataset.R")
 set.seed(3505)
 
 
-
+cap <- function(x) {
+  paste(toupper(substring(x, 1,1)), tolower(substring(x, 2)),sep="", collapse=" ")
+}
 colgrad=c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
 
+
+
+
 print(getwd())
 genesetsfile="gene_sets.txt"
-if (file.exists(genesetsfile)){
-  geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
-  geneList<<-geneList_tmp[,1]
-  names(geneList)<<-rownames(geneList_tmp)
-}
+geneList<<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
+hgnc<<-read.delim("hgnc_complete_set.txt",header = T,stringsAsFactors = F)
+old_symbol=ifelse(hgnc[,"prev_symbol"]=="",hgnc[,"symbol"],hgnc[,"prev_symbol"])
+l_old_symbol=strsplit(old_symbol,"\\|")
+old_symbol2=unlist(l_old_symbol)
+
+new_symbol=hgnc[,"symbol"]
+new_symbol2=rep(new_symbol,sapply(l_old_symbol,length))
+
+gene_symbol_old2new<<-new_symbol2
+names(gene_symbol_old2new)<<-old_symbol2
+
+gene_symbol_new2old<<-old_symbol
+names(gene_symbol_new2old)<<-new_symbol
+
 source("load_on_startup.r")
-
-gsc=get_gene_symbol_convetors()
-gene_symbol_old2new=gsc$old2new
-gene_symbol_new2old=gsc$new2old
-
 
 
 referenceSets<-read.csv(file="ReferenceProfiles/refereceSets.csv",header=T,stringsAsFactors = F)
@@ -76,13 +85,18 @@ tab3_left_margin=12
       if (file.exists(myGeneListFile)){
         added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
     
+        added_gene_list=added_gene_list_tmp[,2,drop=F]
         if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
           message(myGeneListFile, " was not loaded since gene sets names are not unique.")
         }
         else{
-          names2=c(added_gene_list_tmp[,1],names(session$userData$geneList))
-          session$userData$geneList<-c(added_gene_list_tmp[,2],session$userData$geneList)
-          names(session$userData$geneList)=names2
+          rownames(added_gene_list)=added_gene_list_tmp[,1]
+          if (colnames(added_gene_list)=="genes"){
+            session$userData$geneList<-rbind(added_gene_list,geneList)
+          }
+          else{
+            message(myGeneListFile, " was not loaded due to parsing errors.")
+          }
         }
       }  
     
@@ -97,7 +111,7 @@ tab3_left_margin=12
      }
     session$userData$scDissector_datadir<-input$inDatapath
     
-    updateSelectInput(session,"inGeneSets",choices = names(session$userData$geneList))
+    updateSelectInput(session,"inGeneSets",choices = rownames(session$userData$geneList))
     updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
     updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_to_show)
     updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
@@ -246,7 +260,7 @@ tab3_left_margin=12
  #   if (!session$userData$loaded_flag){
 #      return()
   #  }
-    updateTextInput(session,"inGenes",value=as.character(session$userData$geneList[geneSets]))
+    updateTextInput(session,"inGenes",value=session$userData$geneList[geneSets,1])
     #  genes=strsplit(session$userData$geneList[geneSets,1],",")[[1]]
   #  if (session$userData$loaded_flag){
   #    init_genes(genes)
@@ -257,12 +271,22 @@ tab3_left_margin=12
   
   init_genes=function(genes_string){
     data_genes=rownames(session$userData$dataset$umitab)
- 
-    gene_strings_adj=adjust_gene_names(genes_string, data_genes)
- 
-    session$userData$gcol<-ifelse(toupper(gene_strings_adj)%in%tfs ,4,1)
-    names(session$userData$gcol)<-toupper(gene_strings_adj)
-    return(gene_strings_adj)
+    genes=strsplit(genes_string,",|, | ,")[[1]]
+    mask1=toupper(genes)%in%data_genes
+    genes[mask1]=toupper(genes[mask1])
+    mask2=unlist(sapply(genes,cap))%in%data_genes
+    genes[mask2]=unlist(sapply(genes[mask2],cap))
+    mask3=gene_symbol_old2new[genes]%in%data_genes
+    genes[mask3]=gene_symbol_old2new[genes[mask3]]
+    mask4=gene_symbol_new2old[genes]%in%data_genes
+    genes[mask4]=gene_symbol_new2old[genes[mask4]]
+    
+   # genes=genes[(mask1|mask2|mask3)]
+    
+    session$userData$gcol<-ifelse(toupper(genes)%in%tfs ,4,1)
+    names(session$userData$gcol)<-toupper(genes)
+    return(genes)
+  #  updateTextInput(session,"inGenes",value=genes)
     
   }
   
@@ -315,9 +339,7 @@ tab3_left_margin=12
     inclusts=clusters_reactive()
     ingenes=genes_reactive()
     mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
-    if (length(ingenes)==0){
-      return()
-    }
+    
     if (input$inReorderingMethod=="Hierarchical clustering"){
       mat2=mat[!rowSums(is.na(mat))==ncol(mat),]
       cormat=cor(t(mat2),use="comp")
@@ -380,7 +402,6 @@ tab3_left_margin=12
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
     clusters=clusters_reactive()
-    samples=samples_reactive()
     if (input$inSelectGenesFrom=="All genes"){
       pref="Var"
       genes=rownames(session$userData$model$models)
@@ -392,43 +413,32 @@ tab3_left_margin=12
       genes=intersect(surface_markers,rownames(session$userData$model$models))
       
     }
-    cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
-    genes=intersect(genes,rownames(session$userData$dataset$umitab))
-    chisq_res2=chisq_genes(session$userData$dataset$umitab,session$userData$dataset$cell_to_cluster,genes,cells)
-    counts=apply(session$userData$dataset$counts[samples,,,drop=F],2:3,sum)
-    avg=t(t(counts)/colSums(counts))
+    cells=names(session$userData$model$cell_to_cluster[session$userData$model$cell_to_cluster%in%clusters])
+    chisq_res2=chisq_genes(session$userData$model$umitab,session$userData$model$cell_to_cluster,genes,cells)
     mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&
-      rowSums(session$userData$dataset$umitab[rownames(chisq_res2),cells]>1)>=10&
-      (apply(avg[rownames(chisq_res2),]/(rowSums(counts[rownames(chisq_res2),])/sum(counts)),1,max)>4|
-      apply(avg[rownames(chisq_res2),]/rowMeans(avg[rownames(chisq_res2),]),1,max)>4)
+      rowSums(session$userData$model$umitab[rownames(chisq_res2),cells]>1)>=10&
+      (apply(session$userData$model$models[rownames(chisq_res2),]/(rowSums(session$userData$model$umitab[rownames(chisq_res2),])/sum(session$userData$model$umitab)),1,max)>4|
+      apply(session$userData$model$models[rownames(chisq_res2),]/rowMeans(session$userData$model$models[rownames(chisq_res2),]),1,max)>4)
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
-  
     a=chisq_res2[mask,]
     genes_to_show=head(rownames(a)[order(a[,2],decreasing=T)],ngenes_to_show)
-    genes_to_show_comma_delimited=paste(genes_to_show,collapse=",")
-    new_set_name=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
     
-    message("chisq done")
-
-    if (!is.null(session$userData$geneList)){
-      geneList=session$userData$geneList
-      geneList[length(geneList)+1]=genes_to_show_comma_delimited
-    }
-    else{
-      geneList=c(genes_to_show_comma_delimited)
-    }
-    names(geneList)[length(geneList)]=new_set_name
+    message("done")
     
-    session$userData$geneList<-geneList
-    updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
+    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
+    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
+    rownames(geneList2)[nrow(geneList2)]=paste("Chisq_",pref,"_",ngenes_to_show,"_",date(),sep="")
+    session$userData$geneList<-geneList2
+    updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
+    # updateTextInput(session,"inGenes",value=paste(genes_to_show,collapse=","))
+   
      
   })
   
   chisq_genes=function(umitab,cell_to_cluster,genes,cells){
-    genes=intersect(genes,rownames(umitab))
-    cells=intersect(cells,colnames(umitab))
+    
     umitab2=umitab[genes,cells]
     cluster_tot=sapply(split(colSums(umitab2),cell_to_cluster[colnames(umitab2)]),sum)
     counts=sapply(split_sparse(umitab2,cell_to_cluster[colnames(umitab2)]),rowSums)
@@ -470,19 +480,12 @@ tab3_left_margin=12
     
     genes_to_show=head(names(sort(fc,decreasing=T)),floor(ngenes_to_show/2))
     genes_to_show=c(genes_to_show,tail(names(sort(fc,decreasing=T)),ceiling(ngenes_to_show/2)))
-    genes_to_show_comma_delimited=paste(genes_to_show,collapse=",")
-  browser()
-    if (!is.null(session$userData$geneList)){
-      geneList=session$userData$geneList
-      geneList[length(geneList)+1]=genes_to_show_comma_delimited
-    }
-    else{
-      geneList=genes_to_show_comma_delimited
-    }
-    names(geneList)[length(geneList)]=paste("FC_",pref,"_",ngenes_to_show,"_",paste(clusts_fg,collapse="_"),"_VS_",paste(clusts_bg,collapse="_"),sep="")
     
-    session$userData$geneList<-geneList
-     updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
+    geneList2=rbind(session$userData$geneList,paste(genes_to_show,collapse=","))
+    rownames(geneList2)[1:nrow(session$userData$geneList)]=rownames(session$userData$geneList)
+    rownames(geneList2)[nrow(geneList2)]=paste("FC_",pref,"_",ngenes_to_show,"_",paste(clusts_fg,collapse="_"),"_VS_",paste(clusts_bg,collapse="_"),sep="")
+    session$userData$geneList<-geneList2
+     updateSelectInput(session,"inGeneSets",choices=rownames(session$userData$geneList),selected = rownames(session$userData$geneList)[nrow(session$userData$geneList)])
   })
   
   
@@ -576,12 +579,9 @@ tab3_left_margin=12
   observeEvent(input$inOrderClusters, {
     inclusts=clusters_reactive()
     ingenes=genes_reactive()
-    
-    if (length(ingenes)==0){
-      return()
-    }
     mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
     if (input$inReorderingClustersMethod=="Hierarchical clustering"){
+  
     cormat=cor(mat,use="comp")
     d1=dist(1-cormat)
     d1[is.na(d1)]=100
@@ -863,7 +863,6 @@ tab3_left_margin=12
     clusters=clusters_reactive()
     cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
     par(mar=c(2,7,1,2))
-    cells=intersect(cells,colnames(session$userData$model$umitab))
     boxplot(split(log10(colSums(session$userData$model$umitab[,cells])),session$userData$model$cell_to_cluster[cells])[clusters],las=2,ylab="log10(#UMIs)")
   })
   
@@ -929,17 +928,18 @@ tab3_left_margin=12
     nplots=length(session$userData$dataset$insilico_gating_scores)
     samp=input$inGatingSample
     numis=session$userData$dataset$numis_before_filtering[[samp]]
+    
     clust=strsplit(input$inGatingShowClusters," ")[[1]][1]
     cell_to_cluster=session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_sample==samp]
-    layout(matrix(1:(nplots),nplots,1))
+    layout(matrix(1:nplots,nplots,1))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
       plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
       points(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
       rect(xleft = input$inMinUmis,session$userData$model$insilico_gating[[i]]$interval[1],max(numis[mask]),session$userData$model$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
     }
-
-   
+    
+    ##TODO: add noise model plot
   })
   
   
@@ -1019,6 +1019,7 @@ tab3_left_margin=12
       barplot(t(tab[nrow(tab):1,]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     }
     par(mar=c(7,tab3_left_margin,1,9))
+    
     mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
     mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
@@ -1057,9 +1058,12 @@ tab3_left_margin=12
     if (length(samps)==0){
       return()
     }
+    counts=0
     
-    counts=apply(session$userData$dataset$counts[samps,,,drop=F],2:3,sum)
-    
+  
+    for (samp in samps){
+      counts=counts+session$userData$dataset$counts[[samp]]
+    }
     return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,,drop=F])})/colSums(counts)))
   
     
@@ -1229,8 +1233,8 @@ tab3_left_margin=12
       return()
     }
     if (length(ingenes)==0){
-      updateSelectInput(session,"inGeneSets",selected = names(session$userData$geneList)[1])
-      updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1]))
+      updateSelectInput(session,"inGeneSets",selected = rownames(session$userData$geneList)[1])
+      updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1,1]))
       
       return()
     }
@@ -1506,8 +1510,8 @@ tab3_left_margin=12
       # Lables for axes
       if (length(ingenes)==0){
         
-        updateSelectInput(session,"inGeneSets",selected = names(session$userData$geneList)[1])
-        updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1]))
+        updateSelectInput(session,"inGeneSets",selected = rownames(session$userData$geneList)[1])
+        updateTextInput(session,"inGenes",value = init_genes(session$userData$geneList[1,1]))
         
         return()
       }
@@ -1662,8 +1666,18 @@ tab3_left_margin=12
       if(length(samples1)==0||length(samples2)==0||(!(all(samples1%in%insamples)&&all(samples2%in%insamples)))||is.null(dataset)){
         return(data.frame(x=0,y=0,gene=0))
       }
-      counts1=apply(session$userData$dataset$counts[samples1,,,drop=F],2:3,sum)
-      counts2=apply(session$userData$dataset$counts[samples2,,,drop=F],2:3,sum)
+      
+      counts1=session$userData$model$models*0
+      counts2=session$userData$model$models*0
+      for (sampi in 1:length(samples1)){
+          tmp_counts=dataset$counts[[samples1[sampi]]]
+         counts1[,colnames(tmp_counts)]=counts1[,colnames(tmp_counts)]+tmp_counts  
+      }
+      
+      for (sampi in 1:length(samples2)){
+        tmp_counts=dataset$counts[[samples2[sampi]]]
+        counts2[,colnames(tmp_counts)]=counts2[,colnames(tmp_counts)]+tmp_counts  
+      }
       
       model1=t(t(counts1)/colSums(counts1))
       model2=t(t(counts2)/colSums(counts2))
