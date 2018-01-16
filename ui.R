@@ -19,7 +19,7 @@ actionLink <- function(inputId, ...) {
 mainPanel(     
   fluidPage(
    
-      h4("scDissector v0.3"),
+      h4("scDissector v0.35"),
      tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
@@ -238,7 +238,7 @@ mainPanel(
               ),
           br(),
           img(src = 'sinai_logo.png',height = '70px', width = '70px'),
-          p(em("(c) 2017 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))
+          p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))
       )
 )
 
