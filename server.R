@@ -394,7 +394,7 @@ tab3_left_margin=12
     }
     cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
     genes=intersect(genes,rownames(session$userData$dataset$umitab))
-    chisq_res2=chisq_genes(session$userData$dataset$umitab,session$userData$dataset$cell_to_cluster,genes,cells)
+    chisq_res2=chisq_genes(session$userData$dataset$counts[samples,genes,clusters,drop=F])
     counts=apply(session$userData$dataset$counts[samples,,,drop=F],2:3,sum)
     avg=t(t(counts)/colSums(counts))
     mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&
@@ -426,12 +426,8 @@ tab3_left_margin=12
      
   })
   
-  chisq_genes=function(umitab,cell_to_cluster,genes,cells){
-    genes=intersect(genes,rownames(umitab))
-    cells=intersect(cells,colnames(umitab))
-    umitab2=umitab[genes,cells]
-    cluster_tot=sapply(split(colSums(umitab2),cell_to_cluster[colnames(umitab2)]),sum)
-    counts=sapply(split_sparse(umitab2,cell_to_cluster[colnames(umitab2)]),rowSums)
+  chisq_genes=function(counts){
+    counts=apply(counts,2:3,sum)
     gene_mask=apply(counts,1,max)>3
     counts=counts[gene_mask,]
     arrcont=array(c(counts,matrix(cluster_tot,dim(counts)[1],dim(counts)[2],byrow=T)-counts),dim=c(dim(counts),2))
