@@ -1127,8 +1127,9 @@ tab3_left_margin=12
     zlim=input$inSamplesColorScale
     
     par(mar=c(7,7,1,9))
-    cellmask=session$userData$dataset$cell_to_cluster%in%inclusts&session$userData$dataset$cell_to_sample%in%insamples
-    mat1<-sapply(split_sparse(session$userData$dataset$umitab[match(ingenes,rownames(session$userData$dataset$umitab)),cellmask,drop=F],session$userData$dataset$cell_to_sample[cellmask]),rowSums)
+  #  cellmask=session$userData$dataset$cell_to_cluster%in%inclusts&session$userData$dataset$cell_to_sample%in%insamples
+    mat1=t(apply(session$userData$dataset$counts[insamples,ingenes,inclusts],1:2,sum))
+#    mat1<-sapply(split_sparse(session$userData$dataset$umitab[match(ingenes,rownames(session$userData$dataset$umitab)),cellmask,drop=F],session$userData$dataset$cell_to_sample[cellmask]),rowSums)
     mat1=t(t(mat1)/colSums(mat1))
       if (ncol(mat1)>1){
         mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
