@@ -171,7 +171,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
     
     tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
     tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
-    tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
+    tmp_counts=as.matrix(t(aggregate.Matrix(t(tmp_dataset$umitab[[sampi]][genemask,]),tmp_dataset$cell_to_cluster[[sampi]],fun="sum")))
+   
+  #  tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
     print(length(tmp_dataset$counts))
