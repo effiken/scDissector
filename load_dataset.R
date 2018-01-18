@@ -16,7 +16,7 @@ insilico_sorter=function(umitab,insilico_gating){
 
 
 
-load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
+load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name=""){
 
   model<-new.env()
   load(file=model_fn,model)
@@ -296,6 +296,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250){
   output$model=model
   output$cluster_order<-cluster_order
   output$default_clusters<-cluster_order
+  output$loaded_model_version<-model_version_name
   return(output)
   
   

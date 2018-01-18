@@ -19,7 +19,7 @@ actionLink <- function(inputId, ...) {
 mainPanel(     
   fluidPage(
    
-      h4("scDissector v0.35"),
+      h4("scDissector v0.36"),
      tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
@@ -52,18 +52,16 @@ mainPanel(
                   tabPanel("Basics", 
                            fluidRow(
                              plotOutput("ncells_barplot",width="150%",height=200),
-                             plotOutput("UMI_boxplot",width="150%",height=200),
-                             br(),
-                             plotOutput("BasicsSampleClusterNumisNcellsHeatmaps",width="150%")
+                             plotOutput("UMI_boxplot",width="150%",height=200)
                              #   plotOutput("BatchHeatmap",width="150%",height=600)
                           
                           )
                    ),
                   
-                  tabPanel("Model", 
+                  tabPanel("Clusters", 
                     fluidRow(
+                          selectInput("inModelOrAverage","View",choices=c("Model","Average")),
                           uiOutput("avg_profile_plot"),
-                          uiOutput("external_profiles_plot"),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),
                           column(4,
@@ -72,8 +70,8 @@ mainPanel(
                           column(4,
                                  plotOutput("colorLegendModel",height = 70,width=200)
                                  ),
-                          
-                          column(12,hr()),
+                          column(12,
+                                  hr()),
                           column(6,
                             textInput("inGenes", width=2000, "Genes:"),
                             wellPanel(
@@ -105,15 +103,13 @@ mainPanel(
                               selectInput("inAnnotateClusterNum","Cluster",choices=c()),
                             textInput("inClustAnnot", "New Annotation:"),
                             actionButton("inAnnotateCluster","Annotate"),
-                            actionButton("inSaveAnnot", "Save Annotations")),
-                            wellPanel(
-                              textInput("inRefProfiles","Reference Profiles:",width=2000),
-                              selectInput("inReferenceSets",label = "Reference Set:",choices = c()),
-                  #            actionButton("inReorderRefProfiles", "Reorder Ref. Porfiles"),
-                              actionButton("inSelectAllReferenceProfiles", "Show All Ref. Profiles")
-              #                actionButton("inSelectHighlyCorrelatedProfiles", "Select Highly Correleted")
-                            ))
-                          
+                            actionButton("inSaveAnnot", "Save Annotations"))
+                            ),
+                    column(12,
+                     hr(),
+                     textInput("inSamplesToShow", width=2000, "Samples:"),
+                     actionButton("inResetSamples","Reset"),
+                     hr()) 
                          )#,
 #                    fluidRow(column(12,
 #                            wellPanel(
@@ -189,8 +185,6 @@ mainPanel(
               )
               ),
                 tabPanel("Samples",fluidRow(
-                          column(12,textInput("inSamplesToShow", width=2000, "Samples:"),
-                          actionButton("inResetSamples","Reset")),
                           column(12,uiOutput("sample_avg_profile_plot")),
                           column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
                           column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),
