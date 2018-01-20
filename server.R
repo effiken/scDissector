@@ -34,7 +34,7 @@ tab3_left_margin=12
     session$userData$loaded_flag<-F
     session$userData$loaded_model_version=NA
     session$userData$prev_inModelColorScale_rel<-c(-4,4)
-    session$userData$prev_inModelColorScale_abs<-c(-5,-2)
+    session$userData$prev_inModelColorScale_abs<-c(-7,-1)
     session$userData$click_flag<-T
     
     update_clusters=function(new_clusts,delete_old=F){
@@ -186,7 +186,7 @@ tab3_left_margin=12
       
       session$userData$prev_inModelColorScale_rel<-input$inModelColorScale
       
-      updateSliderInput(session,"inModelColorScale",label="Log10(expression)",min = -12,max=-.5,step = .5,value = session$userData$prev_inModelColorScale_abs)
+      updateSliderInput(session,"inModelColorScale",label="Log10(expression)",min = -10,max=-.5,step = .5,value = session$userData$prev_inModelColorScale_abs)
     }
     else if (input$inAbsOrRel=="Relative"){
       session$userData$prev_inModelColorScale_abs<-input$inModelColorScale
@@ -973,7 +973,7 @@ tab3_left_margin=12
       rownames(mat)=ingenes
       mat<-t(t(mat)/colSums(mat,na.rm=T))
     }
-    
+    isolate({
     mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
       if (ncol(mat1)>1){
@@ -987,10 +987,10 @@ tab3_left_margin=12
     }
     else if (input$inAbsOrRel=="Absolute"){
       mat_to_show=log10(mat1)
-      break1=0
-      break2=1e-1
+      break1=-1e5
+      break2=1e5
     }
-    isolate({
+   
       image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=paste(input$inModelOrAverage,":",session$userData$loaded_model_version))
     })
     box()

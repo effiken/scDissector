@@ -19,6 +19,7 @@ insilico_sorter=function(umitab,insilico_gating){
 load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name=""){
 
   model<-new.env()
+  message("Loading model ",model_fn)
   load(file=model_fn,model)
 
   fn_prefix=strsplit(model_fn,"\\.")[[1]][1]
