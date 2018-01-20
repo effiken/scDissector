@@ -65,6 +65,11 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
 
   cluster_order=cluster_order[!cluster_order%in%output$scDissector_params$excluded_clusters]
 
+  if (is.null(model$avg_numis_per_model)){
+    model$avg_numis_per_model=rep(mean(colSums(model$umitab)),ncol(model$models))
+    tmptab=sapply(split(colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
+    model$avg_numis_per_model[names(tmptab)]=tmptab
+  }
 
   samples=names(sample_fns)
 
@@ -73,13 +78,13 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   tmp_dataset$ll=list()
   tmp_dataset$ll_noise=list()
   tmp_dataset$cell_to_cluster=list()
-  tmp_dataset$avg=list()
+#  tmp_dataset$avg=list()
   tmp_dataset$ds=list()
   tmp_dataset$ds_numis=NULL
   tmp_dataset$counts=list()
   tmp_dataset$bulksum=list()
   tmp_dataset$insilico_gating_scores=list()
-  tmp_dataset$noise_model=list()
+  tmp_dataset$noise_models=list()
   tmp_dataset$beta_noise=list()
   genes=rownames(model$models)
   for (sampi in samples){
@@ -118,39 +123,44 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     barcode_mask=tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis
    
     tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,barcode_mask]
-    tmp_dataset$noise_model[[sampi]]=tmp_env$noise_model
+    tmp_dataset$noise_models[[sampi]]=tmp_env$noise_model
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
-    genemask=setdiff(genemask,model$params$genes_excluded)   
+    projection_genemask=setdiff(genemask,model$params$genes_excluded)   
     genes=intersect(rownames(tmp_dataset$umitab[[sampi]]),genes)
-    #  print(length(genes))
    
     if (is.null(model$beta_noise)){
-      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models =model$models[genemask,],reg = model$params$reg)#params$reg)
+      tmp_dataset$ll[[sampi]]=getLikelihood(tmp_dataset$umitab[[sampi]][projection_genemask,],models =model$models[projection_genemask,],reg = model$params$reg)#params$reg)
     }
     else 
       {
-        noise_model=tmp_dataset$noise_model[[sampi]]
-        avg_numis_per_model=rep(mean(colSums(model$umitab[genemask,])),ncol(model$models))
-        names(avg_numis_per_model)=colnames(model$models)
-        tmptab=sapply(split(colSums(model$umitab[genemask,]),model$cell_to_cluster[colnames(model$umitab)]),mean)
-        avg_numis_per_model[names(tmptab)]=tmptab
-      
-  #      if (file.exists()){
+        noise_model=tmp_dataset$noise_models[[sampi]]
         
-  #      }else{
+        avg_numis_per_model=model$avg_numis_per_model
+        
         beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        
-        tmp_dataset$ll[[sampi]]=  res_boll$ll
-        tmp_dataset$ll_noise[[sampi]]=res_boll$ll_noise
+        cell_to_cluster=rep("",ncol(tmp_dataset$umitab[[sampi]]))
+        nmoved=Inf
+        i=0
+        while (nmoved>=10&&i<4){
+          res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+          tmp_dataset$ll[[sampi]]=  res_boll$ll
+          tmp_dataset$ll_noise[[sampi]]=res_boll$ll_noise
+          prev_cell_to_cluster=cell_to_cluster
           cell_to_cluster=MAP(tmp_dataset$ll[[sampi]])
-        tmptab=sapply(split(colSums(tmp_dataset$umitab[[sampi]][genemask,]),cell_to_cluster[colnames(tmp_dataset$umitab[[sampi]])]),mean)
-        avg_numis_per_model[names(tmptab)]=tmptab
-      
-        beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        print(beta_noise)
-      
+          tmptab=sapply(split(colSums(tmp_dataset$umitab[[sampi]][genemask,]),cell_to_cluster[colnames(tmp_dataset$umitab[[sampi]])]),mean)
+          avg_numis_per_model[names(tmptab)]=tmptab
+          beta_noise=update_beta_single_batch(tmp_dataset$umitab[[sampi]][genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+          
+          nmoved=sum(cell_to_cluster!=prev_cell_to_cluster)
+          if (i>0){
+            message("~",round(beta_noise), " noise UMIs/cell")
+            message("iter ",i, " ",nmoved,"/",length(cell_to_cluster)," cells moved")
+          }
+          i=i+1
+        }
+        
+        model$avg_numis_per_model=avg_numis_per_model
         tmp_dataset$beta_noise[[sampi]]=beta_noise
    #   }
         res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
@@ -158,6 +168,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
         tmp_dataset$ll[[sampi]]=res_boll$ll
       
       }
+   
     tmp_dataset$cell_to_cluster[[sampi]]=MAP(tmp_dataset$ll[[sampi]])
    
     cells_to_include=names(tmp_dataset$cell_to_cluster[[sampi]])[!tmp_dataset$cell_to_cluster[[sampi]]%in%output$scDissector_params$excluded_clusters]
@@ -167,16 +178,16 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,cells_to_include]
     tmp_models=model$models[,setdiff(colnames(model$models),output$scDissector_params$excluded_clusters)]
   
-    tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
+#    tmp_dataset$avg[[sampi]]=matrix(0, nrow(tmp_dataset$umitab[[sampi]]),ncol(tmp_models),dimnames = list(rownames(tmp_dataset$umitab[[sampi]]),colnames(tmp_models)))
     
     tmpmod=update_models(tmp_dataset$umitab[[sampi]],tmp_dataset$cell_to_cluster[[sampi]])
-    tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
+ #   tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
     tmp_counts=as.matrix(t(aggregate.Matrix(t(tmp_dataset$umitab[[sampi]][genemask,]),tmp_dataset$cell_to_cluster[[sampi]],fun="sum")))
    
   #  tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
-    print(length(tmp_dataset$counts))
+   
     tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$umitab[[sampi]][genemask,])
     tmp_dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
   
@@ -204,15 +215,15 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
   names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$numis_before_filtering=tmp_dataset$numis_before_filtering
-  dataset$avg<-tmp_dataset$avg
+#  dataset$avg<-tmp_dataset$avg
     
   dataset$samples=samples
   dataset$ds<-list()
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
-  dataset$noise_model=matrix(0,length(genes),length(samples))
-  colnames(dataset$noise_model)=names(tmp_dataset$noise_model)
-  rownames(dataset$noise_model)=genes
+  dataset$noise_models=matrix(0,length(genes),length(samples))
+  colnames(dataset$noise_models)=names(tmp_dataset$noise_models)
+  rownames(dataset$noise_models)=genes
   dataset$beta_noise=unlist(tmp_dataset$beta_noise)
   names(dataset$beta_noise)=names(tmp_dataset$beta_noise)
   if (!is.null(model$insilico_gating)){
@@ -242,7 +253,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   }
   if (length(samples)>1){
     for (sampi in samples[-1]){
-      dataset$noise_model[genes,sampi]=tmp_dataset$noise_model[[sampi]][genes,1]
+      dataset$noise_models[genes,sampi]=tmp_dataset$noise_models[[sampi]][genes,1]
       dataset$bulk_avg[genes,sampi]=tmp_dataset$bulksum[[sampi]][genes]/sum(tmp_dataset$bulksum[[sampi]][genes])
       cellids=colnames(tmp_dataset$umitab[[sampi]][genes,])
       dataset$umitab<-cBind(dataset$umitab,tmp_dataset$umitab[[sampi]][genes,])
@@ -283,8 +294,10 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   for (si in 1:length(tmp_dataset$counts)){
     dataset$counts[si,,]=tmp_dataset$counts[[si]]
   }
-  
-  
+
+  if (!is.null(model$noise_models)){
+    dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,model$avg_numis_per_model)
+  }
   output$dataset=dataset
   rm("tmp_dataset","dataset")
   ncells_per_cluster<-rep(0,dim(model$models)[2])

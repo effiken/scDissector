@@ -60,7 +60,7 @@ mainPanel(
                   
                   tabPanel("Clusters", 
                     fluidRow(
-                          selectInput("inModelOrAverage","View",choices=c("Model","Average")),
+                          selectInput("inModelOrAverage","View",choices=c("Model","Batch-corrected Average","Average")),
                           uiOutput("avg_profile_plot"),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),

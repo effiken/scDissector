@@ -33,7 +33,7 @@ tab3_left_margin=12
     
     session$userData$loaded_flag<-F
     session$userData$loaded_model_version=NA
-    session$userData$prev_inModelColorScale_rel<-c(-2,4)
+    session$userData$prev_inModelColorScale_rel<-c(-4,4)
     session$userData$prev_inModelColorScale_abs<-c(-5,-2)
     session$userData$click_flag<-T
     
@@ -440,7 +440,7 @@ tab3_left_margin=12
     genes_to_show=head(names(sort(fc,decreasing=T)),floor(ngenes_to_show/2))
     genes_to_show=c(genes_to_show,tail(names(sort(fc,decreasing=T)),ceiling(ngenes_to_show/2)))
     genes_to_show_comma_delimited=paste(genes_to_show,collapse=",")
-  browser()
+
     if (!is.null(session$userData$geneList)){
       geneList=session$userData$geneList
       geneList[length(geneList)+1]=genes_to_show_comma_delimited
@@ -961,16 +961,25 @@ tab3_left_margin=12
       mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
     }
     else {
-  #    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
-      mat<-t(t(apply(session$userData$dataset$counts[insamples,ingenes,inclusts,drop=F],2:3,sum))/apply(session$userData$dataset$counts[insamples,ingenes,inclusts,drop=F],3,sum))
-#      mat=mat/sum(session$userData$dataset$umitab[,mask])
+      gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
+      mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
+
+      if (input$inModelOrAverage=="Batch-corrected Average"){
+        if (!is.null(session$userData$dataset$noise_counts)){
+          mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
+          mat<-pmax(mat-mat_noise,0)
+        }
+      }
+      rownames(mat)=ingenes
+      mat<-t(t(mat)/colSums(mat,na.rm=T))
     }
+    
     mat1=mat[,inclusts,drop=F]
     if (input$inAbsOrRel=="Relative"){
       if (ncol(mat1)>1){
-        mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
-        break1=-1e6
-        break2=1e6
+        mat_to_show=log2(1e-6+mat1/pmax(1e-6,rowMeans(mat1,na.rm=T)))
+        break1=-1e7
+        break2=1e7
       }
       else{
         return()
