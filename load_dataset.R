@@ -16,7 +16,7 @@ insilico_sorter=function(umitab,insilico_gating){
 
 
 
-load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name=""){
+load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
 
   model<-new.env()
   message("Loading model ",model_fn)
@@ -75,19 +75,22 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   samples=names(sample_fns)
 
   tmp_dataset=new.env()
+  dataset<-new.env()
   tmp_dataset$umitab=list()
   tmp_dataset$ll=list()
   tmp_dataset$ll_noise=list()
   tmp_dataset$cell_to_cluster=list()
 #  tmp_dataset$avg=list()
   tmp_dataset$ds=list()
-  tmp_dataset$ds_numis=NULL
+  dataset$ds_numis=NULL
+  dataset$numis_before_filtering=list()
   tmp_dataset$counts=list()
   tmp_dataset$bulksum=list()
   tmp_dataset$insilico_gating_scores=list()
   tmp_dataset$noise_models=list()
   tmp_dataset$beta_noise=list()
   genes=rownames(model$models)
+  message("")
   for (sampi in samples){
     message("Loading sample ",sampi)
     i=match(sampi,samples)
@@ -102,13 +105,13 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
     }
   
-    if (is.null(tmp_dataset$ds_numis)){
-      tmp_dataset$ds_numis=tmp_env$ds_numis
+    if (is.null(dataset$ds_numis)){
+      dataset$ds_numis=tmp_env$ds_numis
     }
     else{
-      if (!all(tmp_dataset$ds_numis==tmp_env$ds_numis)){
+      if (!all(dataset$ds_numis==tmp_env$ds_numis)){
         message("Warning! Some of the samples don't share the same downsampling UMIs values")
-        tmp_dataset$ds_numis=intersect(tmp_dataset$ds_numis,tmp_env$ds_numis)
+        dataset$ds_numis=intersect(dataset$ds_numis,tmp_env$ds_numis)
       }
     }
     tmp_env$numis_before_filtering=colSums(tmp_env$umitab)    
@@ -121,8 +124,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       tmp_dataset$umitab[[sampi]]=is_res$umitab
       tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
     }
-    barcode_mask=tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis
-   
+    barcode_mask=tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]>min_umis&tmp_env$numis_before_filtering[colnames(tmp_dataset$umitab[[sampi]])]<max_umis
+    dataset$min_umis=min_umis
+    dataset$max_umis=max_umis
     tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,barcode_mask]
     tmp_dataset$noise_models[[sampi]]=tmp_env$noise_model
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
@@ -163,7 +167,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
         
         model$avg_numis_per_model=avg_numis_per_model
         tmp_dataset$beta_noise[[sampi]]=beta_noise
-   #   }
         res_boll=getOneBatchCorrectedLikelihood(tmp_dataset$umitab[[sampi]][genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         
         tmp_dataset$ll[[sampi]]=res_boll$ll
@@ -185,12 +188,11 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
  #   tmp_dataset$avg[[sampi]][,colnames(tmpmod)]=tmpmod
     tmp_counts=as.matrix(t(aggregate.Matrix(t(tmp_dataset$umitab[[sampi]][genemask,]),tmp_dataset$cell_to_cluster[[sampi]],fun="sum")))
    
-  #  tmp_counts=sapply(split_sparse(tmp_dataset$umitab[[sampi]][genemask,],tmp_dataset$cell_to_cluster[[sampi]]),rowSums)
     tmp_dataset$counts[[sampi]]=tmp_models*0
     tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
    
-    tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$umitab[[sampi]][genemask,])
-    tmp_dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
+    tmp_dataset$bulksum[[sampi]]=rowSums(tmp_dataset$counts[[sampi]][genemask,])
+    dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
   
     if (length(tmp_dataset$ds)==0){
       for (ds_i in 1:length(tmp_env$ds_numis)){
@@ -206,8 +208,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
 
   message("One more minute...")
 
-  dataset<-new.env()
-  dataset$ds_numis=tmp_dataset$ds_numis
+
   dataset$umitab<-tmp_dataset$umitab[[samples[1]]][genes,]
   dataset$ll<-tmp_dataset$ll[[samples[1]]]
   dataset$ll_noise<-tmp_dataset$ll_noise[[samples[1]]]
@@ -215,7 +216,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   names(dataset$cell_to_cluster)=colnames(tmp_dataset$umitab[[samples[1]]])
   dataset$cell_to_sample<-rep(samples[1],ncol(tmp_dataset$umitab[[samples[1]]]))
   names(dataset$cell_to_sample)=colnames(tmp_dataset$umitab[[samples[1]]])
-  dataset$numis_before_filtering=tmp_dataset$numis_before_filtering
+
 #  dataset$avg<-tmp_dataset$avg
     
   dataset$samples=samples

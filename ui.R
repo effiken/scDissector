@@ -16,20 +16,21 @@ actionLink <- function(inputId, ...) {
 #}else {
 #  clustnames=1:vers$k[1]
 #}
-mainPanel(     
+mainPanel(width=12,  
   fluidPage(
    
       h4("scDissector v0.36"),
      tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
-                                  textInput("inDatapath",width=1000, "Data path:", value =""), 
+                                  textInput("inDatapath",width="75%", "Data path:", value =""), 
                                   wellPanel(
-                                           selectInput("inModelVer", "Model Version:",choices = c()),
-                                          selectInput("inSampleToAdd", "Samples:",choices = c()),
+                                           selectInput("inModelVer", "Model Version:",choices = c(),width=300),
+                                          selectInput("inSampleToAdd", "Samples:",choices = c(),width=300),
                                           actionButton("inAddSample","Add"),
-                                          textInput("inSamples", width=2000, "Samples To Load:"),
+                                          textInput("inSamples", width="100%", "Samples To Load:"),
                                           textInput("inMinUmis", width=100, "Minimum #UMIs/cell:",value = 250),
+                                          textInput("inMaxUmis", width=100, "Maximum #UMIs/cell:",value = 25000),
                                           actionButton("inLoad","Load")
                                   ),
                                   br(),br(),
@@ -51,8 +52,8 @@ mainPanel(
                   ),
                   tabPanel("Basics", 
                            fluidRow(
-                             plotOutput("ncells_barplot",width="150%",height=200),
-                             plotOutput("UMI_boxplot",width="150%",height=200)
+                             plotOutput("ncells_barplot",width="100%",height=200),
+                             plotOutput("UMI_boxplot",width="100%",height=200)
                              #   plotOutput("BatchHeatmap",width="150%",height=600)
                           
                           )
@@ -61,7 +62,7 @@ mainPanel(
                   tabPanel("Clusters", 
                     fluidRow(
                           selectInput("inModelOrAverage","View",choices=c("Model","Batch-corrected Average","Average")),
-                          uiOutput("avg_profile_plot"),
+                          column(1,offset=0, style='padding:0px;',uiOutput("samples_enrichment")),column(10,uiOutput("avg_profile_plot")),column(1,offset=0, style='padding:0px;',uiOutput("cluster_sizes")),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),
                           column(4,
@@ -124,7 +125,7 @@ mainPanel(
 #                            ))
                         ), 
                 tabPanel("Truth", fluidRow(
-                      plotOutput("truthplot",width="150%",height = "700"),
+                      plotOutput("truthplot",width="100%",height = "700"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
@@ -191,49 +192,18 @@ mainPanel(
                           column(6,textInput("inProjectSampleGroup2","Samples Group 2:")),
                           column(12,selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
                           uiOutput("projection_barplot_plot"),
-                 #  tableOutput("ClusteringsComparisonTable"),
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
                    tableOutput("Gene1ExprsTableRefVsProj")),
                    plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500)))),
-#             tabPanel("Tweezers",fluidRow(column(6,
-#                wellPanel(
-#                selectInput("inTweezersFromCluster","Select Cells From Cluster:",choices=c()),
-#                textInput("inTweezers_cells_to_move","Cells To Move: ",value = "")
-#                )
-#              ),
-#              column(6,wellPanel(
-#                selectInput("inTweezersToCluster","Move Cells To Cluster:",choices=c()),
-#                actionButton("inTweezersMoveCells","Move cells"))),
-#              column(12,selectInput("inTweezersLLX", "Log Likelihood X-axis:",choices=c()),
-#                        selectInput("inTweezersLLY", "Log Likelihood Y-axis:",choices=c()),
-#                     
-#                     wellPanel(
-#                                    textInput("inTweezers_new_version_filename","Rd Filename: ",value = ""),
-#                                    textInput("inTweezers_new_version_name","Version Name: ",value = ""),
-#                                    actionButton("inTweezersSaveVersion","Save Version"))),
-#              plotOutput("TweezersLikelihoodPlot"))),
-                       
+                     
                    fluidRow(column(12,br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br())
-                    
-                )#,
-#                tabPanel("Playground",fluidRow(
-#                  column(3,
-#                          wellPanel(  
-#                              selectInput("inLLclust1", "Cluster1:",choices=c()),
-#                              selectInput("inLLclust2", "Cluster2:",choices=c())
-#                            )
-#                         ),
-#                  column(9,
-#                      plotOutput("llPlot")
-#                  )
-#                  )
-#                )
               ),
-          br(),
+          br()),
           img(src = 'sinai_logo.png',height = '70px', width = '70px'),
           p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))
       )
+  
 )
 
           
