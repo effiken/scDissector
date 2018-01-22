@@ -1051,7 +1051,9 @@ tab3_left_margin=12
 
       if (input$inModelOrAverage=="Batch-corrected Average"){
         if (!is.null(session$userData$dataset$noise_counts)){
-          mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
+          
+          
+          mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
           mat<-pmax(mat-mat_noise,0)
         }
       }
