@@ -50,6 +50,15 @@ update_clusters=function(session,new_clusts,delete_old=F){
   updateTextInput(session,"inClusters",value=paste(new_clusts,collapse=",")) 
 }
 
+update_genes=function(session,new_genes,delete_old=F){
+  if(delete_old){
+    session$userData$scDissector_params$previous_genes<-new_genes
+  }
+  updateTextInput(session,"inGenes",value=paste(new_genes,collapse=", ")) 
+}
+
+
+
 update_all= function(session,ldm){
   for (item in names(ldm)){
     session$userData[[item]]=ldm[[item]]
@@ -58,7 +67,8 @@ update_all= function(session,ldm){
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$samples))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
-  
+  session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
+
   update_clusters(session,session$userData$default_clusters,T)
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
@@ -80,7 +90,12 @@ update_all= function(session,ldm){
 }
 
 tab3_left_margin=12
+
+
   function(input, output, session) {
+    
+    
+    
     session$userData$prev_xy_range_G=c(0,0,0,0)
     session$userData$prev_xy_range_C=c(0,0,0,0)
     session$userData$update_ingene_text_input=T
@@ -92,7 +107,9 @@ tab3_left_margin=12
     session$userData$prev_inModelColorScale_abs<-c(-7,-1)
     session$userData$click_flag<-T
     
-
+    
+    
+    
     observeEvent(input$inDatapath,{
       if (input$inDatapath==""){
         return()
@@ -182,16 +199,15 @@ tab3_left_margin=12
     
     sample_paths=paste(input$inDatapath,session$userData$samples_tab$path[match(samples,session$userData$samples_tab$index)],sep="/")
     names(sample_paths)=samples
-    message("Loading ",model_fn)
     
     isolate({
       min_umis=as.numeric(input$inMinUmis)
-      max_umis=as.numeric(input$inMMaxUmis)
+      max_umis=as.numeric(input$inMaxUmis)
       })
-    
+
     ldm=load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis)
     show_all_tabs()
-    update_all(ldm)
+    update_all(session,ldm)
     
   })
   
@@ -225,13 +241,20 @@ tab3_left_margin=12
     if (!session$userData$loaded_flag){
       return()
     }
-    message("G",xy_range)
+ 
     genes=init_genes(input$inGenes)
-    if ((!is.null(xy_range))&(length(xy_range)==4)&(!all(session$userData$prev_xy_range_G==unlist(xy_range)))){
-      session$userData$prev_xy_range_G=unlist(xy_range)
-      genes=genes[ceiling(as.numeric(xy_range$'xaxis.range[0]')):floor(as.numeric(xy_range$'xaxis.range[1]'))]      
-      message("G ",length(genes))
-      updateTextInput(session,"inGenes",value=paste(genes,collapse=", "))
+    if ((!is.null(xy_range))&(sum(c('xaxis.range[0]','xaxis.range[1]')%in%names(xy_range))==2)){
+      if(!all(session$userData$prev_xy_range_G==unlist(xy_range))){
+        if (min(unlist(xy_range),na.rm=T)<0){
+          session$userData$prev_xy_range_G=unlist(xy_range) 
+          update_genes(session,genes,T)
+        }
+        else{
+          session$userData$prev_xy_range_G=unlist(xy_range)
+          genes=genes[ceiling(as.numeric(xy_range$'xaxis.range[0]')):floor(as.numeric(xy_range$'xaxis.range[1]'))]
+          update_genes(session,genes,F)
+        }
+      }
     }
     
     return(genes)
@@ -243,26 +266,30 @@ tab3_left_margin=12
       return()
     }
     
-    clusts=strsplit(input$inClusters,",")[[1]]
+    clusts=strsplit(input$inClusters,",|, | ,")[[1]]
     clusts=intersect(clusts,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters))
-    message("C",xy_range)
-    if ((!is.null(xy_range))&(length(xy_range)==4)&(!all(session$userData$prev_xy_range_C==unlist(xy_range)))){
-      
-      session$userData$prev_xy_range_C=unlist(xy_range)
-      clusts=clusts[ceiling(as.numeric(xy_range$'yaxis.range[0]')):floor(as.numeric(xy_range$'yaxis.range[1]'))]      
-      session$userData$update_inclusts_text_input=F
-      message("C ",length(clusts))
-      update_clusters(session,clusts)
+    if ((!is.null(xy_range))&(sum(c('yaxis.range[0]','yaxis.range[1]')%in%names(xy_range))==2)){
+      if (!all(session$userData$prev_xy_range_C==unlist(xy_range))){
+        if (min(unlist(xy_range),na.rm=T)<0){
+          session$userData$prev_xy_range_C=unlist(xy_range) 
+          clusts=session$userData$scDissector_params$previous_clusters
+        }
+        else{
+          session$userData$prev_xy_range_C=unlist(xy_range)
+          clusts=rev(rev(clusts)[ceiling(as.numeric(xy_range$'yaxis.range[0]')):floor(as.numeric(xy_range$'yaxis.range[1]'))])
+        }
+        session$userData$update_inclusts_text_input=F
+        update_clusters(session,clusts)
         
+      }
     }
-
     return(clusts)
   })
   
   
   clusters_genes_sampples_reactive <-reactive({
     
-    return(clusters=clusters_reactive(),genes=genes_reactive(),samples=samples_reacrive())
+    return(list(clusters=clusters_reactive(),genes=genes_reactive(),samples=samples_reactive()))
   })
   
   
@@ -305,7 +332,6 @@ tab3_left_margin=12
   observeEvent(input$inGeneSets,{
     geneSets=input$inGeneSets
     updateTextInput(session,"inGenes",value=as.character(session$userData$geneList[geneSets]))
-
     })
   
   
@@ -354,12 +380,14 @@ tab3_left_margin=12
       cormat=cormat[mask,mask]
     
       ord=hclust(dist(1-cormat))$order
-      updateTextInput(session,"inGenes",value=paste(c(rownames(cormat)[ord],setdiff(rownames(mat),rownames(cormat))),collapse=","))
+      genes=c(rownames(cormat)[ord],setdiff(rownames(mat),rownames(cormat)))
+      update_genes(session,genes,F)
     }
     else if (input$inReorderingMethod=="Diagonal"){
         clusters=clusters_reactive()
         ord=order(apply(mat[,clusters],1,which.max))
-        updateTextInput(session,"inGenes",value=paste(rownames(mat)[ord],collapse=","))
+        genes=rownames(mat)[ord]
+        update_genes(session,genes,F)
       }
   })
   
@@ -1055,13 +1083,16 @@ tab3_left_margin=12
       input$inBirdClusterSetInclude
       #####
       
-      inclusts=clusters_reactive()
-      ingenes=genes_reactive()
-      insamples=samples_reactive()
+      cgs=clusters_genes_sampples_reactive()
+      
+      inclusts=cgs$clusters
+      ingenes=cgs$genes
+      insamples=cgs$samples
+  
       if (!session$userData$loaded_flag){
         return()
       }
-      
+
       # Lables for axes
       if (length(ingenes)==0){
         return()
@@ -1074,7 +1105,7 @@ tab3_left_margin=12
      
       par(mar=c(7,tab3_left_margin,1,9))
       if (input$inModelOrAverage=="Model"){
-        mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
+        mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),,drop=F]
       }
       else {
         gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
@@ -1099,7 +1130,6 @@ tab3_left_margin=12
       clusters=colnames(mat1)
       clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
       annots=session$userData$clustAnnots[inclusts]
-
       return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel))
   })
   

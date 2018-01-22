@@ -129,6 +129,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     dataset$max_umis=max_umis
     tmp_dataset$umitab[[sampi]]=tmp_dataset$umitab[[sampi]][,barcode_mask]
     tmp_dataset$noise_models[[sampi]]=tmp_env$noise_model
+
     message("Projecting ",ncol(tmp_dataset$umitab[[sampi]])," cells")
     genemask=intersect(rownames(tmp_dataset$umitab[[sampi]]),rownames(model$models))
     projection_genemask=setdiff(genemask,model$params$genes_excluded)   
