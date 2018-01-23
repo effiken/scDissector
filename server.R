@@ -81,6 +81,10 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+  if (is.null(ldm$model$noise_models)){
+     updateSelectInput(session,"inModelOrAverage",choices=c("Model","Average"))
+  }
+  
   
   updateTextInput(session,"inMaxUmis",value = session$userData$dataset$max_umis)
   updateTextInput(session,"inMinUmis",value = session$userData$dataset$min_umis)
@@ -88,6 +92,28 @@ update_all= function(session,ldm){
   
   session$userData$loaded_flag<-T
 }
+
+randomly_select_cells=function(ldm,nrandom_cells_per_sample_choices){
+  randomly_selected_cells=list()
+  for (sampi in ldm$dataset$samples){
+    for (ds_i in 1:length(ldm$dataset$ds_numis)){
+      randomly_selected_cells[[ds_i]]<-list()
+      for (nrandom_cells in nrandom_cells_per_sample_choices){
+        randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
+        if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=ncol(ldm$dataset$ds[[ds_i]])){
+          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(ldm$dataset$ds[[ds_i]]))
+        }
+        else{
+          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(ldm$dataset$ds[[ds_i]]),size=as.numeric(nrandom_cells),replace=F))
+        }
+      }
+    }
+  }
+  return(randomly_selected_cells)
+}
+
+
+
 
 tab3_left_margin=12
 
@@ -206,6 +232,9 @@ tab3_left_margin=12
       })
 
     ldm=load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis)
+    
+    randomly_selected_cells=randomly_select_cells(ldm,params$nrandom_cells_per_sample_choices)
+    ldm$dataset$randomly_selected_cells=randomly_selected_cells
     show_all_tabs()
     update_all(session,ldm)
     
@@ -217,7 +246,7 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inResetSamples,{
-    samples=colnames(session$userData$dataset$bulk_avg)
+    samples=colnames(session$userData$dataset$samples)
     updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
   })
   
@@ -1052,10 +1081,12 @@ tab3_left_margin=12
       if (input$inModelOrAverage=="Batch-corrected Average"){
         if (!is.null(session$userData$dataset$noise_counts)){
           
+
           
           mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
           mat<-pmax(mat-mat_noise,0)
         }
+
       }
       rownames(mat)=ingenes
       mat<-t(t(mat)/colSums(mat,na.rm=T))
@@ -1110,12 +1141,17 @@ tab3_left_margin=12
         mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),,drop=F]
       }
       else {
+        ncells_per_sample=table(session$userData$dataset$cell_to_sample)
         gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
-        mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
+        weights=ncells_per_sample[insamples]/sum(ncells_per_sample[insamples])
+        arr_weights=array(weights,dim=c(length(insamples),length(gene_match),length(inclusts)))
+        mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
+        numis_per_sample=apply(session$userData$dataset$counts,1,sum)
         
         if (input$inModelOrAverage=="Batch-corrected Average"){
           if (!is.null(session$userData$dataset$noise_counts)){
-            mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
+
+            mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
             mat<-pmax(mat-mat_noise,0)
           }
         }
@@ -1266,9 +1302,11 @@ tab3_left_margin=12
   output$truthplot <- renderPlot({
    
     zlim=input$inTruthColorScale
-    inclusts=clusters_reactive()
-    ingenes=genes_reactive()
-    insamples=samples_reactive()
+   
+    cgs=clusters_genes_sampples_reactive()
+    inclusts=cgs$clusters
+    ingenes=cgs$genes
+    insamples=cgs$samples
     nclust=length(inclusts)
     if (!session$userData$loaded_flag){
       return()
@@ -1805,9 +1843,13 @@ tab3_left_margin=12
     }
     
     if (exists("default_model_dataset")){
+      
       hideTab(inputId = "inMain", target = "Data")
-       update_all(session,default_model_dataset)
-     show_all_tabs()
+      ldm=default_model_dataset
+      randomly_selected_cells=randomly_select_cells(ldm,params$nrandom_cells_per_sample_choices)
+      ldm$dataset$randomly_selected_cells=randomly_selected_cells
+      update_all(session,ldm)
+      show_all_tabs()
       updateTabsetPanel(session, "inMain", selected = "Model")
     }
     
