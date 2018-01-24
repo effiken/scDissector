@@ -65,9 +65,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   }
 
   cluster_order=cluster_order[!cluster_order%in%output$scDissector_params$excluded_clusters]
-
   if (is.null(model$avg_numis_per_model)){
     model$avg_numis_per_model=rep(mean(colSums(model$umitab)),ncol(model$models))
+    names(model$avg_numis_per_model)=colnames(model$models)
     tmptab=sapply(split(colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
     model$avg_numis_per_model[names(tmptab)]=tmptab
   }
@@ -99,7 +99,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     tmp_env=new.env()
     load(sample_fns[i],envir = tmp_env)
     tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
-    
+  
     colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
     for (ds_i in 1:length(tmp_env$ds)){
       tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
@@ -140,7 +140,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     genemask=intersect(rownames(umitab),rownames(model$models))
     projection_genemask=setdiff(genemask,model$params$genes_excluded)   
     genes=intersect(rownames(umitab),genes)
-   
     if (is.null(model$beta_noise)){
       ll=getLikelihood(umitab[projection_genemask,],models =model$models[projection_genemask,],reg = model$params$reg)#params$reg)
     }
@@ -149,7 +148,6 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
         noise_model=tmp_dataset$noise_models[[sampi]]
         
         avg_numis_per_model=model$avg_numis_per_model
-        
         beta_noise=update_beta_single_batch(umitab[genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         cell_to_cluster=rep("",ncol(umitab))
         nmoved=Inf

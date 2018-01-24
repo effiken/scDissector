@@ -34,13 +34,13 @@ update_beta_single_batch=function(umitab,models,noise_model,avg_numis_per_model,
   }
   get_ll_b=function(numis_noise_b,models,noise_model,umitab,reg){
     alpha=pmin(numis_noise_b/avg_numis_per_model,max_noise_fraction)
-    
     adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
     ll_b=getLikelihood(umitab,adjusted_models,reg=reg)
     return(ll_b)
   }
   func_to_opt=function(x,bi){
     #  message(bi," ",round(x,digits=2))
+    
     tot_ll=get_total_likelihood(get_ll_b(x,models,noise_model,umitab,reg))
     return(tot_ll)
   }
