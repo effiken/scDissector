@@ -13,7 +13,7 @@ non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene 
 
 
 
-colgrad=c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
+colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
 
