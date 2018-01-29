@@ -13,7 +13,7 @@ non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene 
 
 
 
-colgrad=c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
+colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
 
@@ -95,9 +95,9 @@ update_all= function(session,ldm){
 
 randomly_select_cells=function(ldm,nrandom_cells_per_sample_choices){
   randomly_selected_cells=list()
-  for (sampi in ldm$dataset$samples){
-    for (ds_i in 1:length(ldm$dataset$ds_numis)){
-      randomly_selected_cells[[ds_i]]<-list()
+  for (ds_i in 1:length(ldm$dataset$ds_numis)){
+    randomly_selected_cells[[ds_i]]<-list()
+    for (sampi in ldm$dataset$samples){
       for (nrandom_cells in nrandom_cells_per_sample_choices){
         randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
         if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=ncol(ldm$dataset$ds[[ds_i]])){
