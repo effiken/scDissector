@@ -502,7 +502,7 @@ tab3_left_margin=12
   chisq_genes=function(counts){
     counts=apply(counts,2:3,sum)
     gene_mask=apply(counts,1,max)>3
-    counts=counts[gene_mask,]
+    counts=counts[gene_mask,,drop=F]
     cluster_tot=colSums(counts)
     arrcont=array(c(counts,matrix(cluster_tot,dim(counts)[1],dim(counts)[2],byrow=T)-counts),dim=c(dim(counts),2))
     suppressWarnings({ res=t(apply(arrcont,1,function(x){unlist(chisq.test(x)[c("p.value","statistic")])}))})
