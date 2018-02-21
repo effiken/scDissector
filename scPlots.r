@@ -88,7 +88,9 @@ plot_truth_heatmap=function(ldm,downSamplingVersion,ingenes,inclusts_list,insamp
       show_gene_names=F
     }
     
-    inclusts=inclusts_list[[i]] 
+    inclusts=inclusts_list[[i]]
+    inclusts=inclusts[order(match(inclusts,ldm$cluster_order))]
+    print(inclusts)
     cell_mask=ldm$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
       ldm$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
       ds_i=ds[genes,cell_mask]

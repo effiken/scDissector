@@ -67,23 +67,59 @@ getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,beta_noise=NUL
   return(list(ll=ll,ll_noise=ll_noise))
 }
 
-get_expected_noise_UMI_counts=function(umis,cluster,batch,noise_models,beta_noise,avg_numis_per_model){
+
+noiseEMsingleBatch=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75,trace=T){
+  
+    beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+if (trace){
+    message("Est 1: ~",round(beta_noise), " noise UMIs/cell")
+  }
+  cell_to_cluster=rep("",ncol(umitab))
+  nmoved=Inf
+  i=0
+  min_n_moved=min(10,ncol(umitab)/100)
+  while (nmoved>=min_n_moved&&i<6){
+    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+    prev_cell_to_cluster=cell_to_cluster
+    cell_to_cluster=MAP(res_boll$ll)
+    tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
+    avg_numis_per_model[names(tmptab)]=tmptab
+   
+    beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+
+    nmoved=sum(cell_to_cluster!=prev_cell_to_cluster)
+    if (i>0&trace){
+      message("Est 2: ~",round(beta_noise), " noise UMIs/cell")
+      message("inner iter ",i, " ",nmoved,"/",length(cell_to_cluster)," cells moved")
+    }
+    i=i+1
+  }
+
+  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+  
+  return(list(beta_noise=beta_noise,avg_numis_per_model=avg_numis_per_model,ll=res_boll$ll))
+}
+
+
+
+
+get_expected_noise_UMI_counts=function(umis,cluster,batch,noise_models,beta_noise,clusters){
  ngenes=nrow(noise_models)
-  nmodels=length(avg_numis_per_model)
+  nmodels=length(clusters)
   nsamps=ncol(noise_models)
   tmp_tab=table(batch,cluster)
-  tab=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),names(avg_numis_per_model)))
+  tab=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
   tab[,colnames(tmp_tab)]=tmp_tab
 
   #beta_noise is the inferred number of noise molecules/cell.
   #tab contains the number of cells per (sample,cluster)
-  tot_noise_umis=matrix(beta_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),names(avg_numis_per_model)))*tab
+  tot_noise_umis=matrix(beta_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))*tab
   arr_tot_noise_umis=array(tot_noise_umis,dim=c(nsamps,nmodels,ngenes))
   arr_tot_noise_umis=aperm(arr_tot_noise_umis,c(1,3,2))
   arr_noise_models=array(noise_models[,rownames(tab)],dim=c(ngenes,nsamps,nmodels))
   arr_noise_models=aperm(arr_noise_models,c(2,1,3))
   expected_noise_counts=arr_noise_models*arr_tot_noise_umis
-  dimnames(expected_noise_counts)=list(colnames(noise_models),rownames(noise_models),names(avg_numis_per_model))
+  dimnames(expected_noise_counts)=list(colnames(noise_models),rownames(noise_models),clusters)
   return(expected_noise_counts)
 }
 

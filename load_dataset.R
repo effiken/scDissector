@@ -84,10 +84,12 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   dataset$cell_to_cluster<-c()
   dataset$numis_before_filtering=list()
   dataset$cell_to_sample<-c()
+ 
   tmp_dataset$counts=list()
   tmp_dataset$insilico_gating_scores=list()
   tmp_dataset$noise_models=list()
-  tmp_dataset$beta_noise=list()
+  dataset$beta_noise=rep(NA,length(samples))
+  names(dataset$beta_noise)=samples
   genes=rownames(model$models)
   message("")
   dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
@@ -148,32 +150,11 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
         noise_model=tmp_dataset$noise_models[[sampi]]
         
         avg_numis_per_model=model$avg_numis_per_model
-        beta_noise=update_beta_single_batch(umitab[genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        cell_to_cluster=rep("",ncol(umitab))
-        nmoved=Inf
-        i=0
-        while (nmoved>=10&&i<4){
-          res_boll=getOneBatchCorrectedLikelihood(umitab[genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-          
-          prev_cell_to_cluster=cell_to_cluster
-          cell_to_cluster=MAP(res_boll$ll)
-          tmptab=sapply(split(colSums(umitab[genemask,]),cell_to_cluster[colnames(umitab)]),mean)
-          avg_numis_per_model[names(tmptab)]=tmptab
-          beta_noise=update_beta_single_batch(umitab[genemask,],model$models[genemask,],noise_model[genemask,],avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-          
-          nmoved=sum(cell_to_cluster!=prev_cell_to_cluster)
-          if (i>0){
-            message("~",round(beta_noise), " noise UMIs/cell")
-            message("iter ",i, " ",nmoved,"/",length(cell_to_cluster)," cells moved")
-          }
-          i=i+1
-        }
-        
-        model$avg_numis_per_model=avg_numis_per_model
-        tmp_dataset$beta_noise[[sampi]]=beta_noise
-        res_boll=getOneBatchCorrectedLikelihood(umitab[genemask,],models=model$models[genemask,],noise_model[genemask,],beta_noise=beta_noise,  avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-        ll=res_boll$ll
+        gobclle_res=getOneBatchCorrectedLikelihoodExtended(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=noise_model[genemask,],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+        ll=gobclle_res$ll
+        dataset$beta_noise[sampi]=gobclle_res$beta_noise
       }
+    
     cell_to_cluster=MAP(ll)
     cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%output$scDissector_params$excluded_clusters]
   
@@ -216,15 +197,14 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   message("...")
 
 
-
+  dataset$umitab<-dataset$umitab[,-1]
   dataset$samples=samples
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
   dataset$noise_models=matrix(0,length(genes),length(samples))
   colnames(dataset$noise_models)=names(tmp_dataset$noise_models)
   rownames(dataset$noise_models)=genes
-  dataset$beta_noise=unlist(tmp_dataset$beta_noise)
-  names(dataset$beta_noise)=names(tmp_dataset$beta_noise)
+
   if (!is.null(model$insilico_gating)){
     for (score_i in 1:length(model$insilico_gating)){
       dataset$insilico_gating_scores[[score_i]]=tmp_dataset$insilico_gating_scores[[1]][[score_i]]
@@ -249,7 +229,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   }
 
   if (!is.null(model$noise_models)){
-    dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,model$avg_numis_per_model)
+    dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
   }
   output$dataset=dataset
   rm("tmp_dataset","dataset")

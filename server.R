@@ -18,7 +18,7 @@ sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)
 
 
 print(getwd())
-genesetsfile="gene_sets.txt"
+genesetsfile<<-"gene_sets.txt"
 if (file.exists(genesetsfile)){
   geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
   geneList<<-geneList_tmp[,1]
@@ -165,7 +165,7 @@ tab3_left_margin=12
    
       if (file.exists(myGeneListFile)){
         added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
-    
+       
         if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
           message(myGeneListFile, " was not loaded since gene sets names are not unique.")
         }
