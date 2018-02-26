@@ -198,6 +198,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
 
 
   dataset$umitab<-dataset$umitab[,-1]
+  for (ds_i in 1:length(dataset$ds)){
+    dataset$ds[[ds_i]]=dataset$ds[[ds_i]][,-1]
+  }
   dataset$samples=samples
   dataset$randomly_selected_cells<-list()
   dataset$bulk_avg=matrix(0,length(genes),length(samples))
