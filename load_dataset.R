@@ -1,4 +1,5 @@
-
+library(Matrix)
+library(Matrix.utils)
 
 insilico_sorter=function(umitab,insilico_gating){
   scores=list()
@@ -18,10 +19,14 @@ insilico_sorter=function(umitab,insilico_gating){
 
 load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
 
+  if(is.null(names(sample_fns))){
+    names(sample_fns)=sapply(strsplit(sapply(strsplit(sample_fns,"/"),tail,1),"\\_|\\."),function(x){paste(x[c(-1,-length(x))],collapse="_")})
+  }
+  
   model<-new.env()
   message("Loading model ",model_fn)
+ 
   load(file=model_fn,model)
-
   fn_prefix=strsplit(model_fn,"\\.")[[1]][1]
   output<-list()
   output$scDissector_params<-list()
@@ -72,6 +77,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     model$avg_numis_per_model[names(tmptab)]=tmptab
   }
 
+  
   samples=names(sample_fns)
 
   tmp_dataset=new.env()
@@ -93,6 +99,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   genes=rownames(model$models)
   message("")
   dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
+ 
   for (sampi in samples){
     message("Loading sample ",sampi)
     i=match(sampi,samples)
@@ -123,11 +130,12 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       }
     }
     tmp_env$numis_before_filtering=colSums(tmp_env$umitab)    
-    
+
     if (is.null(model$insilico_gating)){
       umitab=tmp_env$umitab
     }
     else{
+      
       is_res=insilico_sorter(tmp_env$umitab,model$insilico_gating)
       umitab=is_res$umitab
       tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
@@ -150,7 +158,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
         noise_model=tmp_dataset$noise_models[[sampi]]
         
         avg_numis_per_model=model$avg_numis_per_model
-        gobclle_res=getOneBatchCorrectedLikelihoodExtended(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=noise_model[genemask,],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+        gobclle_res=noiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=noise_model[genemask,],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         ll=gobclle_res$ll
         dataset$beta_noise[sampi]=gobclle_res$beta_noise
       }
