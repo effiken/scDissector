@@ -386,9 +386,7 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inSaveAnnot, {
-    f=paste(input$inDatapath, session$userData$vers_tab$path[ session$userData$vers_tab$title==session$userData$loaded_model_version],sep="/")
- 
-    annot_fn=paste(strsplit(f,"\\.")[[1]][1],"_annots.txt",sep="")
+    annot_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_annots.txt",sep="")
     write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
     message("Cluster annotations saved to ",annot_fn,".")
     
