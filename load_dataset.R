@@ -80,9 +80,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   
   samples=names(sample_fns)
 
-  tmp_dataset=new.env()
   dataset<-new.env()
-  tmp_dataset$ds=list()
   dataset$ds=list()
   
   dataset$ds_numis=NULL
@@ -90,16 +88,16 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   dataset$cell_to_cluster<-c()
   dataset$numis_before_filtering=list()
   dataset$cell_to_sample<-c()
- 
-  tmp_dataset$counts=list()
-  tmp_dataset$insilico_gating_scores=list()
-  tmp_dataset$noise_models=list()
+  
   dataset$beta_noise=rep(NA,length(samples))
+  dataset$avg_numis_per_sample_model<-matrix(NA,length(samples),ncol(model$models),dimnames = list(samples,colnames(model$models)))
   names(dataset$beta_noise)=samples
   genes=rownames(model$models)
   message("")
   dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
- 
+  dataset$noise_models=matrix(0,length(genes),length(samples),dimnames = list(genes,samples))
+  dataset$counts<-array(0,dim=c(length(samples),nrow(model$models),ncol(model$models)),dimnames = list(samples,rownames(model$models),colnames(model$models)))
+  
   for (sampi in samples){
     message("Loading sample ",sampi)
     i=match(sampi,samples)
@@ -138,13 +136,15 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       
       is_res=insilico_sorter(tmp_env$umitab,model$insilico_gating)
       umitab=is_res$umitab
-      tmp_dataset$insilico_gating_scores[[sampi]]=is_res$scores
+      for (score_i in names(model$insilico_gating)){
+        dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+      }
     }
     barcode_mask=tmp_env$numis_before_filtering[colnames(umitab)]>min_umis&tmp_env$numis_before_filtering[colnames(umitab)]<max_umis
     dataset$min_umis=min_umis
     dataset$max_umis=max_umis
     umitab=umitab[,barcode_mask]
-    tmp_dataset$noise_models[[sampi]]=tmp_env$noise_model
+    dataset$noise_models[genes,sampi]=tmp_env$noise_model[genes,1]
 
     message("Projecting ",ncol(umitab)," cells")
     genemask=intersect(rownames(umitab),rownames(model$models))
@@ -155,12 +155,11 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     }
     else 
       {
-        noise_model=tmp_dataset$noise_models[[sampi]]
-        
         avg_numis_per_model=model$avg_numis_per_model
-        gobclle_res=noiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=noise_model[genemask,],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+        gobclle_res=noiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=dataset$noise_models[genemask,sampi],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         ll=gobclle_res$ll
         dataset$beta_noise[sampi]=gobclle_res$beta_noise
+        dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
       }
     
     cell_to_cluster=MAP(ll)
@@ -176,17 +175,8 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     tmpmod=update_models(umitab,cell_to_cluster)
    
     tmp_counts=as.matrix(t(aggregate.Matrix(t(umitab[genemask,]),cell_to_cluster,fun="sum")))
-    
-    tmp_dataset$counts[[sampi]]=tmp_models*0
-    tmp_dataset$counts[[sampi]][genemask,colnames(tmp_counts)]=tmp_counts
-    
+    dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
     dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
-  
-    if (length(tmp_dataset$ds)==0){
-      for (ds_i in 1:length(tmp_env$ds_numis)){
-        tmp_dataset$ds[[ds_i]]=list()
-      }
-    }
   
     for (ds_i in 1:length(tmp_env$ds_numis)){
       dataset$ds[[ds_i]]<-cBind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
@@ -210,40 +200,13 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     dataset$ds[[ds_i]]=dataset$ds[[ds_i]][,-1]
   }
   dataset$samples=samples
-  dataset$randomly_selected_cells<-list()
-  dataset$bulk_avg=matrix(0,length(genes),length(samples))
-  dataset$noise_models=matrix(0,length(genes),length(samples))
-  colnames(dataset$noise_models)=names(tmp_dataset$noise_models)
-  rownames(dataset$noise_models)=genes
-
-  if (!is.null(model$insilico_gating)){
-    for (score_i in 1:length(model$insilico_gating)){
-      dataset$insilico_gating_scores[[score_i]]=tmp_dataset$insilico_gating_scores[[1]][[score_i]]
-    }
-  }
-  rownames(dataset$bulk_avg)=genes
-  colnames(dataset$bulk_avg)=samples
-  
-  for (sampi in samples){
-    dataset$noise_models[genes,sampi]=tmp_dataset$noise_models[[sampi]][genes,1]
-    
-    if (!is.null(model$insilico_gating)){
-      for (score_i in 1:length(model$insilico_gating)){
-        dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],tmp_dataset$insilico_gating_scores[[sampi]][[score_i]])
-      }
-    }
-  }
-  
-  dataset$counts<-array(0,dim=c(length(tmp_dataset$counts),nrow(tmp_dataset$counts[[1]]),ncol(tmp_dataset$counts[[1]])),dimnames = list(names(tmp_dataset$counts),rownames(tmp_dataset$counts[[1]]),colnames(tmp_dataset$counts[[1]])))
-  for (si in 1:length(tmp_dataset$counts)){
-    dataset$counts[si,,]=tmp_dataset$counts[[si]]
-  }
-
+ 
   if (!is.null(model$noise_models)){
     dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
   }
+  
   output$dataset=dataset
-  rm("tmp_dataset","dataset")
+  rm("dataset")
   ncells_per_cluster<-rep(0,dim(model$models)[2])
   names(ncells_per_cluster)<-colnames(model$models)
   temptab=table(model$cell_to_cluster)

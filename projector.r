@@ -138,6 +138,25 @@ update_models=function(umis,cluster){
   return(as.matrix(models))
 }
 
+update_models_debatched=function(umis,cluster,batch,noise_models,beta_noise,avg_numis_per_model){
+  raw_counts=t(aggregate(t(umis),cluster))
+  tmptab=table(batch,cluster)
+  tab=matrix(0,ncol(noise_models),length(avg_numis_per_model))
+  rownames(tab)=colnames(noise_models)
+  colnames(tab)=names(avg_numis_per_model)
+  tab[rownames(tmptab),colnames(tmptab)]=tmptab
+  #decreasing the (estimated) noise molecules from the counts in each iterations 
+  mat_avg_numis_per_model=matrix(avg_numis_per_model,ncol(noise_models),length(avg_numis_per_model),byrow=T)
+  mat_beta_noise=matrix(beta_noise,ncol(noise_models),length(avg_numis_per_model))
+  
+  
+  expected_noise_counts=noise_models%*%((tab*mat_beta_noise))
+  adj_counts=pmax(raw_counts-expected_noise_counts[,colnames(raw_counts)],0)
+  
+  models=t(t(adj_counts)/colSums(adj_counts))
+  return(as.matrix(models))
+}
+
 
 
 
