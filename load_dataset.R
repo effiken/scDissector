@@ -11,6 +11,7 @@ insilico_sorter=function(umitab,insilico_gating){
       umitab=umitab[,insilico_gating[[i]]$mask]
       scores[[i]]=score_i
     }
+    names(scores)=names(insilico_gating)
   }
   return(list(umitab=umitab,scores=scores))
 }

@@ -108,15 +108,15 @@ get_expected_noise_UMI_counts=function(umis,cluster,batch,noise_models,beta_nois
   nmodels=length(clusters)
   nsamps=ncol(noise_models)
   tmp_tab=table(batch,cluster)
-  tab=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
-  tab[,colnames(tmp_tab)]=tmp_tab
+  ncells=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
+  ncells[rownames(tmp_tab),colnames(tmp_tab)]=tmp_tab
 
   #beta_noise is the inferred number of noise molecules/cell.
   #tab contains the number of cells per (sample,cluster)
-  tot_noise_umis=matrix(beta_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))*tab
+  tot_noise_umis=matrix(beta_noise[colnames(noise_models)],nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))*ncells
   arr_tot_noise_umis=array(tot_noise_umis,dim=c(nsamps,nmodels,ngenes))
   arr_tot_noise_umis=aperm(arr_tot_noise_umis,c(1,3,2))
-  arr_noise_models=array(noise_models[,rownames(tab)],dim=c(ngenes,nsamps,nmodels))
+  arr_noise_models=array(noise_models[,rownames(ncells)],dim=c(ngenes,nsamps,nmodels))
   arr_noise_models=aperm(arr_noise_models,c(2,1,3))
   expected_noise_counts=arr_noise_models*arr_tot_noise_umis
   dimnames(expected_noise_counts)=list(colnames(noise_models),rownames(noise_models),clusters)
@@ -141,16 +141,15 @@ update_models=function(umis,cluster){
 update_models_debatched=function(umis,cluster,batch,noise_models,beta_noise,avg_numis_per_model){
   raw_counts=t(aggregate(t(umis),cluster))
   tmptab=table(batch,cluster)
-  tab=matrix(0,ncol(noise_models),length(avg_numis_per_model))
-  rownames(tab)=colnames(noise_models)
-  colnames(tab)=names(avg_numis_per_model)
-  tab[rownames(tmptab),colnames(tmptab)]=tmptab
-  #decreasing the (estimated) noise molecules from the counts in each iterations 
-  mat_avg_numis_per_model=matrix(avg_numis_per_model,ncol(noise_models),length(avg_numis_per_model),byrow=T)
+  ncells=matrix(0,ncol(noise_models),length(avg_numis_per_model))
+  rownames(ncells)=colnames(noise_models)
+  colnames(ncells)=names(avg_numis_per_model)
+  ncells[rownames(tmptab),colnames(tmptab)]=tmptab
+  #subtracting the (estimated) noise molecules from the counts in each iterations 
   mat_beta_noise=matrix(beta_noise,ncol(noise_models),length(avg_numis_per_model))
   
   
-  expected_noise_counts=noise_models%*%((tab*mat_beta_noise))
+  expected_noise_counts=noise_models%*%((ncells*mat_beta_noise))
   adj_counts=pmax(raw_counts-expected_noise_counts[,colnames(raw_counts)],0)
   
   models=t(t(adj_counts)/colSums(adj_counts))

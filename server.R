@@ -1141,28 +1141,40 @@ tab3_left_margin=12
      
       par(mar=c(7,tab3_left_margin,1,9))
       if (input$inModelOrAverage=="Model"){
-        mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),,drop=F]
+        mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts,drop=F]
       }
       else {
         ncells_per_sample=table(session$userData$dataset$cell_to_sample)
         gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
         weights=ncells_per_sample[insamples]/sum(ncells_per_sample[insamples])
         arr_weights=array(weights,dim=c(length(insamples),length(gene_match),length(inclusts)))
-        mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
-        numis_per_sample=apply(session$userData$dataset$counts,1,sum)
+        numis_per_clust_mat=apply(session$userData$dataset$counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
+        numis_per_clust_arr=aperm(array(numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
+    #    mat=t(t(mat)/numis_per_clust)
         
+        numis_per_sample=apply(session$userData$dataset$counts,1,sum)
+
         if (input$inModelOrAverage=="Batch-corrected Average"){
           if (!is.null(session$userData$dataset$noise_counts)){
-
-            mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
-            mat<-pmax(mat-mat_noise,0)
+            
+            counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]-session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]
+            counts<-pmax(counts,0)
+            
+            noise_numis_per_clust_mat=apply(session$userData$dataset$noise_counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
+            noise_numis_per_clust_arr=aperm(array(noise_numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
+            numis_per_clust_arr=pmax(numis_per_clust_arr-noise_numis_per_clust_arr,0)
+            
           }
+        }else{
+          counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]
         }
+        mat=avg_per_sample_cluster=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
+        #mat=apply(avg_per_sample_cluster,2:3,mean,na.rm=T)
         rownames(mat)=ingenes
-        mat<-t(t(mat)/colSums(mat,na.rm=T))
+        #mat<-t(t(mat)/colSums(mat,na.rm=T))
       }
       isolate({
-        mat1=mat[,inclusts,drop=F]
+        mat1=mat
         abs_or_rel=input$inAbsOrRel
       }) 
       main_title=paste(input$inModelOrAverage,":",session$userData$loaded_model_version)
