@@ -97,14 +97,16 @@ randomly_select_cells=function(ldm,nrandom_cells_per_sample_choices){
   randomly_selected_cells=list()
   for (ds_i in 1:length(ldm$dataset$ds_numis)){
     randomly_selected_cells[[ds_i]]<-list()
-    for (sampi in ldm$dataset$samples){
-      for (nrandom_cells in nrandom_cells_per_sample_choices){
-        randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
-        if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=ncol(ldm$dataset$ds[[ds_i]])){
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(ldm$dataset$ds[[ds_i]]))
+    for (nrandom_cells in nrandom_cells_per_sample_choices){
+      randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
+      for (sampi in ldm$dataset$samples){
+        maski=ldm$dataset$cell_to_sample[colnames(ldm$dataset$ds[[ds_i]])]==sampi
+        
+        if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
+          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(ldm$dataset$ds[[ds_i]])[maski])
         }
         else{
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(ldm$dataset$ds[[ds_i]]),size=as.numeric(nrandom_cells),replace=F))
+          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(ldm$dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
         }
       }
     }
@@ -1083,13 +1085,9 @@ tab3_left_margin=12
 
       if (input$inModelOrAverage=="Batch-corrected Average"){
         if (!is.null(session$userData$dataset$noise_counts)){
-          
-
-          
           mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
           mat<-pmax(mat-mat_noise,0)
         }
-
       }
       rownames(mat)=ingenes
       mat<-t(t(mat)/colSums(mat,na.rm=T))
