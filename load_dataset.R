@@ -3,17 +3,21 @@ library(Matrix.utils)
 
 insilico_sorter=function(umitab,insilico_gating){
   scores=list()
+  gated_out_umitabs=list()
   if (!is.null(insilico_gating)){
     for (i in 1:length(insilico_gating)){
       score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
       insilico_gating[[i]]$mask=names(which(score_i>=insilico_gating[[i]]$interval[1]&score_i<=insilico_gating[[i]]$interval[2]))
       message("Gating out ",length(setdiff(names(score_i),insilico_gating[[i]]$mask))," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
-      umitab=umitab[,insilico_gating[[i]]$mask]
+     umitab=umitab[,insilico_gating[[i]]$mask]
+      gated_out_umitabs[[i]]=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask)]
       scores[[i]]=score_i
     }
     names(scores)=names(insilico_gating)
+    names(gated_umitabs)=names(insilico_gating)
   }
-  return(list(umitab=umitab,scores=scores))
+  return(list(umitab=umitab,scores=scores,gated_out_umitabs=gated_out_umitabs))
+  
 }
 
 
@@ -139,6 +143,9 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       umitab=is_res$umitab
       for (score_i in names(model$insilico_gating)){
         dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+      }
+      if (load_gated_out_cells){
+        dataset$gated_out_umitabs=is_res$gated_out_umitabs
       }
     }
     barcode_mask=tmp_env$numis_before_filtering[colnames(umitab)]>min_umis&tmp_env$numis_before_filtering[colnames(umitab)]<max_umis
