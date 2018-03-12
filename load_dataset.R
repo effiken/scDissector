@@ -9,12 +9,12 @@ insilico_sorter=function(umitab,insilico_gating){
       score_i=colSums(umitab[intersect(rownames(umitab),insilico_gating[[i]]$genes),])/colSums(umitab)
       insilico_gating[[i]]$mask=names(which(score_i>=insilico_gating[[i]]$interval[1]&score_i<=insilico_gating[[i]]$interval[2]))
       message("Gating out ",length(setdiff(names(score_i),insilico_gating[[i]]$mask))," / ",ncol(umitab)," ",names(insilico_gating)[i]," barcodes")
-     umitab=umitab[,insilico_gating[[i]]$mask]
-      gated_out_umitabs[[i]]=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask)]
+      gated_out_umitabs[[i]]=umitab[,setdiff(colnames(umitab),insilico_gating[[i]]$mask),drop=F]
+      umitab=umitab[,insilico_gating[[i]]$mask,drop=F]
       scores[[i]]=score_i
     }
     names(scores)=names(insilico_gating)
-    names(gated_umitabs)=names(insilico_gating)
+    names(gated_out_umitabs)=names(insilico_gating)
   }
   return(list(umitab=umitab,scores=scores,gated_out_umitabs=gated_out_umitabs))
   
@@ -100,6 +100,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   genes=rownames(model$models)
   message("")
   dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
+  dataset$gated_out_umitabs<-list()
   dataset$noise_models=matrix(0,length(genes),length(samples),dimnames = list(genes,samples))
   dataset$counts<-array(0,dim=c(length(samples),nrow(model$models),ncol(model$models)),dimnames = list(samples,rownames(model$models),colnames(model$models)))
   
@@ -141,12 +142,17 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
       
       is_res=insilico_sorter(tmp_env$umitab,model$insilico_gating)
       umitab=is_res$umitab
+     
       for (score_i in names(model$insilico_gating)){
         dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+        if (is.null(dataset$gated_out_umitabs[[score_i]])){
+          dataset$gated_out_umitabs[[score_i]]=list()
+        }
+        dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
       }
-      if (load_gated_out_cells){
-        dataset$gated_out_umitabs=is_res$gated_out_umitabs
-      }
+     
+     
+      
     }
     barcode_mask=tmp_env$numis_before_filtering[colnames(umitab)]>min_umis&tmp_env$numis_before_filtering[colnames(umitab)]<max_umis
     dataset$min_umis=min_umis
