@@ -395,7 +395,7 @@ tab3_left_margin=12
   observeEvent(input$inClusterGenes, {
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
-    ingenes=cgs$genes()
+    ingenes=cgs$genes
     mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
     if (length(ingenes)==0){
       return()
