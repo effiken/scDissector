@@ -218,7 +218,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   if (!is.null(model$noise_models)){
     dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
   }
-  
+  model$model_filename=model_fn
   output$dataset=dataset
   rm("dataset")
   ncells_per_cluster<-rep(0,dim(model$models)[2])

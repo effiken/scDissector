@@ -1793,6 +1793,7 @@ tab3_left_margin=12
       }
       randomly_selected_cells=randomly_select_cells(ldm,params$nrandom_cells_per_sample_choices)
       ldm$dataset$randomly_selected_cells=randomly_selected_cells
+      session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
       show_all_tabs()
       updateTabsetPanel(session, "inMain", selected = "Model")
