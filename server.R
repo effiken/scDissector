@@ -443,7 +443,7 @@ tab3_left_margin=12
   
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
-    cgs=clusters_genes_sampples_reactive
+    cgs=clusters_genes_sampples_reactive()
     clusters=cgs$clusters
     samples=cgs$samples
     if (input$inSelectGenesFrom=="All genes"){
