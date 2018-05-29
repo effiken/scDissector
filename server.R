@@ -249,7 +249,7 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inResetSamples,{
-    samples=colnames(session$userData$dataset$samples)
+    samples=session$userData$dataset$samples
     updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
   })
   
@@ -1019,9 +1019,10 @@ tab3_left_margin=12
     colnames(tab)=session$userData$dataset$samples
     tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
+    tab=tab[,insamples,drop=F]
     tab=t(t(tab)/colSums(tab))
     tab=(tab/rowSums(tab))[inclusts,]
-    barplot(t(tab[nrow(tab):1,]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+    barplot(t(tab[nrow(tab):1,]),col=sample_cols[match(insamples,session$userData$dataset$samples)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     
   })
   
@@ -1420,7 +1421,7 @@ tab3_left_margin=12
       ncol=ceiling(length(insamples)/10)
       leg[is.na(leg)]=insamples[is.na(leg)]
       leg[leg==""]=insamples[leg==""]
-      legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
+      legend("topleft",pch=15,col=sample_cols[match(insamples,session$userData$dataset$samples)],legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
     
