@@ -141,7 +141,7 @@ update_models_debatched=function(umis,cluster,batch,noise_models,alpha_noise){
   raw_counts=t(aggregate(t(umis),cluster))
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
 
-  expected_noise_counts=noise_models%*%((numis_per_batch*alpha_noise))
+  expected_noise_counts=noise_models%*%(numis_per_batch*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
   
   models=t(t(adj_counts)/colSums(adj_counts))
