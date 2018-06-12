@@ -167,20 +167,20 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     projection_genemask=setdiff(genemask,model$params$genes_excluded)   
     genes=intersect(rownames(umitab),genes)
     if (is.null(model$alpha_noise)&is.null(model$beta_noise)){
-      ll=getLikelihood(umitab[projection_genemask,],models =model$models[projection_genemask,],reg = model$params$reg)#params$reg)
+      ll=getLikelihood(umitab[projection_genemask,],models =model$models[projection_genemask,],reg = model$params$reg)
     }
     else {
       if (!is.null(model$beta_noise)){
         avg_numis_per_model=model$avg_numis_per_model
-        gobclle_res=betaNoiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=dataset$noise_models[genemask,sampi],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+        gobclle_res=betaNoiseEMsingleBatch(umitab=umitab[projection_genemask,],models=model$models[projection_genemaskprojection_genemask,],noise_model=dataset$noise_models[projection_genemask,sampi],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         ll=gobclle_res$ll
         dataset$beta_noise[sampi]=gobclle_res$beta_noise
         dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
       }
       else if (!is.null(model$alpha_noise)){
-        alpha_b=update_alpha_single_batch(umitab[genemask,],model$models[genemask,],dataset$noise_models[genemask,sampi],reg=model$params$reg)
+        alpha_b=update_alpha_single_batch(umitab[projection_genemask,],model$models[projection_genemask,],dataset$noise_models[projection_genemask,sampi],reg=model$params$reg)
         message("%Noise = ",round(100*alpha_b,digits=2))
-        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[genemask,],model$models[genemask,],dataset$noise_models[genemask,sampi],alpha_noise=alpha_b,reg=model$params$reg)
+        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],model$models[projection_genemask,],dataset$noise_models[projection_genemask,sampi],alpha_noise=alpha_b,reg=model$params$reg)
         ll=res_l$ll
         dataset$alpha_noise[sampi]=alpha_b
       }

@@ -39,7 +39,6 @@ update_alpha_single_batch=function(umitab,models,noise_model,reg,max_noise_fract
   }
   func_to_opt=function(x){
 #    message(round(x,digits=2))
-
     tot_ll=get_total_likelihood(get_ll_a(x,models,noise_model,umitab,reg))
     return(tot_ll)
   }
@@ -157,13 +156,14 @@ update_models=function(umis,cluster){
   return(as.matrix(models))
 }
 
-update_models_debatched=function(umis,cluster,batch,noise_models,alpha_noise){
-  clusters=unique(clusters)
-  raw_counts=t(aggregate(t(umis),cluster))
-  ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
+update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_noise,clusters){
+  raw_counts=Matrix(0,nrow(umis),length(clusters),dimnames = list(rownames(umis),clusters))
+  tmp_raw_counts=t(aggregate(t(umis),cell_to_cluster))
+  raw_counts[match(rownames(tmp_raw_counts),rownames(raw_counts)),match(colnames(tmp_raw_counts),colnames(raw_counts))]=tmp_raw_counts
+  ag=aggregate(colSums(umis),by=list(batch,cell_to_cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
-  numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
-  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  numis_per_batch_cluster=matrix(0,ncol(noise_models),length(clusters),dimnames = list(colnames(noise_models),clusters))
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cell_to_cluster,numis=colSums(umis)),batch~cell_to_cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
