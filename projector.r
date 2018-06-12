@@ -32,19 +32,19 @@ update_alpha_single_batch=function(umitab,models,noise_model,reg,max_noise_fract
   if (nrow(models)!=length(noise_model)){
     stop("noise_models and models have different number of genes")
   }
-  get_ll_b=function(alpha,models,noise_model,umitab,reg){
+  get_ll_a=function(alpha,models,noise_model,umitab,reg){
     adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
     ll_b=getLikelihood(umitab,adjusted_models,reg=reg)
     return(ll_b)
   }
-  func_to_opt=function(x,bi){
-    #  message(bi," ",round(x,digits=2))
-    
+  func_to_opt=function(x){
+#    message(round(x,digits=2))
+
     tot_ll=get_total_likelihood(get_ll_a(x,models,noise_model,umitab,reg))
     return(tot_ll)
   }
   
-  optim_val=optimize(func_to_opt,c(0,max_noise_fraction),maximum = T,tol=10)
+  optim_val=optimize(func_to_opt,c(1e-3,max_noise_fraction),maximum = T,tol=1e-3)
   
   return(optim_val$maximum)
 }
@@ -139,9 +139,10 @@ update_models=function(umis,cluster){
 
 update_models_debatched=function(umis,cluster,batch,noise_models,alpha_noise){
   raw_counts=t(aggregate(t(umis),cluster))
+  ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
-
-  expected_noise_counts=noise_models%*%(numis_per_batch*alpha_noise)
+  numis_per_batch_cluster=acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)]
+  expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
   
   models=t(t(adj_counts)/colSums(adj_counts))
