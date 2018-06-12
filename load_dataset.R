@@ -94,8 +94,10 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   dataset$numis_before_filtering=list()
   dataset$cell_to_sample<-c()
   
+  dataset$alpha_noise=rep(NA,length(samples))
   dataset$beta_noise=rep(NA,length(samples))
   dataset$avg_numis_per_sample_model<-matrix(NA,length(samples),ncol(model$models),dimnames = list(samples,colnames(model$models)))
+  names(dataset$alpha_noise)=samples
   names(dataset$beta_noise)=samples
   genes=rownames(model$models)
   message("")
@@ -164,17 +166,28 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
     genemask=intersect(rownames(umitab),rownames(model$models))
     projection_genemask=setdiff(genemask,model$params$genes_excluded)   
     genes=intersect(rownames(umitab),genes)
-    if (is.null(model$beta_noise)){
+    if (is.null(model$alpha_noise)&is.null(model$beta_noise)){
       ll=getLikelihood(umitab[projection_genemask,],models =model$models[projection_genemask,],reg = model$params$reg)#params$reg)
     }
-    else 
-      {
+    else {
+      if (!is.null(model$beta_noise)){
         avg_numis_per_model=model$avg_numis_per_model
-        gobclle_res=noiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=dataset$noise_models[genemask,sampi],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+        gobclle_res=betaNoiseEMsingleBatch(umitab=umitab[genemask,],models=model$models[genemask,],noise_model=dataset$noise_models[genemask,sampi],avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
         ll=gobclle_res$ll
         dataset$beta_noise[sampi]=gobclle_res$beta_noise
         dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
       }
+      else if (!is.null(model$alpha_noise)){
+        alpha_b=update_alpha_single_batch(umitab[genemask,],model$models[genemask,],dataset$noise_models[genemask,sampi],reg=model$params$reg)
+        message("%Noise = ",round(100*alpha_b,digits=2))
+        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[genemask,],model$models[genemask,],dataset$noise_models[genemask,sampi],alpha_noise=alpha_b,reg=model$params$reg)
+        ll=res_l$ll
+        dataset$alpha_noise[sampi]=alpha_b
+      }
+      else {
+        error("Noise parameter does not exist!")
+      }
+    }
     
     cell_to_cluster=MAP(ll)
     cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%output$scDissector_params$excluded_clusters]
@@ -215,8 +228,21 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   }
   dataset$samples=samples
  
+
   if (!is.null(model$noise_models)){
-    dataset$noise_counts=get_expected_noise_UMI_counts(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
+    if (!is.null(dataset$beta_noise)){
+      dataset$noise_counts=get_expected_noise_UMI_counts_beta(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
+    }
+    if (!is.null(dataset$alpha_noise)){
+      dataset$noise_counts=get_expected_noise_UMI_counts_alpha(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$alpha_noise,colnames(model$models))
+    }
+  }
+  
+  if (all(is.na(dataset$beta_noise))){
+    dataset$beta_noise=NULL
+  }
+  if (all(is.na(dataset$alpha_noise))){
+    dataset$alpha_noise=NULL
   }
   model$model_filename=model_fn
   output$dataset=dataset

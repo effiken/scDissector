@@ -50,7 +50,7 @@ update_alpha_single_batch=function(umitab,models,noise_model,reg,max_noise_fract
 }
 
 
-getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NULL,reg,max_noise_fraction=.75){
+getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NULL,reg){
   
   ll=matrix(NA,ncol(umitab),ncol(models))
   rownames(ll)=colnames(umitab)
@@ -78,7 +78,7 @@ if (trace){
   i=0
   min_n_moved=min(10,ncol(umitab)/100)
   while (nmoved>=min_n_moved&&i<6){
-    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
     prev_cell_to_cluster=cell_to_cluster
     cell_to_cluster=MAP(res_boll$ll)
     tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
@@ -93,8 +93,8 @@ if (trace){
     }
     i=i+1
   }
-
-  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
+  
+  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
   
   return(list(beta_noise=beta_noise,avg_numis_per_model=avg_numis_per_model,ll=res_boll$ll))
 }
@@ -102,7 +102,7 @@ if (trace){
 
 
 
-get_expected_noise_UMI_counts=function(umis,cluster,batch,noise_models,beta_noise,clusters){
+get_expected_noise_UMI_counts_beta=function(umis,cluster,batch,noise_models,beta_noise,clusters){
  ngenes=nrow(noise_models)
   nmodels=length(clusters)
   nsamps=ncol(noise_models)
@@ -122,6 +122,26 @@ get_expected_noise_UMI_counts=function(umis,cluster,batch,noise_models,beta_nois
   return(expected_noise_counts)
 }
 
+get_expected_noise_UMI_counts_alpha=function(umis,cluster,batch,noise_models,alpha_noise,clusters){
+  ngenes=nrow(noise_models)
+  nmodels=length(clusters)
+  nsamps=ncol(noise_models)
+  
+  raw_counts=t(aggregate(t(umis),cluster))
+  ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
+  numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
+  numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
+  tot_noise_umis=matrix(numis_per_batch_cluster*alpha_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
+  arr_tot_noise_umis=array(tot_noise_umis,dim=c(nsamps,nmodels,ngenes))
+  arr_tot_noise_umis=aperm(arr_tot_noise_umis,c(1,3,2))
+  arr_noise_models=array(noise_models,dim=c(ngenes,nsamps,nmodels))
+  arr_noise_models=aperm(arr_noise_models,c(2,1,3))
+  expected_noise_counts=arr_noise_models*arr_tot_noise_umis
+  dimnames(expected_noise_counts)=list(colnames(noise_models),rownames(noise_models),clusters)
+  return(expected_noise_counts)
+}
 
 
 
@@ -138,10 +158,13 @@ update_models=function(umis,cluster){
 }
 
 update_models_debatched=function(umis,cluster,batch,noise_models,alpha_noise){
+  clusters=unique(clusters)
   raw_counts=t(aggregate(t(umis),cluster))
   ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
-  numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
   
