@@ -1,6 +1,6 @@
 library(Matrix)
 library(Matrix.utils)
-
+library(reshape2)
 
 get_total_likelihood=function(ll){
   return(mean(apply(ll,1,max)))
@@ -141,7 +141,7 @@ update_models_debatched=function(umis,cluster,batch,noise_models,alpha_noise){
   raw_counts=t(aggregate(t(umis),cluster))
   ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
-  numis_per_batch_cluster=acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)]
+  numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
   
