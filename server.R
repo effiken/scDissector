@@ -14,7 +14,7 @@ non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene 
 
 
 colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
-sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
+default_sample_colors<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
 
 print(getwd())
@@ -63,7 +63,7 @@ update_all= function(session,ldm){
   for (item in names(ldm)){
     session$userData[[item]]=ldm[[item]]
   }
-  
+  session$userData$sample_colors=default_sample_colors[1:length(session$userData$dataset$samples)]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$samples))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
@@ -74,7 +74,7 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inQCClust",choices =clust_title)
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
   updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
-  
+  updateTextInput(session,"inSampleColors",value = paste(session$userData$sample_colors,collapse=", "))
   updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
   updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
   updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
@@ -249,8 +249,9 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inResetSamples,{
-    samples=colnames(session$userData$dataset$samples)
+    samples=session$userData$dataset$samples
     updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
+    updateTextAreaInput(session,"inSampleColors",value = paste(default_sample_colors[1:length(session$userData$dataset$samples)],collapse=", "))
   })
   
   observeEvent(input$inAbsOrRel,{
@@ -280,6 +281,16 @@ tab3_left_margin=12
     samples=intersect(samples,session$userData$dataset$samples)
     return(samples)
   })
+  
+  sample_colors_reactive <-reactive({
+    sample_colors=strsplit(input$inSampleColors,",|, | ,")[[1]]
+    if (is.null(session$userData$dataset)){
+      return(c())
+    }
+    #TODO check is sample_colors are valid colors
+    return(sample_colors)
+  })
+  
   
   clusters_genes_sampples_reactive <-reactive({
     xy_range <- event_data("plotly_relayout")
@@ -443,7 +454,7 @@ tab3_left_margin=12
   
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
-    cgs=clusters_genes_sampples_reactive
+    cgs=clusters_genes_sampples_reactive()
     clusters=cgs$clusters
     samples=cgs$samples
     if (input$inSelectGenesFrom=="All genes"){
@@ -1011,6 +1022,7 @@ tab3_left_margin=12
   
   output$samples_enrichment_plot <- renderPlot({
     cgs=clusters_genes_sampples_reactive()
+    sample_cols=sample_colors_reactive()
     inclusts=cgs$clusters
     insamples=cgs$samples
     par(mar=c(7,0,1.6,0))
@@ -1019,9 +1031,12 @@ tab3_left_margin=12
     colnames(tab)=session$userData$dataset$samples
     tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
+    tab=tab[,insamples,drop=F]
     tab=t(t(tab)/colSums(tab))
     tab=(tab/rowSums(tab))[inclusts,]
-    barplot(t(tab[nrow(tab):1,]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+    
+ #   barplot(t(tab[nrow(tab):1,]),col=sample_cols[match(insamples,session$userData$dataset$samples)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+    barplot(t(tab[nrow(tab):1,]),col=sample_cols,horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     
   })
   
@@ -1052,6 +1067,7 @@ tab3_left_margin=12
     input$inBirdClusterSetExclude
     input$inBirdClusterSetInclude
   #####
+    sample_cols=sample_colors_reactive()
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
     ingenes=cgs$genes
@@ -1324,7 +1340,7 @@ tab3_left_margin=12
   output$truthplot <- renderPlot({
    
     zlim=input$inTruthColorScale
-   
+    sample_cols=sample_colors_reactive()
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
     ingenes=cgs$genes
@@ -1411,6 +1427,7 @@ tab3_left_margin=12
     output$modelSampleLegend <- renderPlot({
     
       insamples=samples_reactive()
+      sample_cols=sample_colors_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
@@ -1420,12 +1437,14 @@ tab3_left_margin=12
       ncol=ceiling(length(insamples)/10)
       leg[is.na(leg)]=insamples[is.na(leg)]
       leg[leg==""]=insamples[leg==""]
-      legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
+   #   legend("topleft",pch=15,col=sample_cols[match(insamples,session$userData$dataset$samples)],legend=leg,cex=1,xpd=T,ncol=ncol)
+      legend("topleft",pch=15,col=sample_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
     
     output$truthSampleLegend <- renderPlot({
       insamples=samples_reactive()
+      sample_cols=sample_colors_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
@@ -1486,6 +1505,7 @@ tab3_left_margin=12
     output$cellcor<-renderPlot({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       insamples=samples_reactive()
+      sample_cols=sample_colors_reactive()
       ds=ds_QC_reactive()
       dataset=session$userData$dataset
       if (is.null(ds)){

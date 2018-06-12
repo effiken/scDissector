@@ -109,6 +109,7 @@ mainPanel(width=12,
                     column(12,
                      hr(),
                      textInput("inSamplesToShow", width=2000, "Samples:"),
+                     textInput("inSampleColors", width=2000, "Colors:"),
                      actionButton("inResetSamples","Reset"),
                      hr()) 
                          )#,
