@@ -766,9 +766,9 @@ tab3_left_margin=12
     }
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
-
-    cluster_cells_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts]
-    ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    insamples=cgs$samples
+    cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
@@ -842,12 +842,13 @@ tab3_left_margin=12
     }
     
     inclusts=clusters_genes_sampples_reactive()$clusters
+    insamples=clusters_genes_sampples_reactive()$samples
     dataset=session$userData$dataset
-    cluster_cells_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts]
+    cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
     
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
-    ds=dataset$ds[[ds_i]][,intersect(cluster_cells_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
     cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
