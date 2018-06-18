@@ -156,7 +156,9 @@ update_models=function(umis,cluster){
   return(as.matrix(models))
 }
 
-update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_noise,clusters){
+update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_noise){
+  clusters=unique(cell_to_cluster)
+  clusters=as.character(clusters[order(as.numeric(clusters))])
   raw_counts=Matrix(0,nrow(umis),length(clusters),dimnames = list(rownames(umis),clusters))
   tmp_raw_counts=t(aggregate(t(umis),cell_to_cluster))
   raw_counts[match(rownames(tmp_raw_counts),rownames(raw_counts)),match(colnames(tmp_raw_counts),colnames(raw_counts))]=tmp_raw_counts
