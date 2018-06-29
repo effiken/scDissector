@@ -470,7 +470,14 @@ tab3_left_margin=12
     }
     cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
     genes=intersect(genes,rownames(session$userData$dataset$umitab))
-    chisq_res2=chisq_genes(session$userData$dataset$counts[samples,genes,clusters,drop=F])
+    
+    counts_to_chisq=session$userData$dataset$counts[samples,genes,clusters,drop=F]
+    batch_corrected=!is.null(session$userData$dataset$noise_counts)
+    if (batch_corrected){
+      counts_to_chisq=pmax(counts_to_chisq-session$userData$dataset$noise_counts[samples,genes,clusters,drop=F],0)
+    }
+    
+    chisq_res2=chisq_genes(counts_to_chisq)
     if (nrow(chisq_res2)==0){
       message("Chi sq detected nothing..")
       return()
