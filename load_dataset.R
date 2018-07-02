@@ -62,6 +62,7 @@ load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_n
   #  if (ncol(annot_tab)>1){
   #    output$cluster_sets<-split(rownames(annots_tab),annots_tab[,2])
   #  }
+
   }
   else{
     clustAnnots<-rep("",ncol(model$models))
