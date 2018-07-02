@@ -457,17 +457,9 @@ tab3_left_margin=12
     cgs=clusters_genes_sampples_reactive()
     clusters=cgs$clusters
     samples=cgs$samples
-    if (input$inSelectGenesFrom=="All genes"){
-      pref="Var"
-      genes=rownames(session$userData$model$models)
-    } else if (input$inSelectGenesFrom=="TFs"){
-      pref="Tfs"
-      genes=intersect(tfs,rownames(session$userData$model$models))
-    } else if(input$inSelectGenesFrom=="Surface markers"){
-      pref="Surf"
-      genes=intersect(surface_markers,rownames(session$userData$model$models))
-      
-    }
+    ggs_res=get_genes_to_screen()
+    genes=ggs_res$genes
+    pref=ggs_res$pref
     cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
     genes=intersect(genes,rownames(session$userData$dataset$umitab))
     
@@ -527,21 +519,33 @@ tab3_left_margin=12
     return(res)
   }   
   
-  observeEvent(input$inFC, {
+  get_genes_to_screen=function(){
     if (input$inSelectGenesFrom=="All genes"){
-      pref="Var"
+      pref="All"
       genes=rownames(session$userData$model$models)
-    } else if (input$inSelectGenesFrom=="TFs"){
+    } else if (input$inSelectGenesFrom=="Without RPs"){
+      pref="NoRps"
+      genes=rownames(session$userData$model$models)
+      genes=setdiff(genes,grep("^RP|^Rp",genes,val=T))
+    }else if (input$inSelectGenesFrom=="TFs"){
       pref="Tfs"
       genes=tfs
     } else if(input$inSelectGenesFrom=="Surface markers"){
       pref="Surf"
       genes=surface_markers
     }
+    return(list(genes=genes,pref=pref))
+  }
+  
+  observeEvent(input$inFC, {
+    ggs_res=get_genes_to_screen()
+    genes=ggs_res$genes
+    pref=ggs_res$pref
     mask=rownames(session$userData$model$umitab)%in%genes
     
     clusts_fg=strsplit(input$inFC_fgClusts,",")[[1]]
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
+    
     mask_fg=session$userData$model$cell_to_cluster%in%clusts_fg
     mask_bg=session$userData$model$cell_to_cluster%in%clusts_bg
     reg=20
