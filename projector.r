@@ -130,7 +130,7 @@ get_expected_noise_UMI_counts_alpha=function(umis,cluster,batch,noise_models,alp
   ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
   numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
-  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum,,value.var = "numis")[colnames(noise_models),colnames(raw_counts)])
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   tot_noise_umis=matrix(numis_per_batch_cluster*alpha_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
   arr_tot_noise_umis=array(tot_noise_umis,dim=c(nsamps,nmodels,ngenes))
@@ -165,7 +165,7 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   ag=aggregate(colSums(umis),by=list(batch,cell_to_cluster),sum)
   numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
   numis_per_batch_cluster=matrix(0,ncol(noise_models),length(clusters),dimnames = list(colnames(noise_models),clusters))
-  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cell_to_cluster,numis=colSums(umis)),batch~cell_to_cluster,fun.aggregate=sum)[colnames(noise_models),colnames(raw_counts)])
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cell_to_cluster,numis=colSums(umis)),batch~cell_to_cluster,fun.aggregate=sum,value.var = "numis")[colnames(noise_models),colnames(raw_counts)])
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
