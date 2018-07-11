@@ -81,7 +81,7 @@ mainPanel(width=12,
                             selectInput("inReorderingMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal"))),
                             wellPanel(
                               h4("Gene Selection"),
-                              selectInput("inSelectGenesFrom","Select From:",choices=c("All genes","TFs","Surface markers")),
+                              selectInput("inSelectGenesFrom","Select From:",choices=c("All genes","Without RPs","TFs","Surface markers")),
                               selectInput("inNgenes", "N=",choices =c(50,100,200,300,400,500,1000),width=100),
                               actionButton("inBlindChisqSelectedClusters", "Chi sq. screen on selected clusters"),
                               br(),
