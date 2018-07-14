@@ -56,8 +56,13 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 #  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=1,col=gene.cols)
 #  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=1)
 #  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
-  
-  heatmaply(t(m),Rowv=F,Colv=F, scale = "none", colors = colgrad,hide_colorbar=T,label_names=c("Cluster","Gene","Value"),labRow=rev(paste(annots," (",colnames(m),")",sep="")),labCol=rownames(m),main_title=main_title,column_text_angle=90,margins =c(100,180,20,0),fontsize_row = 8,fontsize_col = 8)
+  version_vector=unlist(packageVersion("heatmaply"))
+  clusters_vec=colnames(m)
+  if (version_vector[1]==0&&version_vector[2]<15){
+    clusters_vec=rev(clusters_vec)
+  }
+    
+  heatmaply(t(m),Rowv=F,Colv=F, scale = "none", colors = colgrad,hide_colorbar=T,label_names=c("Cluster","Gene","Value"),labRow=paste(annots," (",clusters_vec,")",sep=""),labCol=rownames(m),main_title=main_title,column_text_angle=90,margins =c(100,180,20,0),fontsize_row = 8,fontsize_col = 8)
   
 }
 
