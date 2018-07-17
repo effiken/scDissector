@@ -56,6 +56,8 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 #  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=1,col=gene.cols)
 #  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=1)
 #  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
+  
+  # Heatmpaly version ‘0.15.2’ stopped reversing the labels
   version_vector=unlist(packageVersion("heatmaply"))
   clusters_vec=colnames(m)
   if (version_vector[1]==0&&version_vector[2]<15){
