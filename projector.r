@@ -188,7 +188,7 @@ update_models=function(umis,cluster){
   return(as.matrix(models))
 }
 
-update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_noise){
+update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_noise,make_plots=F,figure_prefix=""){
   clusters=unique(cell_to_cluster)
   clusters=as.character(clusters[order(as.numeric(clusters))])
   raw_counts=Matrix(0,nrow(umis),length(clusters),dimnames = list(rownames(umis),clusters))
@@ -203,7 +203,13 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   gc()
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
-  #i=14;plot(raw_counts[,i],expected_noise_counts[,i],log="xy");abline(0,1)
+  if (make_plots){
+    for (i in 1:ncol(raw_counts)){
+      png(paste(figure_prefix,"_",i,".png",sep=""))
+      plot(expected_noise_counts[,i],raw_counts[,i],log="xy",main=i,xlab="expected noise UMIs",ylab="raw UMIs");abline(0,1)
+      dev.off()
+    }
+  }
   #identify(raw_counts[,i],expected_noise_counts[,i],labels = rownames(raw_counts))
   #browser()  
   models=as.matrix(t(t(adj_counts)/colSums(adj_counts)))
