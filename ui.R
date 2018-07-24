@@ -125,14 +125,15 @@ mainPanel(width=12,
 #                            selectInput("inMinAvgExprs",label="Avg. Exprs >",choices=c(1e-3,5e-3,1e-2,5e-2,1e-1),selected = 2,width=100))
 #                            ))
                         ), 
-                tabPanel("Truth", fluidRow(
+                tabPanel("Cells", fluidRow(
                       plotOutput("truthplot",width="100%",height = "700"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
                       selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                       checkboxInput("inTruthShowSeparatorBars",label = "Show Separator Bars",value = T),
-                      selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
+                      selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200),
+                      downloadButton('downloadTruthPlot', 'Download Plot')
                   )),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,

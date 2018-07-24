@@ -1350,7 +1350,22 @@ tab3_left_margin=12
   })
   
   output$truthplot <- renderPlot({
-   
+    plot_truth_heatmap_wrapper()
+  })
+  
+  output$downloadTruthPlot <- downloadHandler(
+    filename = function() { paste(session$userData$loaded_model_version, '.png', sep='') },
+    content = function(file) {
+      png(file,1200,900)
+      plot_truth_heatmap_wrapper()
+      dev.off()
+    }
+  ,contentType = "image/png")
+  
+  
+ 
+  
+  plot_truth_heatmap_wrapper=function(){
     zlim=input$inTruthColorScale
     sample_cols=sample_colors_reactive()
     cgs=clusters_genes_sampples_reactive()
@@ -1374,40 +1389,14 @@ tab3_left_margin=12
     cells_selected=session$userData$dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
-    ds=ds[genes,cell_mask]
-    ds=ds[,order(match(session$userData$dataset$cell_to_cluster[colnames(ds)],inclusts))]
-    samps=session$userData$dataset$cell_to_sample[colnames(ds)]
-    ncells=rep(0,length(inclusts))
-    names(ncells)=inclusts
-    tmp_ncells=sapply(split(colnames(ds),session$userData$dataset$cell_to_cluster[colnames(ds)]),length)
-    ncells[names(tmp_ncells)]=tmp_ncells
-   
-    #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
-   # names(ncells)=names(ds_cl)
+    ds=ds[,cell_mask]
     
-    
-    pmat=as.matrix(ds)[,ncol(ds):1]
-    spacer_size=ceiling(dim(pmat)[2]/200)
-    pmat2=log2(1+pmat)
+    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,ingenes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
 
-    layout(matrix(1:2,1,2),widths=c(40,1))   
-    par(mar=c(10,3,1,1))
-   # image(pmat2[,ncol(pmat2):1],col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
-    image(pmat2,col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
-    
-    
-    box()
-    if (input$inTruthShowSeparatorBars){
-      abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
-    }
-    mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1,col=session$userData$gcol[toupper(rownames(pmat))])
-    a=cumsum(ncells)
-    b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
-    mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1)
-    par(mar=c(10,0,1,1))
-    image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
-  })
-    
+  }
+  
+  outputOptions(output, "downloadTruthPlot", suspendWhenHidden=FALSE)
+ 
 
     varmean_reactive <- reactive({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
@@ -1828,7 +1817,7 @@ tab3_left_margin=12
       session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
       show_all_tabs()
-      updateTabsetPanel(session, "inMain", selected = "Model")
+      updateTabsetPanel(session, "inMain", selected = "Clusters")
     }
     
   }
