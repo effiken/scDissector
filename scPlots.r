@@ -29,7 +29,7 @@ plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_te
   mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
 }
 
-plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative"){
+plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative",colgrad){
   if (Relative_or_Absolute=="Relative"){
     if (ncol(m)>1){
       m=log2(1e-6+m/pmax(1e-6,rowMeans(m,na.rm=T)))

@@ -11,9 +11,13 @@ set.seed(3505)
 
 non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene Modules","Samples")
 
+#write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
+colgrad_abs<<-read.table("~/Documents/GitHub/scDissector/colors_viridis.txt",stringsAsFactors=F)[,1]
+colgrad_rel<<-read.table("~/Documents/GitHub/scDissector/colors_brewer_RdBu.txt",stringsAsFactors=F)[,1]
 
+#colgrad<<-read.table("~/Documents/GitHub/scDissector/colors_paul.txt",stringsAsFactors=F)[,1]
+#colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 
-colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 default_sample_colors<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
 
@@ -258,9 +262,9 @@ tab3_left_margin=12
     if (input$inAbsOrRel=="Absolute"){
       if (session$userData$prev_inModelAbsOrRel=="Relative"){
         session$userData$prev_inModelColorScale_rel<-input$inModelColorScale
-        
       }
       session$userData$prev_inModelAbsOrRel="Absolute"
+      session$userData$modelColorGrad=colgrad_abs
       updateSliderInput(session,"inModelColorScale",label="Log10(expression)",min = -10,max=-.5,step = .5,value = session$userData$prev_inModelColorScale_abs)
     }
     else if (input$inAbsOrRel=="Relative"){
@@ -268,6 +272,7 @@ tab3_left_margin=12
         session$userData$prev_inModelColorScale_abs<-input$inModelColorScale
       }
       session$userData$prev_inModelAbsOrRel="Relative"
+      session$userData$modelColorGrad=colgrad_rel
       updateSliderInput(session,"inModelColorScale",label="Log2(expression/mean)",min = -8,max = 8,step = 1,value = session$userData$prev_inModelColorScale_rel)
       
     }
@@ -1214,7 +1219,7 @@ tab3_left_margin=12
       clusters=colnames(mat1)
       clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
       annots=session$userData$clustAnnots[inclusts]
-      return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel))
+      return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,session$userData$modelColorGrad))
   })
   
   module_counts_reactive<-reactive({
@@ -1335,7 +1340,7 @@ tab3_left_margin=12
  
   output$colorLegendModel<-renderPlot({
     par(mar=c(2,1,1,1))
-    image(matrix(1:100,100,1),breaks=0:100,col=colgrad,axes=F)
+    image(matrix(1:100,100,1),breaks=0:100,col=session$userData$modelColorGrad,axes=F)
     axs=c(input$inModelColorScale[1],round(mean(input$inModelColorScale),digits=2),input$inModelColorScale[2])
     axis(side =1,at = c(0,.5,1),labels = axs)
   })
