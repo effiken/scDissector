@@ -196,6 +196,7 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   raw_counts[match(rownames(tmp_raw_counts),rownames(raw_counts)),match(colnames(tmp_raw_counts),colnames(raw_counts))]=tmp_raw_counts
   rm(tmp_raw_counts)
   gc()
+
   numis_per_batch_cluster=matrix(0,ncol(noise_models),length(clusters),dimnames = list(colnames(noise_models),clusters))
   tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cell_to_cluster,numis=colSums(umis)),batch~cell_to_cluster,fun.aggregate=sum,value.var = "numis")[colnames(noise_models),colnames(raw_counts)])
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
