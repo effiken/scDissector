@@ -147,7 +147,6 @@ plot_truth_heatmap=function(ldm,downSamplingVersion,ingenes,inclusts_list,insamp
 
 
 plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,sample_cols=NULL,showSeparatorBars=T){
-
   ds=ds[ingenes,]
   ds=ds[,order(match(cell_to_cluster[colnames(ds)],inclusts))]
   samps=cell_to_sample[colnames(ds)]
