@@ -12,17 +12,17 @@ set.seed(3505)
 non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
-colgrad_abs<<-read.table("~/Documents/GitHub/scDissector/colors_viridis.txt",stringsAsFactors=F)[,1]
-colgrad_rel<<-read.table("~/Documents/GitHub/scDissector/colors_brewer_RdBu.txt",stringsAsFactors=F)[,1]
+colgrad_abs<<-read.table(system.file("extdata", "colors_viridis.txt", package="scDissector"),stringsAsFactors=F)[,1]
+colgrad_rel<<-read.table(system.file("extdata", "colors_brewer_RdBu.txt", package="scDissector"),stringsAsFactors=F)[,1]
 
-colgrad<<-read.table("~/Documents/GitHub/scDissector/colors_paul.txt",stringsAsFactors=F)[,1]
+colgrad<<-read.table(system.file("extdata", "colors_paul.txt", package="scDissector"),stringsAsFactors=F)[,1]
 #colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 
-default_sample_colors<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
+default_sample_colors<<-rep(paste("#",read.table(system.file("extdata", "sample_colors.txt", package="scDissector"),stringsAsFactors = F)[,1],sep=""),10)
 
 
 print(getwd())
-genesetsfile<<-"gene_sets.txt"
+genesetsfile<<-system.file("extdata", "gene_sets.txt", package="scDissector")
 if (file.exists(genesetsfile)){
   geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
   geneList<<-geneList_tmp[,1]
@@ -1151,6 +1151,9 @@ tab3_left_margin=12
   
   })
   
+  
+
+  
 #  output$avg_heatmap_interactive <-renderD3heatmap({
   output$avg_heatmap_interactive <-renderPlotly({
     
@@ -1177,6 +1180,7 @@ tab3_left_margin=12
       if (length(inclusts)==0){
         return()
       }
+      
       zlim=input$inModelColorScale
       par(mar=c(7,tab3_left_margin,1,9))
       if (input$inModelOrAverage=="Model"){
@@ -1196,8 +1200,6 @@ tab3_left_margin=12
         numis_per_clust_mat=apply(session$userData$dataset$counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
         numis_per_clust_arr=aperm(array(numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
     #    mat=t(t(mat)/numis_per_clust)
-        
-        numis_per_sample=apply(session$userData$dataset$counts,1,sum)
 
         if (input$inModelOrAverage=="Batch-corrected Average"){
           if (!is.null(session$userData$dataset$noise_counts)){
@@ -1214,9 +1216,7 @@ tab3_left_margin=12
           counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]
         }
         mat=avg_per_sample_cluster=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
-        #mat=apply(avg_per_sample_cluster,2:3,mean,na.rm=T)
         rownames(mat)=ingenes
-        #mat<-t(t(mat)/colSums(mat,na.rm=T))
       }
       isolate({
         mat1=mat
