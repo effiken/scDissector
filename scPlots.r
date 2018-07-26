@@ -70,80 +70,6 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 }
 
 
-plot_truth_heatmap=function(ldm,downSamplingVersion,ingenes,inclusts_list,insamples,cells_per_sample=1000,zlim=c(0,2),ShowSeparatorBars=T,cex.genes=1){
- 
-
-  samps_cl=list() 
-  ds=ldm$dataset$ds[[match(downSamplingVersion,ldm$dataset$ds_numis)]]
-  
- 
-  genes=intersect(ingenes,rownames(ds))
-
-  cells_selected=ldm$dataset$randomly_selected_cells[[match(downSamplingVersion,ldm$dataset$ds_numis)]][[as.character(cells_per_sample)]]
-  
-  layout(matrix(1:(2*length(inclusts_list)),length(inclusts_list),2,byrow=T),widths=c(40,1))   
-  
-  for (i in 1:length(inclusts_list)){
-   message(i)
-   
-    left_margins=5
-    if (i==length(inclusts_list)){
-      top_margin=.1
-      bottom_margin=5
-     
-      show_gene_names=T
-    }
-    else{
-      top_margin=.1
-      bottom_margin=.1
-      show_gene_names=F
-    }
-    
-    inclusts=inclusts_list[[i]]
-    inclusts=inclusts[order(match(inclusts,ldm$cluster_order))]
-    print(inclusts)
-    cell_mask=ldm$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
-      ldm$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
-      ds_i=ds[genes,cell_mask]
-  
-    ds_i=ds_i[,order(match(ldm$dataset$cell_to_cluster[colnames(ds_i)],inclusts))]
-    samps=ldm$dataset$cell_to_sample[colnames(ds_i)]
-    ncells=rep(0,length(inclusts))
-    names(ncells)=inclusts
-    tmp_ncells=sapply(split(colnames(ds_i),ldm$dataset$cell_to_cluster[colnames(ds_i)]),length)
-    ncells[names(tmp_ncells)]=tmp_ncells
-  
-  #ncells=sapply(ds_cl,function(x){n=ncol(x);if(is.null(n)){return(0)};return(n)})
-  # names(ncells)=names(ds_cl)
-  
-  
-    pmat=as.matrix(ds_i)[,ncol(ds_i):1]
-    spacer_size=ceiling(dim(pmat)[2]/200)
-    pmat2=log2(1+pmat)  
-  
-    par(mar=c(bottom_margin,left_margins,top_margin,1))
-    # image(pmat2[,ncol(pmat2):1],col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
-    message(names(inclusts_list)[i])
-    image(pmat2,col=c("gray",colgrad),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6),ylab=names(inclusts_list)[i])
-  
-  
-    box()
-    if (ShowSeparatorBars){
-      abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
-    }
-    if (show_gene_names){
-      mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=cex.genes,col=ldm$gcol[toupper(rownames(pmat))])
-    }
-    a=cumsum(ncells)
-    b=a-floor(ncells[as.character(inclusts[inclusts%in%names(ncells)])]/2)
-    mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=.7,adj=1)
-    par(mar=c(bottom_margin,0,top_margin,1))
-    image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
-  
-  }
-  
-  
-}
 
 
 plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,sample_cols=NULL,showSeparatorBars=T){
@@ -174,7 +100,7 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
   mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=1)
   a=cumsum(ncells)
   b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
-  mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1)
+  mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=1,adj=1,line=.2)
   par(mar=c(10,0,1,1))
   image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
 }
