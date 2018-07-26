@@ -2,37 +2,18 @@ library(Matrix)
 library(ggvis)
 library(dplyr)
 library(gplots)
-source("projector.r")
-source("gene_symbol_convertors.r")
-source("load_dataset.R")
-source("scPlots.R")
 library("heatmaply")
 set.seed(3505)
 
-non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene Modules","Samples")
+non_data_tabs=c("Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
-colgrad_abs<<-read.table(system.file("extdata", "colors_viridis.txt", package="scDissector"),stringsAsFactors=F)[,1]
-colgrad_rel<<-read.table(system.file("extdata", "colors_brewer_RdBu.txt", package="scDissector"),stringsAsFactors=F)[,1]
-
-colgrad<<-read.table(system.file("extdata", "colors_paul.txt", package="scDissector"),stringsAsFactors=F)[,1]
-#colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
-
-default_sample_colors<<-rep(paste("#",read.table(system.file("extdata", "sample_colors.txt", package="scDissector"),stringsAsFactors = F)[,1],sep=""),10)
-
 
 print(getwd())
-genesetsfile<<-system.file("extdata", "gene_sets.txt", package="scDissector")
-if (file.exists(genesetsfile)){
-  geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
-  geneList<<-geneList_tmp[,1]
-  names(geneList)<<-rownames(geneList_tmp)
-}
-source("load_on_startup.r")
 
-gsc=get_gene_symbol_convetors()
-gene_symbol_old2new<<-gsc$old2new
-gene_symbol_new2old<<-gsc$new2old
+
+#load_on_startup()
+
 
 hide_all_tabs=function(){
   for (tab in non_data_tabs){

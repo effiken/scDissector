@@ -1,4 +1,6 @@
-
+load_on_startup <- function(){
+    print("not loading")
+}
 
 #model_fn=paste(scDissector_datadir,"pbmc_model__30.rd",sep="/")
 

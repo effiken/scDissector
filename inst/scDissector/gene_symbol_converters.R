@@ -1,5 +1,5 @@
-get_gene_symbol_convetors=function(path=""){
-  hgnc<-read.delim(paste(path,"hgnc_complete_set.txt",sep=""),header = T,stringsAsFactors = F)
+get_gene_symbol_conveters <- function(hgnc_file){
+  hgnc<-read.delim(hgnc_file,header = T,stringsAsFactors = F)
   old_symbol=ifelse(hgnc[,"prev_symbol"]=="",hgnc[,"symbol"],hgnc[,"prev_symbol"])
   l_old_symbol=strsplit(old_symbol,"\\|")
   old_symbol2=unlist(l_old_symbol)
