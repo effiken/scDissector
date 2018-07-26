@@ -82,8 +82,8 @@ gene_symbol_old2new<<-gsc$old2new
 gene_symbol_new2old<<-gsc$new2old
 rm(gsc)
 genesetsfile<<-system.file("extdata", "gene_sets.txt", package="scDissector")
-if (hgnc_file==""){
-    hgnc_file="../extdata/sample_colors.txt"
+if (genesetsfile==""){
+    genesetsfile="../extdata/gene_sets.txt"
 }
 geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
 geneList<-geneList_tmp[,1]
