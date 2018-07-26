@@ -2,7 +2,13 @@ params=list()
 params$nrandom_cells_per_sample_choices=c(100,250,500,1000,2000,4000,"All")
 
 tfs_file=system.file("extdata", "tfs.csv", package="scDissector")
+if (tfs_file==""){
+    tfs_file="../ext_data/tfs.csv"
+}
 surface_markers_file=system.file("extdata", "surface_markers.csv", package="scDissector")
+if (surface_markers_file==""){
+    surface_markers_file="../ext_data/surface_markers.csv"
+}
 
 if (file.exists(tfs_file)){
   tfs<-read.csv(file=tfs_file,header=F,stringsAsFactors = F)[,1]
@@ -24,17 +30,38 @@ if (file.exists(surface_markers_file)){
   message(surface_markers_file ," not found")
 }
 
-colgrad_abs<<-read.table(system.file("extdata", "colors_viridis.txt", package="scDissector"),stringsAsFactors=F)[,1]
-colgrad_rel<<-read.table(system.file("extdata", "colors_brewer_RdBu.txt", package="scDissector"),stringsAsFactors=F)[,1]
+colgrad_abs_file=system.file("extdata", "colors_viridis.txt", package="scDissector")
+if (colgrad_abs_file==""){
+    colgrad_abs_file="../ext_data/colors_viridis.txt"
+}
+colgrad_abs<<-read.table(colgrad_abs_file,stringsAsFactors=F)[,1]
 
-colgrad<<-read.table(system.file("extdata", "colors_paul.txt", package="scDissector"),stringsAsFactors=F)[,1]
+colgrad_rel_file=system.file("extdata", "colors_brewer_RdBu.txt", package="scDissector")
+if (colgrad_rel_file==""){
+    colgrad_rel_file="../ext_data/colors_brewer_RdBu.txt"
+}
+colgrad_rel<<-read.table(colgrad_rel_file,stringsAsFactors=F)[,1]
+
+colgrad_file=system.file("extdata", "colors_paul.txt", package="scDissector")
+if (colgrad_file==""){
+    colgrad_file="../ext_data/colors_paul.txt"
+}
+colgrad<<-read.table(colgrad_file,stringsAsFactors=F)[,1]
 #colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 
-default_sample_colors<<-rep(paste("#",read.table(system.file("extdata", "sample_colors.txt", package="scDissector"),stringsAsFactors = F)[,1],sep=""),10)
+default_sample_colors_file=system.file("extdata", "sample_colors.txt", package="scDissector")
+if (default_sample_colors_file==""){
+    default_sample_colors_file="../ext_data/sample_colors.txt"
+}
+default_sample_colors<<-rep(paste("#",read.table(,stringsAsFactors = F)[,1],sep=""),10)
 
 ### gene symbol converters
 load_gene_symbol_converters=function(){
-    hgnc<-read.delim(system.file("extdata", "hgnc_complete_set.txt", package="scDissector"),header = T,stringsAsFactors = F)
+    hgnc_file=system.file("extdata", "hgnc_complete_set.txt", package="scDissector")
+    if (hgnc_file==""){
+        hgnc_file="../ext_data/sample_colors.txt"
+    }
+    hgnc<-read.delim(hgnc_file,header = T,stringsAsFactors = F)
     old_symbol=ifelse(hgnc[,"prev_symbol"]=="",hgnc[,"symbol"],hgnc[,"prev_symbol"])
     l_old_symbol=strsplit(old_symbol,"\\|")
     old_symbol2=unlist(l_old_symbol)
@@ -55,6 +82,9 @@ gene_symbol_old2new<<-gsc$old2new
 gene_symbol_new2old<<-gsc$new2old
 rm(gsc)
 genesetsfile<<-system.file("extdata", "gene_sets.txt", package="scDissector")
+if (genesetsfile==""){
+    genesetsfile="../ext_data/gene_sets.txt"
+}
 geneList_tmp<-read.table(file=genesetsfile,header=T,stringsAsFactors = F,row.names =1)
 geneList<-geneList_tmp[,1]
 names(geneList)<-rownames(geneList_tmp)
