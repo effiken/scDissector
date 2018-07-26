@@ -29,7 +29,7 @@ adjust_gene_names=function(genes_string,data_genes){
   genes[mask3]=gene_symbol_old2new[genes[mask3]]
   mask4=gene_symbol_new2old[genes]%in%data_genes
   genes[mask4]=gene_symbol_new2old[genes[mask4]]
- 
+  genges=genes[!is.na(genes)]
   return(genes)
 
 }

@@ -15,7 +15,7 @@ non_data_tabs=c("Gating","Basics","Clusters","Truth","QC","Clustering QC","Gene 
 colgrad_abs<<-read.table("~/Documents/GitHub/scDissector/colors_viridis.txt",stringsAsFactors=F)[,1]
 colgrad_rel<<-read.table("~/Documents/GitHub/scDissector/colors_brewer_RdBu.txt",stringsAsFactors=F)[,1]
 
-#colgrad<<-read.table("~/Documents/GitHub/scDissector/colors_paul.txt",stringsAsFactors=F)[,1]
+colgrad<<-read.table("~/Documents/GitHub/scDissector/colors_paul.txt",stringsAsFactors=F)[,1]
 #colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 
 default_sample_colors<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
@@ -1102,6 +1102,7 @@ tab3_left_margin=12
     }
 
     zlim=input$inModelColorScale
+
     if (length(insamples)>1&(length(inclusts)>1)){
       layout(matrix(1:2,1,2),widths=c(1,10))
       par(mar=c(7,1,1,.1))
@@ -1116,10 +1117,15 @@ tab3_left_margin=12
     }
     par(mar=c(7,tab3_left_margin,1,9))
     if (input$inModelOrAverage=="Model"){
-      mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),]
+      gene_match=match(ingenes,rownames(session$userData$model$models))
+      ingenes=ingenes[!is.na(gene_match)]
+      gene_match=gene_match[!is.na(gene_match)]
+      mat<-session$userData$model$models[gene_match,]
     }
     else {
       gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
+      ingenes=ingenes[!is.na(gene_match)]
+      gene_match=gene_match[!is.na(gene_match)]
       mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
 
       if (input$inModelOrAverage=="Batch-corrected Average"){
@@ -1141,7 +1147,6 @@ tab3_left_margin=12
     clusters=colnames(mat1)
     clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
     annots=session$userData$clustAnnots[inclusts]
-
     plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel)
   
   })
@@ -1161,7 +1166,6 @@ tab3_left_margin=12
       inclusts=cgs$clusters
       ingenes=cgs$genes
       insamples=cgs$samples
-  
       if (!session$userData$loaded_flag){
         return()
       }
@@ -1174,14 +1178,19 @@ tab3_left_margin=12
         return()
       }
       zlim=input$inModelColorScale
-
       par(mar=c(7,tab3_left_margin,1,9))
       if (input$inModelOrAverage=="Model"){
-        mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts,drop=F]
+        gene_match=match(ingenes,rownames(session$userData$model$models))
+        ingenes=ingenes[!is.na(gene_match)]
+        gene_match=gene_match[!is.na(gene_match)]
+        mat<-session$userData$model$models[gene_match,inclusts,drop=F]
       }
       else {
         ncells_per_sample=table(session$userData$dataset$cell_to_sample)
         gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
+        ingenes=ingenes[!is.na(gene_match)]
+        gene_match=gene_match[!is.na(gene_match)]
+       
         weights=ncells_per_sample[insamples]/sum(ncells_per_sample[insamples])
         arr_weights=array(weights,dim=c(length(insamples),length(gene_match),length(inclusts)))
         numis_per_clust_mat=apply(session$userData$dataset$counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
@@ -1196,7 +1205,7 @@ tab3_left_margin=12
             counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]-session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]
             counts<-pmax(counts,0)
             
-            noise_numis_per_clust_mat=apply(session$userData$dataset$noise_counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
+            noise_numis_per_clust_mat=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F],c(1,3),sum,na.rm=T)
             noise_numis_per_clust_arr=aperm(array(noise_numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
             numis_per_clust_arr=pmax(numis_per_clust_arr-noise_numis_per_clust_arr,0)
             
@@ -1213,6 +1222,7 @@ tab3_left_margin=12
         mat1=mat
         abs_or_rel=input$inAbsOrRel
       }) 
+
       main_title=paste(input$inModelOrAverage,":",session$userData$loaded_model_version)
       genes=rownames(mat1)
       gene.cols=session$userData$gcol[toupper(rownames(mat1))]
@@ -1396,7 +1406,7 @@ tab3_left_margin=12
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[,cell_mask]
     
-    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,ingenes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
+    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
 
   }
   
