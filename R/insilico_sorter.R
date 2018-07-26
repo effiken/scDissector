@@ -1,4 +1,4 @@
-
+#' @export
 # cell_to_batch - optional - allows reporting of #gated out cells per batch
 insilico_sorter=function(umitab,insilico_gating,cell_to_batch=NULL){
   scores=list()

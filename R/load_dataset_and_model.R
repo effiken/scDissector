@@ -1,4 +1,4 @@
-
+#' @export
 load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
     
     if(is.null(names(sample_fns))){

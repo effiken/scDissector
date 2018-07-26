@@ -1,5 +1,5 @@
 #' @export
-runApp <- function() {
+run_scDissector <- function() {
   appDir <- system.file("scDissector", package = "scDissector")
   if (appDir == "") {
     stop("Could not find example directory. Try re-installing `scDissector`.", call. = FALSE)
