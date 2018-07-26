@@ -59,7 +59,7 @@ default_sample_colors<<-rep(paste("#",read.table(default_sample_colors_file,stri
 load_gene_symbol_converters=function(){
     hgnc_file=system.file("extdata", "hgnc_complete_set.txt", package="scDissector")
     if (hgnc_file==""){
-        hgnc_file="../extdata/sample_colors.txt"
+        hgnc_file="../extdata/hgnc_complete_set.txt"
     }
     hgnc<-read.delim(hgnc_file,header = T,stringsAsFactors = F)
     old_symbol=ifelse(hgnc[,"prev_symbol"]=="",hgnc[,"symbol"],hgnc[,"prev_symbol"])
