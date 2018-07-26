@@ -2,3 +2,4 @@
 
 export(runApp)
 export(load_dataset_and_model)
+export(insilico_sorter)
