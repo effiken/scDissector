@@ -53,7 +53,7 @@ default_sample_colors_file=system.file("extdata", "sample_colors.txt", package="
 if (default_sample_colors_file==""){
     default_sample_colors_file="../extdata/sample_colors.txt"
 }
-default_sample_colors<<-rep(paste("#",read.table(,stringsAsFactors = F)[,1],sep=""),10)
+default_sample_colors<<-rep(paste("#",read.table(default_sample_colors_file,stringsAsFactors = F)[,1],sep=""),10)
 
 ### gene symbol converters
 load_gene_symbol_converters=function(){
