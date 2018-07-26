@@ -7,4 +7,4 @@ Depends: R (>= 3.4.3),ggvis,dplyr,gplots,Matrix,Matrix.utils
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.1.0
+
