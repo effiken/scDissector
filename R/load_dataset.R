@@ -37,7 +37,7 @@ insilico_sorter=function(umitab,insilico_gating,cell_to_batch=NULL){
 
 
 
-load_dataset_and_model=function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
 
   if(is.null(names(sample_fns))){
     names(sample_fns)=sapply(strsplit(sapply(strsplit(sample_fns,"/"),tail,1),"\\_|\\."),function(x){paste(x[c(-1,-length(x))],collapse="_")})
