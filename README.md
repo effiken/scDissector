@@ -16,6 +16,14 @@ scDissector is an exploratory data analysis tool for single-cell RNA-seq data im
 
     install_github("effiken/scDissector")
 
+
+
+## Running scDissector in R
+
+library(scDissector)
+
+run_scDissector()
+
 ## Usage
 
 TBD
