@@ -19,7 +19,7 @@ actionLink <- function(inputId, ...) {
 mainPanel(width=12,  
   fluidPage(
    
-      h4("scDissector v0.62"),
+      h4("scDissector v0.99"),
      tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
