@@ -1,6 +1,7 @@
 #' @export
 load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
-    
+    require(Matrix)
+    require(Matrix.utils)
     if(is.null(names(sample_fns))){
         names(sample_fns)=sapply(strsplit(sapply(strsplit(sample_fns,"/"),tail,1),"\\_|\\."),function(x){paste(x[c(-1,-length(x))],collapse="_")})
     }
@@ -58,9 +59,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     
     cluster_order=cluster_order[!cluster_order%in%output$scDissector_params$excluded_clusters]
     if (is.null(model$avg_numis_per_model)){
-        model$avg_numis_per_model=rep(mean(colSums(model$umitab)),ncol(model$models))
+        model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
         names(model$avg_numis_per_model)=colnames(model$models)
-        tmptab=sapply(split(colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
+        tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
         model$avg_numis_per_model[names(tmptab)]=tmptab
     }
     
@@ -119,7 +120,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
                 dataset$ds_numis=intersect(dataset$ds_numis,tmp_env$ds_numis)
             }
         }
-        tmp_env$numis_before_filtering=colSums(tmp_env$umitab)
+        tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
         
         if (is.null(model$insilico_gating)){
             umitab=tmp_env$umitab
@@ -187,7 +188,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$cell_to_cluster<-c(dataset$cell_to_cluster,cell_to_cluster)
         tmpmod=update_models(umitab,cell_to_cluster)
         
-        tmp_counts=as.matrix(t(aggregate.Matrix(t(umitab[genemask,]),cell_to_cluster,fun="sum")))
+        tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genemask,]),cell_to_cluster,fun="sum")))
         dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         

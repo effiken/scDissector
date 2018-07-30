@@ -19,7 +19,7 @@ cap <- function(x) {
   paste(toupper(substring(x, 1,1)), tolower(substring(x, 2)),sep="", collapse=" ")
 }
 
-adjust_gene_names=function(genes_string,data_genes){
+adjust_gene_names <- function(genes_string,data_genes){
   genes=strsplit(genes_string,",|, | ,")[[1]]
   mask1=toupper(genes)%in%data_genes
   genes[mask1]=toupper(genes[mask1])

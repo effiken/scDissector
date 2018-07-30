@@ -3,3 +3,6 @@
 export(run_scDissector)
 export(load_dataset_and_model)
 export(insilico_sorter)
+export(plot_avg_heatmap)
+export(plot_avg_heatmap_interactive)
+export(plot_truth_heatmap)

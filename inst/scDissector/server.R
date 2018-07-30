@@ -1,8 +1,10 @@
 library(Matrix)
+library(Matrix.utils)
 library(ggvis)
 library(dplyr)
 library(gplots)
 library("heatmaply")
+source("gene_symbol_converters.R")
 set.seed(3505)
 
 non_data_tabs=c("Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")

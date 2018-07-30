@@ -20,7 +20,7 @@ get_one_likelihood=function(model_v,umitab,reg){
 
 
 getLikelihood=function(umitab,models,reg){
-  return(as.matrix(t(umitab)%*%log2(reg+models)/colSums(umitab)))
+    return(as.matrix(Matrix::t(umitab)%*%log2(reg+models)/Matrix::colSums(umitab)))
 }
 
 
@@ -158,11 +158,11 @@ get_expected_noise_UMI_counts_alpha=function(umis,cluster,batch,noise_models,alp
   nmodels=length(clusters)
   nsamps=ncol(noise_models)
   
-  raw_counts=t(aggregate(t(umis),cluster))
-  ag=aggregate(colSums(umis),by=list(batch,cluster),sum)
-  numis_per_batch=sapply(split(colSums(umis),batch),sum)[colnames(noise_models)]
+  raw_counts=Matrix::t(Matrix.utils::aggregate.Matrix(Matrix::t(umis),cluster))
+  ag=aggregate(Matrix::colSums(umis),by=list(batch,cluster),sum)
+  numis_per_batch=sapply(split(Matrix::colSums(umis),batch),sum)[colnames(noise_models)]
   numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
-  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=colSums(umis)),batch~cluster,fun.aggregate=sum,value.var = "numis")[colnames(noise_models),colnames(raw_counts)])
+  tmp_numis_per_batch_cluster=invisible(acast(data.frame(batch=batch,cluster=cluster,numis=Matrix::colSums(umis)),batch~cluster,fun.aggregate=sum,value.var = "numis")[colnames(noise_models),colnames(raw_counts)])
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   tot_noise_umis=matrix(numis_per_batch_cluster*alpha_noise,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
   arr_tot_noise_umis=array(tot_noise_umis,dim=c(nsamps,nmodels,ngenes))
@@ -183,8 +183,8 @@ MAP=function(likelihood){
 }
 
 update_models=function(umis,cluster){
-  counts=aggregate(t(umis),cluster)
-  models=t(counts/rowSums(counts))
+    counts=Matrix.utils::aggregate.Matrix(Matrix::t(umis),cluster)
+    models=Matrix::t(counts/Matrix::rowSums(counts))
   return(as.matrix(models))
 }
 
@@ -192,7 +192,7 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   clusters=unique(cell_to_cluster)
   clusters=as.character(clusters[order(as.numeric(clusters))])
   raw_counts=Matrix(0,nrow(umis),length(clusters),dimnames = list(rownames(umis),clusters))
-  tmp_raw_counts=t(aggregate.Matrix(t(umis),cell_to_cluster))
+  tmp_raw_counts=Matrix::t(aggregate.Matrix(t(umis),cell_to_cluster))
   raw_counts[match(rownames(tmp_raw_counts),rownames(raw_counts)),match(colnames(tmp_raw_counts),colnames(raw_counts))]=tmp_raw_counts
   rm(tmp_raw_counts)
   gc()
@@ -202,7 +202,7 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   rm(tmp_numis_per_batch_cluster)
   gc()
-  expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
+  expected_noise_counts=Matrix::`%&%`(noise_models,(numis_per_batch_cluster*alpha_noise))
   adj_counts=pmax(raw_counts-expected_noise_counts,0)
   if (make_plots){
     for (i in 1:ncol(raw_counts)){
