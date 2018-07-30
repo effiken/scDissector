@@ -850,7 +850,8 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
-    cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
+    cormat=get_avg_gene_to_gene_cor(ds[names(which(geneModuleMask_reactive())),],dataset$cell_to_sample[colnames(ds)])
+  #  cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
     return(cormat)
   })
   
