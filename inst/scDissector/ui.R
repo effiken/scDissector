@@ -168,14 +168,14 @@ mainPanel(width=12,
                   plotOutput("varMeanThreshPlot"),
                   selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                   textInput("inVarMean_MeanThresh",  "Min Log10(mean):", value = "-2"),
-                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.15"),
-                  sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range")
-                ),
+                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.50"),
+                  sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range",width(100))
+                 ),
+                wellPanel(actionButton("inGetModules","Get Correlation Map"),
+                uiOutput("cor_module_plot")),
                 wellPanel(
-                  selectInput("inNUmberOfGeneModules","Number of Modules:",c(10,20,50,100,200)),
-                  actionButton("inGetModules","Get Modules")
-                ),
-                uiOutput("avg_module_plot"),
+                  textInput("inNUmberOfGeneModules","Number of Modules:",value = 50),
+                  uiOutput("avg_module_plot")),
                        textInput("inModules", width=2000, "Modules:"),
                        wellPanel(
                          actionButton("inClusterModules", "Reorder Modules"),

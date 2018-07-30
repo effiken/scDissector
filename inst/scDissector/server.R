@@ -797,7 +797,7 @@ tab3_left_margin=12
   })
   
   
-  geneModuleMask_reactive<-reactive({
+  getGeneModuleMask=function(){
     if (!session$userData$loaded_flag)
     {
       return()
@@ -810,8 +810,9 @@ tab3_left_margin=12
     names(geneModuleMask)=rownames(df)
     return(geneModuleMask)
     
-  })
+  }
   
+ 
   
   output$varMeanThreshPlot <- renderPlot({
     if (!session$userData$loaded_flag)
@@ -828,7 +829,7 @@ tab3_left_margin=12
     
     #abline(h=input$inVarMean_varmeanThresh,col=2)
     
-    n=sum(geneModuleMask_reactive())
+    n=sum(getGeneModuleMask())
     legend("topright", paste(n,"genes"), bty="n",text.col=2) 
     
   })
@@ -839,7 +840,7 @@ tab3_left_margin=12
     {
       return()
     }
-    
+ 
     inclusts=clusters_genes_sampples_reactive()$clusters
     insamples=clusters_genes_sampples_reactive()$samples
     dataset=session$userData$dataset
@@ -850,20 +851,21 @@ tab3_left_margin=12
     ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
-    cormat=get_avg_gene_to_gene_cor(ds[names(which(geneModuleMask_reactive())),],dataset$cell_to_sample[colnames(ds)])
+    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],dataset$cell_to_sample[colnames(ds)])
   #  cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
     return(cormat)
   })
   
   
-  
-  observeEvent(input$inGetModules,{
+  gene_to_module_reactive=reactive({
     if (!session$userData$loaded_flag)
     {
       return()
     }
-    geneModuleMask=geneModuleMask_reactive()
-    if (is.null(geneModuleMask)){
+    if (input$inGetModules==0){
+      return()
+    }
+    if (is.null(getGeneModuleMask())){
       return()
     }
     cormat=module_cor_reactive()
@@ -871,17 +873,19 @@ tab3_left_margin=12
       return()
     }
     c2c=cutree(hclust(as.dist(1-cormat)),k=as.numeric(input$inNUmberOfGeneModules))
- 
-    session$userData$modules<-(split(names(c2c),c2c))
-    updateTextInput(session,"inModules",value=paste(names(session$userData$modules),collapse=","))
-    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(session$userData$modules))
-    print(session$userData$modules)
+    modsl=split(names(c2c),c2c)
+    updateTextInput(session,"inModules",value=paste(names(modsl),collapse=","))
+    updateSelectInput(session,"inModuleSelect",label="Show Module:",choices=names(modsl))
+    print(modsl)
+    return(modsl)
+    
   })
+ 
   
   output$textModuleGenes<- renderText({
-    input$inModules
-    if (!is.null(session$userData$modules)){
-      paste(session$userData$modules[[input$inModuleSelect]],collapse=",")
+    modsl=gene_to_module_reactive()
+    if (!is.null(modsl)){
+      paste(modsl[[input$inModuleSelect]],collapse=",")
     }
   })
   
@@ -1001,6 +1005,35 @@ tab3_left_margin=12
     he=max(c(500,12*length(inclusts)),na.rm=T)
     plotOutput("avg_heatmap_modules", width = "100%", height = he)
   })
+  
+  output$cor_module_plot <- renderUI({
+ 
+    if (input$inGetModules==0){
+      return()
+    }
+    he=6*nrow(module_cor_reactive())
+    plotOutput("genecor_heatmap_modules", width = "100%", height = he)
+  })
+  
+  output$genecor_heatmap_modules <- renderPlot({
+    cormat=module_cor_reactive()
+    if (is.null(cormat)){
+      return()
+    }
+    zbreaks=c(-1,seq(-1,1,l=99),1)
+    cor_cols=colorRampPalette(c("blue","white","red"))(100)
+    #  ord=hclust(as.dist(1-cormat))$order
+    par(mar=c(3,3,3,3))
+    ord=get_order(seriate(as.dist(1-cormat),method="OLO_complete"))
+    image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
+    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    box()
+  })
+  
+  
   
   output$sample_avg_profile_plot <- renderUI({
     cgs=clusters_genes_sampples_reactive()
@@ -1217,8 +1250,8 @@ tab3_left_margin=12
   })
   
   module_counts_reactive<-reactive({
-    input$inGetModules
-    if (is.null(session$userData$modules)){
+    modsl=gene_to_module_reactive()
+    if (is.null(modsl)){
       return()
     }
     samps=samples_reactive()
@@ -1228,7 +1261,7 @@ tab3_left_margin=12
     
     counts=apply(session$userData$dataset$counts[samps,,,drop=F],2:3,sum)
     
-    return(t(sapply(session$userData$modules,function(modi){colSums(counts[modi,,drop=F])})/colSums(counts)))
+    return(t(sapply(modsl,function(modi){colSums(counts[modi,,drop=F])})/colSums(counts)))
   
     
   })
@@ -1243,10 +1276,14 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     inmodules=modules_reactive()
+    modsl=gene_to_module_reactive()
     if (!session$userData$loaded_flag){
       return()
     }
-    if (is.null(session$userData$modules)){
+    if (is.null(modsl)){
+      return()
+    }
+    if (length(inmodules)==0){
       return()
     }
     modulemat<-module_counts_reactive()
