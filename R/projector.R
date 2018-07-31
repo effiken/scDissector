@@ -26,9 +26,9 @@ getLikelihood=function(umitab,models,reg){
 
 #update_alpha_single_batch=function(umitab,models,noise_model,reg,max_noise_fraction=.75,max_ncells=5000){
 #  if (ncol(umitab)>max_ncells){
-#    umitab=umitab[,sample(colnames(umitab),size = max_ncells)]   
+#    umitab=umitab[,sample(colnames(umitab),size = max_ncells)]
 #  }
-# 
+#
 #  if (nrow(models)!=length(noise_model)){
 #    stop("noise_models and models have different number of genes")
 #  }
@@ -42,33 +42,33 @@ getLikelihood=function(umitab,models,reg){
 #    tot_ll=get_total_likelihood(get_ll_a(x,models,noise_model,umitab,reg))
 #    return(tot_ll)
 #  }
-#  
+#
 #  optim_val=optimize(func_to_opt,c(1e-3,max_noise_fraction),maximum = T,tol=1e-3)
-#  
+#
 #  return(optim_val$maximum)
 #}
 
 update_alpha_single_batch=function(umitab,models,noise_model,cell_to_cluster=NULL,reg,max_noise_fraction=.2,max_ncells=5000){
   if (ncol(umitab)>max_ncells){
-    umitab=umitab[,sample(colnames(umitab),size = max_ncells)]   
+    umitab=umitab[,sample(colnames(umitab),size = max_ncells)]
   }
-  
+
   if (nrow(models)!=length(noise_model)){
     stop("noise_models and models have different number of genes")
   }
-  
-  
+
+
   get_tot_likelihood_fixed_clusters=function(alpha){
     adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
     ll=getLikelihood(umitab,adjusted_models,reg=reg)
     return(mean(ll[cbind(1:nrow(ll),match(cell_to_cluster,colnames(ll)))]))
   }
-  
+
   get_tot_likelihood=function(alpha){
     adjusted_models=t((1-alpha)*t(models)+alpha*matrix(noise_model,ncol(models),nrow(models),byrow=T))
     return(get_total_likelihood(getLikelihood(umitab,adjusted_models,reg=reg)))
   }
-  
+
   if (!is.null(cell_to_cluster)){
     optim_val=optimize(get_tot_likelihood_fixed_clusters,c(0,max_noise_fraction),maximum = T,tol=1e-3)
   }
@@ -78,19 +78,19 @@ update_alpha_single_batch=function(umitab,models,noise_model,cell_to_cluster=NUL
   return(optim_val$maximum)
 }
 
- 
+
 
 
 getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NULL,reg){
-  
+
   ll=matrix(NA,ncol(umitab),ncol(models))
   rownames(ll)=colnames(umitab)
   colnames(ll)=colnames(models)
-  
+
   ll_noise=matrix(NA,ncol(umitab),1)
   rownames(ll_noise)=colnames(umitab)
-  
- 
+
+
   adjusted_models=t((1-alpha_noise)*t(models)+alpha_noise*matrix(noise_model,ncol(models),nrow(models),byrow=T))
   ll[colnames(umitab),colnames(adjusted_models)]=getLikelihood(umitab,adjusted_models,reg=reg)
   ll_noise[,1]=getLikelihood(umitab,noise_model,reg=reg)[,1]
@@ -99,7 +99,7 @@ getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NU
 
 
 noiseEMsingleBatch=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75,trace=T){
-  
+
     beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
 if (trace){
     message("Est 1: ~",round(beta_noise), " noise UMIs/cell")
@@ -114,7 +114,7 @@ if (trace){
     cell_to_cluster=MAP(res_boll$ll)
     tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
     avg_numis_per_model[names(tmptab)]=tmptab
-   
+
     beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
 
     nmoved=sum(cell_to_cluster!=prev_cell_to_cluster)
@@ -124,9 +124,9 @@ if (trace){
     }
     i=i+1
   }
-  
+
   res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
-  
+
   return(list(beta_noise=beta_noise,avg_numis_per_model=avg_numis_per_model,ll=res_boll$ll))
 }
 
@@ -157,7 +157,7 @@ get_expected_noise_UMI_counts_alpha=function(umis,cluster,batch,noise_models,alp
   ngenes=nrow(noise_models)
   nmodels=length(clusters)
   nsamps=ncol(noise_models)
-  
+
   raw_counts=Matrix::t(Matrix.utils::aggregate.Matrix(Matrix::t(umis),cluster))
   ag=aggregate(Matrix::colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(Matrix::colSums(umis),batch),sum)[colnames(noise_models)]
@@ -202,8 +202,9 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   numis_per_batch_cluster[rownames(tmp_numis_per_batch_cluster),colnames(tmp_numis_per_batch_cluster)]=tmp_numis_per_batch_cluster
   rm(tmp_numis_per_batch_cluster)
   gc()
-  expected_noise_counts=Matrix::`%&%`(noise_models,(numis_per_batch_cluster*alpha_noise))
-  adj_counts=pmax(raw_counts-expected_noise_counts,0)
+  # Substracting the expected noise UMI counts from the raw UMI counts:
+  expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
+  adj_counts=as.matrix(pmax(raw_counts-expected_noise_counts,0))
   if (make_plots){
     for (i in 1:ncol(raw_counts)){
       png(paste(figure_prefix,"_",i,".png",sep=""))
@@ -212,8 +213,10 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
     }
   }
   #identify(raw_counts[,i],expected_noise_counts[,i],labels = rownames(raw_counts))
-  #browser()  
-  models=t(as.matrix(Matrix::t(adj_counts)/Matrix::colSums(adj_counts)))
+  #browser()
+  rm(expected_noise_counts)
+  gc()
+  models=t(t(adj_counts)/colSums(adj_counts))
   return(models)
 }
 
