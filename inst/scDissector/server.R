@@ -889,6 +889,18 @@ tab3_left_margin=12
     }
   })
   
+  output$inDownloadModuleList <- downloadHandler(
+    filename = function() {
+      paste("modules-", Sys.Date(), ".txt", sep="")
+    },
+    content = function(file) {
+      
+      isolate({modsl=gene_to_module_reactive()})
+      tab=cbind(module_name=names(modsl),genes=sapply(modsl,paste,collapse=","))
+      write.table(tab, file,row.names = F,col.names = T,quote =F)
+    }
+  )
+  
   ###########################################################
   
   output$ncells_barplot <-renderPlot({

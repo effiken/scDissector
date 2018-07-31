@@ -179,7 +179,8 @@ mainPanel(width=12,
                        textInput("inModules", width=2000, "Modules:"),
                        wellPanel(
                          actionButton("inClusterModules", "Reorder Modules"),
-                         selectInput("inReorderingModulesMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal"))
+                         selectInput("inReorderingModulesMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal")),
+                         downloadButton('inDownloadModuleList', 'Download Modules')
                          ),
                       wellPanel(
                         selectInput("inModuleSelect","Show Module:",choices=c()),
