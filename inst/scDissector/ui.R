@@ -176,6 +176,7 @@ mainPanel(width=12,
                 wellPanel(
                   textInput("inNUmberOfGeneModules","Number of Modules:",value = 50),
                   uiOutput("avg_module_plot")),
+                sliderInput("inAvgModuleColorScale","Log2(expression/(Module_mean))",min = -4,max = 4,step = 1,value = c(-2,2)),
                        textInput("inModules", width=2000, "Modules:"),
                        wellPanel(
                          actionButton("inClusterModules", "Reorder Modules"),

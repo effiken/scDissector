@@ -1304,7 +1304,7 @@ tab3_left_margin=12
     }
     modulemat<-modulemat[inmodules,inclusts]
     
-    zlim=input$inModelColorScale
+    zlim=input$inAvgModuleColorScale
     par(mar=c(7,tab3_left_margin,1,9))
    
    
@@ -1322,7 +1322,7 @@ tab3_left_margin=12
       break2=1e-1
     }
   
-    image(mat_to_show[,ncol(mat1):1],col=colgrad,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=session$userData$loaded_model_version)
+    image(mat_to_show[,ncol(mat1):1],col=colgrad_rel,breaks=c(break1,seq(zlim[1],zlim[2],l=99),break2),axes=F,main=session$userData$loaded_model_version)
   
     box()
     

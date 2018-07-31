@@ -5,7 +5,9 @@ tfs_file=system.file("extdata", "tfs.csv", package="scDissector")
 if (tfs_file==""){
     tfs_file="../extdata/tfs.csv"
 }
-surface_markers_file=system.file("extdata", "surface_markers.csv", package="scDissector")
+#surface_markers_file=system.file("extdata", "surface_markers.csv", package="scDissector")
+
+surface_markers_file=system.file("extdata", "Martinez_Martin_cell_2018.csv", package="scDissector")
 if (surface_markers_file==""){
     surface_markers_file="../extdata/surface_markers.csv"
 }
@@ -21,7 +23,7 @@ if (file.exists(tfs_file)){
 }
 
 if (file.exists(surface_markers_file)){
-  surface_markers<-read.csv(file=surface_markers_file,header=F,stringsAsFactors = F)[,1]
+  surface_markers<-unique(read.csv(surface_markers_file,skip=2,header=F,stringsAsFactors = F)[,1])
   surface_markers2=paste(substring(surface_markers, 1,1), tolower(substring(surface_markers, 2)),sep="")
   surface_markers<-c(surface_markers,surface_markers2)
   rm(surface_markers2)
