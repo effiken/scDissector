@@ -11,7 +11,8 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
     
 2.  Install devtools package in R (in case you don't have it already installed):
 
-    install.packages(devtools)
+    install.packages("devtools")
+    library(devtools)
     
 3.  Install scDissector:
 
