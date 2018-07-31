@@ -325,7 +325,12 @@ tab3_left_margin=12
   })
   
   
-  
+  cells_reactive <-reactive({
+    inclusts=clusters_genes_sampples_reactive()$clusters
+    insamples=clusters_genes_sampples_reactive()$samples
+    dataset=session$userData$dataset
+    return(sort(names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]))
+  })
   
   output$event <- renderPrint({
     d <- event_data("plotly_hover")
@@ -805,7 +810,9 @@ tab3_left_margin=12
     df=modules_varmean_reactive()
     lo=reactiveLoess()
     lline=predict(lo,newdata =log10(df$m))
-    geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>lline+as.numeric(input$inVarMean_varmeanThresh)
+    isolate({
+      geneModuleMask<-log10(df$m)>as.numeric(input$inVarMean_MeanThresh)&log2(df$v/df$m)>lline+as.numeric(input$inVarMean_varmeanThresh)
+    })
     geneModuleMask[is.na(geneModuleMask)]<-F
     names(geneModuleMask)=rownames(df)
     return(geneModuleMask)
@@ -840,12 +847,13 @@ tab3_left_margin=12
     {
       return()
     }
- 
-    inclusts=clusters_genes_sampples_reactive()$clusters
-    insamples=clusters_genes_sampples_reactive()$samples
+    input$inModulesGetCormap
+    #inclusts=clusters_genes_sampples_reactive()$clusters
+    #insamples=clusters_genes_sampples_reactive()$samples
     dataset=session$userData$dataset
-    cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
+    #cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
     
+    cell_mask=cells_reactive()
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
     ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
@@ -862,7 +870,7 @@ tab3_left_margin=12
     {
       return()
     }
-    if (input$inGetModules==0){
+    if (input$inModulesGetCormap==0){
       return()
     }
     if (is.null(getGeneModuleMask())){
@@ -1020,7 +1028,7 @@ tab3_left_margin=12
   
   output$cor_module_plot <- renderUI({
  
-    if (input$inGetModules==0){
+    if (input$inModulesGetCormap==0){
       return()
     }
     he=6*nrow(module_cor_reactive())

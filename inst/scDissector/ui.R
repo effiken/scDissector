@@ -29,7 +29,7 @@ mainPanel(width=12,
                                           selectInput("inSampleToAdd", "Samples:",choices = c(),width=300),
                                           actionButton("inAddSample","Add"),
                                           textInput("inSamples", width="100%", "Samples To Load:"),
-                                          textInput("inMinUmis", width=100, "Minimum #UMIs/cell:",value = 250),
+                                          textInput("inMinUmis", width=100, "Minimum #UMIs/cell:",value = 800),
                                           textInput("inMaxUmis", width=100, "Maximum #UMIs/cell:",value = 25000),
                                           actionButton("inLoad","Load")
                                   ),
@@ -171,7 +171,7 @@ mainPanel(width=12,
                   textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.50"),
                   sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range",width(100))
                  ),
-                wellPanel(actionButton("inGetModules","Get Correlation Map"),
+                wellPanel(actionButton("inModulesGetCormap","Get Correlation Map"),
                 uiOutput("cor_module_plot")),
                 wellPanel(
                   textInput("inNUmberOfGeneModules","Number of Modules:",value = 50),
