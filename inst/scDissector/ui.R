@@ -172,9 +172,10 @@ mainPanel(width=12,
                   sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range",width(100))
                  ),
                 wellPanel(actionButton("inModulesGetCormap","Get Correlation Map"),
-                uiOutput("cor_module_plot")),
+                uiOutput("cor_gene_module_plot")),
                 wellPanel(
                   textInput("inNUmberOfGeneModules","Number of Modules:",value = 50),
+                  uiOutput("cor_module_plot"),
                   uiOutput("avg_module_plot")),
                 sliderInput("inAvgModuleColorScale","Log2(expression/(Module_mean))",min = -4,max = 4,step = 1,value = c(-2,2)),
                        textInput("inModules", width=2000, "Modules:"),

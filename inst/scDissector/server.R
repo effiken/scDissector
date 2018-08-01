@@ -1026,13 +1026,22 @@ tab3_left_margin=12
     plotOutput("avg_heatmap_modules", width = "100%", height = he)
   })
   
-  output$cor_module_plot <- renderUI({
+  output$cor_gene_module_plot <- renderUI({
  
     if (input$inModulesGetCormap==0){
       return()
     }
     he=6*nrow(module_cor_reactive())
     plotOutput("genecor_heatmap_modules", width = "100%", height = he)
+  })
+  
+  output$cor_module_plot <- renderUI({
+    
+    if (input$inModulesGetCormap==0){
+      return()
+    }
+    he=14*length(gene_to_module_reactive())
+    plotOutput("modulecor_heatmap_modules", width = "100%", height = he)
   })
   
   output$genecor_heatmap_modules <- renderPlot({
@@ -1052,8 +1061,30 @@ tab3_left_margin=12
     mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
     box()
   })
+
+  output$modulecor_heatmap_modules <- renderPlot({
+    modsl=gene_to_module_reactive()
+    if (is.null(modsl)){
+     return()
+    }
+    ds_i=match(input$inModulesDownSamplingVersion,session$userData$dataset$ds_numis)
+
+    mods=rep(1:length(modsl),sapply(modsl,length))
+    names(mods)=unlist(modsl)
+    modsums=aggregate(session$userData$dataset$ds[[ds_i]][names(mods),],groupings=mods,fun="sum")
+    cormat=cor(t(as.matrix(modsums)))
+    zbreaks=c(-1,seq(-1,1,l=99),1)
+    cor_cols=colorRampPalette(c("blue","white","red"))(100)
+    par(mar=c(3,3,3,3))
+    ord=get_order(seriate(as.dist(1-cormat),method="OLO_complete"))
+    image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
+    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    box()
   
-  
+  })
   
   output$sample_avg_profile_plot <- renderUI({
     cgs=clusters_genes_sampples_reactive()
