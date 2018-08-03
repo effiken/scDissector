@@ -20,7 +20,7 @@ get_one_likelihood=function(model_v,umitab,reg){
 
 
 getLikelihood=function(umitab,models,reg){
-    return(as.matrix(Matrix::t(umitab)%*%log2(reg+models)/Matrix::colSums(umitab)))
+    return(as.matrix(Matrix::t(umitab)%*%log2(reg+models))/Matrix::colSums(umitab))
 }
 
 
