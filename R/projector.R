@@ -20,7 +20,7 @@ get_one_likelihood=function(model_v,umitab,reg){
 
 
 getLikelihood=function(umitab,models,reg){
-    return(as.matrix(Matrix::t(umitab)%*%log2(reg+models)/Matrix::colSums(umitab)))
+    return(as.matrix(Matrix::t(umitab)%*%log2(reg+models))/Matrix::colSums(umitab))
 }
 
 
@@ -209,9 +209,11 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   adj_counts=as.matrix(pmax(raw_counts-expected_noise_counts,0))
   if (make_plots){
     for (i in 1:ncol(raw_counts)){
-      png(paste(figure_prefix,"_",i,".png",sep=""))
-      plot(expected_noise_counts[,i],raw_counts[,i],log="xy",main=i,xlab="expected noise UMIs",ylab="raw UMIs");abline(0,1)
-      dev.off()
+      if (!all(expected_noise_counts==0)){
+        png(paste(figure_prefix,"_",i,".png",sep=""))
+        plot(expected_noise_counts[,i],raw_counts[,i],log="xy",main=i,xlab="expected noise UMIs",ylab="raw UMIs");abline(0,1)
+        dev.off()
+      }
     }
   }
   #identify(raw_counts[,i],expected_noise_counts[,i],labels = rownames(raw_counts))
