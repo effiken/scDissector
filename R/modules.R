@@ -71,7 +71,7 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
 }
 
 
-parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9)){
+parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9),ord_viz_method="OLO_complete"){
   
   gene_mask2=names(which(apply(cormat,1,quantile,1-mod_size/ncol(cormat),na.rm=T)>=min_mod_cor))
   #gene_cor_map(cormat[gene_mask2,gene_mask2],modules_version=modules_version,ser_method="OLO_complete",zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1))
@@ -84,21 +84,26 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
 #  mod_freqs_normed=log2((reg+mod_freqs)/(reg+rowMeans(mod_freqs)))
  # ord=get_order(seriate(as.dist(1-cor(t(as.matrix(mod_freqs_normed)))),method = "OLO"))
 
-  pdf(paste("module_cor_",modules_version,".pdf",sep=""))
+  pdf(paste("module_cor_",modules_version,".pdf",sep=""),width=nmods/10,height=nmods/10)
   cormat=cor(t(as.matrix(modsums)))
   zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1)
   cor_cols=colorRampPalette(c("blue","white","red"))(100)
   par(mar=c(3,3,3,3))
   ord=get_order(seriate(as.dist(1-cormat),method="OLO_complete"))
-  image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
-  mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-  mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-  mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-  mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-  box()
-  dev.off()
+  cormat=cormat[ord,ord]
+  colnames(cormat)=1:nmods
+  rownames(cormat)=1:nmods
   modsl=modsl[ord]
   names(modsl)=1:nmods
+  ord_viz=get_order(seriate(as.dist(1-cormat),method=ord_viz_method))
+  image(cormat[ord_viz,ord_viz],col=cor_cols,breaks=zbreaks,axes=F)
+  mtext(text = colnames(cormat)[ord_viz],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord_viz],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord_viz],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord_viz],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  box()
+  dev.off()
+  
 #  mod_freqs=mod_freqs[ord,]
 #  rownames(mod_freqs)=1:nmods
  # mod_freqs_normed=mod_freqs_normed[ord,]
@@ -112,6 +117,7 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
 #  mtext(text = ldm$clustAnnots[intersect(ldm$cluster_order,colnames(mod_freqs_normed))],side = 2,at = seq(0,1,l=ncol(mod_freqs_normed)),las=2,cex=.5)
 #  mtext(text = paste("Module",rownames(mod_freqs_normed)),side = 1,at = seq(0,1,l=nrow(mod_freqs_normed)),las=2,cex=.5)
 #  close_plot()
+  return(modsl)
 }
 
 

@@ -38,9 +38,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         clustAnnots[is.na(clustAnnots)]<-""
         names(clustAnnots)<-rownames(a)
         
-        #  if (ncol(annot_tab)>1){
-        #    output$cluster_sets<-split(rownames(annots_tab),annots_tab[,2])
-        #  }
+         if (ncol(a)>1){
+            output$cluster_sets<-split(rownames(a),a[,2])
+          }
         
     }
     else{
