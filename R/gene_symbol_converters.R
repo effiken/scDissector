@@ -33,3 +33,26 @@ adjust_gene_names <- function(genes_string,data_genes){
   return(genes)
 
 }
+
+### gene symbol converters
+load_gene_symbol_converters=function(){
+    hgnc_file=system.file("extdata", "hgnc_complete_set.txt", package="scDissector")
+    if (hgnc_file==""){
+        hgnc_file="../extdata/hgnc_complete_set.txt"
+    }
+    hgnc<-read.delim(hgnc_file,header = T,stringsAsFactors = F)
+    old_symbol=ifelse(hgnc[,"prev_symbol"]=="",hgnc[,"symbol"],hgnc[,"prev_symbol"])
+    l_old_symbol=strsplit(old_symbol,"\\|")
+    old_symbol2=unlist(l_old_symbol)
+    
+    new_symbol=hgnc[,"symbol"]
+    new_symbol2=rep(new_symbol,sapply(l_old_symbol,length))
+    
+    gene_symbol_old2new<-(new_symbol2)
+    names(gene_symbol_old2new)<-old_symbol2
+    
+    gene_symbol_new2old<-old_symbol
+    names(gene_symbol_new2old)<-new_symbol
+    return(list(old2new=gene_symbol_old2new,new2old=gene_symbol_new2old))
+}
+

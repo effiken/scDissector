@@ -49,13 +49,17 @@ save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),
 }
 
 
-gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50){
+gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL){
+  if (is.null(clusters)){
+    clusters=colnames(ldm$model$models)
+  }
   ds=ldm$dataset$ds[[match(ds_version,ldm$dataset$ds_numis)]]
-  s1=rowSums(ds,na.rm=T) 
-  mask1=s1>=min_number_of_UMIs&(!rownames(ds)%in%c(grep("RP",rownames(ds),val=T),grep("MT-",rownames(ds),val=T)))
+  ds=ds[,ldm$dataset$cell_to_cluster[colnames(ds)]%in%clusters]
+  s1=Matrix::rowSums(ds,na.rm=T) 
+  mask1=s1>=min_number_of_UMIs&(!rownames(ds)%in%genes_to_exclude)
   message(sum(mask1)," genes passed expression threshold")
   v1=apply(ds[mask1,],1,var,na.rm=T)
-  m1=rowMeans(ds[mask1,],na.rm=T)
+  m1=s1[mask1]/ncol(ds)
   x=log10(m1)
   breaks=seq(min(x,na.rm=T),max(x,na.rm=T),.2)
   lv=log2(v1/m1)
@@ -71,7 +75,7 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
 }
 
 
-parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9),ord_viz_method="OLO_complete"){
+parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9),ord_viz_method="OLO_complete",path=""){
   
   gene_mask2=names(which(apply(cormat,1,quantile,1-mod_size/ncol(cormat),na.rm=T)>=min_mod_cor))
   #gene_cor_map(cormat[gene_mask2,gene_mask2],modules_version=modules_version,ser_method="OLO_complete",zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1))
@@ -84,7 +88,7 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
 #  mod_freqs_normed=log2((reg+mod_freqs)/(reg+rowMeans(mod_freqs)))
  # ord=get_order(seriate(as.dist(1-cor(t(as.matrix(mod_freqs_normed)))),method = "OLO"))
 
-  pdf(paste("module_cor_",modules_version,".pdf",sep=""),width=nmods/10,height=nmods/10)
+  pdf(paste(path,"module_cor_",modules_version,".pdf",sep=""),width=nmods/10,height=nmods/10)
   cormat=cor(t(as.matrix(modsums)))
   zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1)
   cor_cols=colorRampPalette(c("blue","white","red"))(100)
@@ -109,7 +113,7 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
  # mod_freqs_normed=mod_freqs_normed[ord,]
 #  rownames(mod_freqs_normed)=1:nmods
   
-  write.table(file=paste("tables/",modules_version,"_modules.txt",sep=""),sapply(modsl,paste,collapse=","),row.names = T,col.names = F,quote=F)
+  write.table(file=paste("output/tables/",modules_version,"_modules.txt",sep=""),sapply(modsl,paste,collapse=","),row.names = T,col.names = F,quote=F)
 #  write.csv(file=paste("tables/",modules_version,"_modules_log10_freq_per_cluster.csv",sep=""),log10(1e-10+as.matrix(mod_freqs)),row.names = T,quote=F)
 #  open_plot(fn=paste(modules_version,"_modules_clusters_heatmap",sep=""),plot_type = "pdf",width = 10,height = 5)
 #  par(mar=c(5,7,1,1))
@@ -122,7 +126,24 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
 
 
 example=function(){
-  cormat=gene_cor_analysis(ldm,"2000",0.1,50)
+  genes_to_exclude=c(grep("RP",rownames(ldm$dataset$umitab),val=T),grep("MT-",rownames(ldm$dataset$umitab),val=T))
+  #cormat=gene_cor_analysis(ldm,"2000",0.1,50,genes_to_exclude=genes_to_exclude)
+  cormat=gene_cor_analysis(ldm,"2000",.5,50,genes_to_exclude=genes_to_exclude)
   save_gene_cor_map(cormat,"all_cells2",ser_method = "OLO_complete")
+  modules_version="all_cells2"
+  ser_method = "OLO_complete"
+  pdf(paste(modules_version,"gene_cor.png",sep="_"),width=ncol(cormat)/12,height=ncol(cormat)/12)
+  #  ord=hclust(as.dist(1-cormat))$order
+  #  browser()
+  par(mar=c(3,3,3,3))
+  ord=get_order(seriate(as.dist(1-cormat),ser_method))
+  image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
+  mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+  box()
+  dev.off()
+  
   parse_modules(ldm,cormat,"2000","all_cells2",nmods =50)
 }
