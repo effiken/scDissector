@@ -206,7 +206,7 @@ update_models_debatched=function(umis,cell_to_cluster,batch,noise_models,alpha_n
   gc()
   # Substracting the expected noise UMI counts from the raw UMI counts:
   expected_noise_counts=noise_models%*%(numis_per_batch_cluster*alpha_noise)
-  adj_counts=as.matrix(pmax(raw_counts-expected_noise_counts,0))
+  adj_counts=pmax(as.matrix(raw_counts-expected_noise_counts),0)
   if (make_plots){
     for (i in 1:ncol(raw_counts)){
       if (!all(expected_noise_counts==0)){
