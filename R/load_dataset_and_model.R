@@ -122,15 +122,15 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         }
         tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
         
-        if (is.null(model$insilico_gating)){
+        if (is.null(model$params$insilico_gating)){
             umitab=tmp_env$umitab
         }
         else{
             
-            is_res=insilico_sorter(tmp_env$umitab,model$insilico_gating)
+            is_res=insilico_sorter(tmp_env$umitab,model$params$insilico_gating)
             umitab=is_res$umitab
             
-            for (score_i in names(model$insilico_gating)){
+            for (score_i in names(model$params$insilico_gating)){
                 dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
                 if (is.null(dataset$gated_out_umitabs[[score_i]])){
                     dataset$gated_out_umitabs[[score_i]]=list()
