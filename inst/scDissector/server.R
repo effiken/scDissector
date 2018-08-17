@@ -79,26 +79,6 @@ update_all= function(session,ldm){
   session$userData$loaded_flag<-T
 }
 
-randomly_select_cells=function(ldm,nrandom_cells_per_sample_choices){
-  randomly_selected_cells=list()
-  for (ds_i in 1:length(ldm$dataset$ds_numis)){
-    randomly_selected_cells[[ds_i]]<-list()
-    for (nrandom_cells in nrandom_cells_per_sample_choices){
-      randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
-      for (sampi in ldm$dataset$samples){
-        maski=ldm$dataset$cell_to_sample[colnames(ldm$dataset$ds[[ds_i]])]==sampi
-        
-        if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(ldm$dataset$ds[[ds_i]])[maski])
-        }
-        else{
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(ldm$dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
-        }
-      }
-    }
-  }
-  return(randomly_selected_cells)
-}
 
 
 
@@ -222,8 +202,7 @@ tab3_left_margin=12
 
     ldm=scDissector::load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis)
     
-    randomly_selected_cells=randomly_select_cells(ldm,params$nrandom_cells_per_sample_choices)
-    ldm$dataset$randomly_selected_cells=randomly_selected_cells
+
     show_all_tabs()
     update_all(session,ldm)
     
@@ -331,6 +310,30 @@ tab3_left_margin=12
     return(sort(names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]))
   })
   
+  sample_cells_reactive <-reactive({
+      randomly_selected_cells=list()
+      dataset=session$userData$dataset
+      for (ds_i in 1:length(dataset$ds_numis)){
+        randomly_selected_cells[[ds_i]]<-list()
+        for (nrandom_cells in params$nrandom_cells_per_sample_choices){
+          randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
+          for (sampi in dataset$samples){
+            maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
+            
+            if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
+              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
+            }
+            else{
+              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
+            }
+          }
+        }
+      }
+      return(randomly_selected_cells)
+  })
+
+  
+  
   output$event <- renderPrint({
     d <- event_data("plotly_hover")
     if (is.null(d)) "Hover on a point!" else d
@@ -355,7 +358,7 @@ tab3_left_margin=12
     }
     dataset=session$userData$dataset
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    sampling_mask=dataset$randomly_selected_cells[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    sampling_mask=sample_cells_reactive()[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
     return(ds[,intersect(sampling_mask,cluster_mask),drop=F])
   })
@@ -771,7 +774,7 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
@@ -855,7 +858,7 @@ tab3_left_margin=12
     cell_mask=cells_reactive()
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
     cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],dataset$cell_to_sample[colnames(ds)])
@@ -974,9 +977,9 @@ tab3_left_margin=12
     layout(matrix(1:(nplots),nplots,1))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
-      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
+      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
       points(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
-      rect(xleft = session$userData$dataset$min_umis,session$userData$model$insilico_gating[[i]]$interval[1],session$userData$dataset$max_umis,session$userData$model$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
+      rect(xleft = session$userData$dataset$min_umis,session$userData$model$params$insilico_gating[[i]]$interval[1],session$userData$dataset$max_umis,session$userData$model$params$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
     }
 
    
@@ -1472,11 +1475,10 @@ tab3_left_margin=12
     
     cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=session$userData$dataset$randomly_selected_cells[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    cells_selected=sample_cells_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[,cell_mask]
-    
     plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
 
   }
@@ -1556,6 +1558,21 @@ tab3_left_margin=12
     click_tooltip <- function(x) {
       
     }
+    
+    
+    
+    
+    if (exists("default_model_dataset")){
+      
+      hideTab(inputId = "inMain", target = "Data")
+    }
+    
+    
+    
+    ########################################################################
+    
+    
+    
     
     
     
@@ -1774,6 +1791,8 @@ tab3_left_margin=12
       
     } 
     
+    
+    
     ge_proj_vs_ref <- reactive({
       insamples=samples_reactive()
       clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
@@ -1898,8 +1917,6 @@ tab3_left_margin=12
       if (!exists("scDissector_datadir")){
         stop("Error! Undefined scDissector_datadir")
       }
-      randomly_selected_cells=randomly_select_cells(ldm,params$nrandom_cells_per_sample_choices)
-      ldm$dataset$randomly_selected_cells=randomly_selected_cells
       session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
       show_all_tabs()

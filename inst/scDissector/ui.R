@@ -19,8 +19,12 @@ actionLink <- function(inputId, ...) {
 mainPanel(width=12,  
   fluidPage(
    
-      h4("scDissector v0.99"),
-     tabsetPanel(id="inMain",
+  #    h4("scDissector v0.99"),
+    titlePanel("scDissector v0.99"),
+      navbarPage("",id = "inMain",footer = fluidPage(
+        img(src = 'sinai_logo.png',height = '70px', width = '70px'),
+        p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
+  #   tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
                                   textInput("inDatapath",width="75%", "Data path:", value =""), 
@@ -54,14 +58,11 @@ mainPanel(width=12,
                            fluidRow(
                              plotOutput("ncells_barplot",width="100%",height=200),
                              plotOutput("UMI_boxplot",width="100%",height=200)
-                             #   plotOutput("BatchHeatmap",width="150%",height=600)
-                          
                           )
                    ),
-                  
                   tabPanel("Clusters", 
                     fluidRow(
-                          selectInput("inModelOrAverage","View",choices=c("Model","Batch-corrected Average","Average")),
+                          selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average")),
                           column(1,offset=0, style='padding:0px;',uiOutput("samples_enrichment")),column(10,uiOutput("avg_profile_plot")),column(1,offset=0, style='padding:0px;',uiOutput("cluster_sizes")),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),
@@ -112,19 +113,7 @@ mainPanel(width=12,
                      textInput("inSampleColors", width=2000, "Colors:"),
                      actionButton("inResetSamples","Reset"),
                      hr()) 
-                         )#,
-#                    fluidRow(column(12,
-#                            wellPanel(
-#                            downloadButton("downloadExprsTable","Download Full Expression Table"),
-#                            downloadButton("downloadCellCountsTable","Download Cell Counts Table")),
-#                            wellPanel(
-#                            actionButton("detectDiffExrs","screen Diff. expressed Genes"),
-#                            downloadButton("downloadSignifExprsTable","Download Diffrential Expression Table"),
-#                            selectInput("inputFDR",label="FDR=",choices=c(1e-1,5e-2,1e-2,1e-3,1e-4,1e-5),selected = 1e-2,width=100),
-#                            selectInput("inputMinFC",label="Fold Change >",choices=c(1.5,2,4,8),selected = 2,width=100),
-#                            selectInput("inMinAvgExprs",label="Avg. Exprs >",choices=c(1e-3,5e-3,1e-2,5e-2,1e-1),selected = 2,width=100))
-#                            ))
-                        ), 
+            )), 
                 tabPanel("Cells", fluidRow(
                       plotOutput("truthplot",width="100%",height = "700"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
@@ -188,8 +177,7 @@ mainPanel(width=12,
                         selectInput("inModuleSelect","Show Module:",choices=c()),
                         textOutput("textModuleGenes")
                       )
-              )
-              ),
+              )),
                 tabPanel("Samples",fluidRow(
                           column(12,uiOutput("sample_avg_profile_plot")),
                           column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
@@ -200,14 +188,11 @@ mainPanel(width=12,
                    selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
                    wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
                    tableOutput("Gene1ExprsTableRefVsProj")),
-                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500)))),
-                     
-                   fluidRow(column(12,br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br(),br())
-              ),
-          br()),
-          img(src = 'sinai_logo.png',height = '70px', width = '70px'),
-          p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))
-      )
+                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))))
+              )
+         )
+          
+  
   
 )
 
