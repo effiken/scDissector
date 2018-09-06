@@ -3,9 +3,15 @@ fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
 fisher.z2r <- function (z) {(exp(2 * z) - 1)/(1 + exp(2 * z))}
 
 
-get_avg_gene_to_gene_cor=function(ds,cell_to_sample){
+get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL){
   zmat=matrix(0,nrow(ds),nrow(ds),dimnames=list(rownames(ds),rownames(ds)))
-  samples=unique(cell_to_sample)
+  samples_inp=unique(cell_to_sample)
+  if (is.null(samples)){
+    samples=samples_inp
+  }
+  else{
+    samples=intersect(samples,samples_inp)
+    }
   for (samp in samples){
     print(samp)
     dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp])>5,cell_to_sample==samp]
@@ -49,7 +55,7 @@ save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),
 }
 
 
-gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL){
+gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL,samples=NULL){
   if (is.null(clusters)){
     clusters=colnames(ldm$model$models)
   }
@@ -71,7 +77,7 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
   lo=loess(z~b)
   high_var_genes=names(which((lv-predict(lo,newdata =x))>min_varmean_per_gene))
   message(length(high_var_genes)," High var genes")
-  cormat=get_avg_gene_to_gene_cor(log2(1+ds[high_var_genes,]),ldm$dataset$cell_to_sample[colnames(ds)]) 
+  cormat=get_avg_gene_to_gene_cor(log2(1+ds[high_var_genes,]),ldm$dataset$cell_to_sample[colnames(ds)],samples=samples) 
 }
 
 
