@@ -15,20 +15,16 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     output$scDissector_params<-list()
     output$scDissector_params$excluded_clusters<-c()
     
-    clusterset_fn=paste(fn_prefix,"_clustersets.txt",sep="")
-    if (file.exists(clusterset_fn)){
-        cluster_sets_tab=read.table(file=clusterset_fn,header = T,stringsAsFactors = F)
-        if (nrow(cluster_sets_tab)>0){
-            output$scDissector_params$cluster_sets<-strsplit(cluster_sets_tab[,2],",")
-            output$scDissector_params$excluded_cluster_sets<-cluster_sets_tab[cluster_sets_tab[,3],1]
-            names(output$scDissector_params$cluster_sets)<-cluster_sets_tab[,1]
-            if (length(output$scDissector_params$excluded_cluster_sets)>0){
-                output$scDissector_params$excluded_clusters<-unlist(output$scDissector_params$cluster_sets[[output$scDissector_params$excluded_cluster_sets]])
-            }
-        }
-    }
-    else{
-        output$scDissector_params$cluster_sets<-list()
+    
+    
+    get_cluster_set_list=function(clusts,i){
+      if (i==0){
+        return(clusts)
+      }
+      else{
+        l=split(clusts,a[clusts,i])
+        return(lapply(l,get_cluster_set_list,i-1))
+      }
     }
     
     annnot_fn=paste(fn_prefix,"_annots.txt",sep="")
@@ -39,7 +35,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         names(clustAnnots)<-rownames(a)
         
          if (ncol(a)>1){
-            output$cluster_sets<-split(rownames(a),a[,2])
+            output$cluster_sets<-get_cluster_set_list(rownames(a),2)
           }
         
     }
