@@ -1,5 +1,8 @@
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA){
+  if (is.na(excluded_clusters)){
+    excluded_clusters=c()
+  }
     require(Matrix)
     require(Matrix.utils)
     if(is.null(names(sample_fns))){
@@ -13,7 +16,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     fn_prefix=strsplit(model_fn,"\\.")[[1]][1]
     output<-list()
     output$scDissector_params<-list()
-    output$scDissector_params$excluded_clusters<-c()
+
     
     
     
@@ -53,7 +56,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         cluster_order=colnames(model$models)
     }
     
-    cluster_order=cluster_order[!cluster_order%in%output$scDissector_params$excluded_clusters]
+
     if (is.null(model$avg_numis_per_model)){
         model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
         names(model$avg_numis_per_model)=colnames(model$models)
@@ -175,7 +178,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         }
         
         cell_to_cluster=MAP(ll)
-        cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%output$scDissector_params$excluded_clusters]
+        cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%excluded_clusters]
         
         cell_to_cluster=cell_to_cluster[cells_to_include]
         ll=ll[cells_to_include,]
@@ -231,15 +234,22 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     model$model_filename=model_fn
     output$dataset=dataset
     rm("dataset")
+    included_clusters=setdiff(colnames(model$models),excluded_clusters)
     ncells_per_cluster<-rep(0,dim(model$models)[2])
     names(ncells_per_cluster)<-colnames(model$models)
     temptab=table(model$cell_to_cluster)
-    temptab=temptab[setdiff(names(temptab),output$scDissector_params$excluded_cluster_sets)]
+  #  temptab=temptab[setdiff(names(temptab),output$scDissector_params$excluded_cluster_sets)]
     ncells_per_cluster[names(temptab)]<-temptab
     output$ncells_per_cluster=ncells_per_cluster
+    
+    model$models=model$models[,included_clusters]
+    output$clustAnnots=output$clustAnnots[included_clusters]
+    output$ncells_per_cluster=output$ncells_per_cluster[included_clusters]
+    output$dataset$ll=output$dataset$ll[,included_clusters]
+    
     output$model=model
-    output$cluster_order<-cluster_order
-    output$default_clusters<-cluster_order
+    output$cluster_order<-intersect(cluster_order,included_clusters)
+    output$default_clusters<-intersect(cluster_order,included_clusters)
     output$loaded_model_version<-model_version_name
     return(output)
     

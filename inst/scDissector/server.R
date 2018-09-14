@@ -469,7 +469,7 @@ tab3_left_margin=12
       message("Chi sq detected nothing..")
       return()
     }
-    counts=apply(session$userData$dataset$counts[samples,,,drop=F],2:3,sum)
+    counts=apply(session$userData$dataset$counts[samples,genes,clusters,drop=F],2:3,sum)
     avg=t(t(counts)/colSums(counts))
 
     mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&
