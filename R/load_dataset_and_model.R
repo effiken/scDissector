@@ -186,7 +186,6 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         umitab=umitab[,cells_to_include]
         
         dataset$cell_to_cluster<-c(dataset$cell_to_cluster,cell_to_cluster)
-        tmpmod=update_models(umitab,cell_to_cluster)
         
         tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genemask,]),cell_to_cluster,fun="sum")))
         dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
