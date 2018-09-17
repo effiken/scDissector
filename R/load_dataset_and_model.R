@@ -38,7 +38,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         names(clustAnnots)<-rownames(a)
         
          if (ncol(a)>1){
-            output$cluster_sets<-get_cluster_set_list(rownames(a),2)
+            output$cluster_sets<-get_cluster_set_list(rownames(a),ncol(a))
           }
         
     }
