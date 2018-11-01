@@ -72,7 +72,7 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 
 
 
-plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1){
+plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10){
   ds=ds[ingenes,]
   ds=ds[,order(match(cell_to_cluster[colnames(ds)],inclusts))]
   samps=cell_to_sample[colnames(ds)]
@@ -90,19 +90,19 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
   if (plot_batch_bar){
     layout(matrix(1:2,1,2),widths=c(40,1))
   }
-  par(mar=c(10,3,1,1))
+  par(mar=c(lower_mar,3,1,1))
   image(pmat2,col=c("gray",cols),axes=F,breaks=c(-3e6,-1e6,seq(zlim[1],zlim[2],l=99),1e6))
   
   box()
   if (showSeparatorBars){
-    abline(h=1-cumsum(ncells)/sum(ncells),col="gray")
+    abline(h=1-cumsum(ncells)/sum(ncells),col="gray",lwd=seperatorBars_lwd)
   }
   mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=gene_text_cex,adj=1,line=1)
   a=cumsum(ncells)
   b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
   mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=cluster_text_cex,adj=1,line=.2)
   if (plot_batch_bar){
-    par(mar=c(10,0,1,1))
+    par(mar=c(lower_mar,0,1,1))
     image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
   }
 }
