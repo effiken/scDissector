@@ -1,6 +1,6 @@
 #' @export
 load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA){
-  if (is.na(excluded_clusters)){
+  if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
   }
     require(Matrix)
@@ -64,7 +64,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         model$avg_numis_per_model[names(tmptab)]=tmptab
     }
     
-    
+ 
     samples=names(sample_fns)
     
     dataset<-new.env()
@@ -77,23 +77,25 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     dataset$cell_to_sample<-c()
     
     dataset$alpha_noise=rep(NA,length(samples))
-    dataset$beta_noise=rep(NA,length(samples))
+
     dataset$avg_numis_per_sample_model<-matrix(NA,length(samples),ncol(model$models),dimnames = list(samples,colnames(model$models)))
     names(dataset$alpha_noise)=samples
-    names(dataset$beta_noise)=samples
+
     genes=rownames(model$models)
     message("")
     dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
     dataset$gated_out_umitabs<-list()
     dataset$noise_models=matrix(0,length(genes),length(samples),dimnames = list(genes,samples))
     dataset$counts<-array(0,dim=c(length(samples),nrow(model$models),ncol(model$models)),dimnames = list(samples,rownames(model$models),colnames(model$models)))
-    
-    
+    init_alpha=rep(NA,length(samples))
+    names(init_alpha)=samples
+    init_alpha[names(model$alpha_noise)]=model$alpha_noise
+    init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
     
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
-        
+      
         
         tmp_env=new.env()
         load(sample_fns[i],envir = tmp_env)
@@ -140,6 +142,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             
             
         }
+  
         barcode_mask=tmp_env$numis_before_filtering[colnames(umitab)]>min_umis&tmp_env$numis_before_filtering[colnames(umitab)]<max_umis
         dataset$min_umis=min_umis
         dataset$max_umis=max_umis
@@ -153,30 +156,36 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         models=t(t(models)/colSums(models))
         message("Projecting ",ncol(umitab)," cells")
         genes=intersect(rownames(umitab),genes)
-        if (is.null(model$alpha_noise)&is.null(model$beta_noise)){
+        if (is.null(model$alpha_noise)){
             ll=getLikelihood(umitab[projection_genemask,],models =models,reg = model$params$reg)
         }
         else {
-            if (!is.null(model$beta_noise)){
-                avg_numis_per_model=model$avg_numis_per_model
-                gobclle_res=betaNoiseEMsingleBatch(umitab=umitab[projection_genemask,],models=models,noise_model=noise_model,avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-                ll=gobclle_res$ll
-                dataset$beta_noise[sampi]=gobclle_res$beta_noise
-                dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
-            }
-            else if (!is.null(model$alpha_noise)){
-                alpha_b=update_alpha_single_batch(umitab[projection_genemask,],models,noise_model,reg=model$params$reg)
-                message("%Noise = ",round(100*alpha_b,digits=2))
-                res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+      #        alpha_b=init_alpha[sampi]
+    #          print(round(alpha_b,digits=6))
+    #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+    #          cell_to_cluster=MAP(res_l$ll)
+    #          alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,cell_to_cluster =cell_to_cluster,reg=model$params$reg )
+              alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg )
+  
+              message("%Noise = ",round(100*alpha_b,digits=2))
+              res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+        #     cells_to_exclude=apply(res_l$ll,1,which.max)==ncol(models)+1
+        #      if (sum(cells_to_exclude)>0){
+        #        message("Excluding ",sum(cells_to_exclude)," noisy barcodes")
+        #        alpha_b=update_alpha_single_batch( umitab[projection_genemask,!cells_to_exclude],models,noise_model,reg=model$params$reg )
+        #        message("%Noise = ",round(100*alpha_b,digits=2))
+        #        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,!cells_to_exclude],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
                 
-                ll=res_l$ll
-                dataset$alpha_noise[sampi]=alpha_b
-            }
-            else {
-                error("Noise parameter does not exist!")
-            }
+          #      print(median(colSums(umitab[projection_genemask,cells_to_exclude])))
+          #      print(median(colSums(umitab[projection_genemask,!cells_to_exclude])))
+          #    }
+              
+              message("%Noise = ",round(100*alpha_b,digits=2))
+            
+              dataset$alpha_noise[sampi]=alpha_b
+          
         }
-        
+        ll=res_l$ll[,1:ncol(models)]
         cell_to_cluster=MAP(ll)
         cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%excluded_clusters]
         
@@ -216,17 +225,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     
     
     if (!is.null(model$noise_models)){
-        if (!is.null(dataset$beta_noise)){
-            dataset$noise_counts=get_expected_noise_UMI_counts_beta(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$beta_noise,colnames(model$models))
-        }
-        if (!is.null(dataset$alpha_noise)){
-            dataset$noise_counts=get_expected_noise_UMI_counts_alpha(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$alpha_noise,colnames(model$models))
-        }
+          dataset$noise_counts=get_expected_noise_UMI_counts_alpha(dataset$umitab,dataset$cell_to_cluster,dataset$cell_to_sample,dataset$noise_models,dataset$alpha_noise,colnames(model$models))
+        
     }
     
-    if (all(is.na(dataset$beta_noise))){
-        dataset$beta_noise=NULL
-    }
     if (all(is.na(dataset$alpha_noise))){
         dataset$alpha_noise=NULL
     }
