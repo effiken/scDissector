@@ -180,7 +180,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           #      print(median(colSums(umitab[projection_genemask,!cells_to_exclude])))
           #    }
               
-              message("%Noise = ",round(100*alpha_b,digits=2))
+          #    message("%Noise = ",round(100*alpha_b,digits=2))
             
               dataset$alpha_noise[sampi]=alpha_b
           
