@@ -257,4 +257,165 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
 }
 
 
+downsample=function(u,min_umis,chunk_size=100){
+  non_zero_mask=rowSums(u)!=0
+  all_op=1:nrow(u[non_zero_mask,])
+  base_tab=rep(0,sum(non_zero_mask))
+  names(base_tab)=all_op
+  
+  downsamp_one=function(x,n){
+    tab=base_tab
+    tab2=table(sample(rep(all_op,x),size = n,replace=F))
+    tab[names(tab2)]=tab2
+    return(tab)
+  }
+  
+  cell_mask=colnames(u)[colSums(u,na.rm=T)>min_umis]  
+  print(paste("Downsampling ", length(cell_mask), " cells to ",min_umis," UMIs",sep=""))
+  
+  
+  breaks=unique(c(seq(from=1,to = length(cell_mask),by = chunk_size),length(cell_mask)+1))
+  ds=Matrix(0,nrow =nrow(u),length(cell_mask),dimnames = list(rownames(u),cell_mask))
+  
+  
+  for (i in 1:(length(breaks)-1)){
+      ds[non_zero_mask,breaks[i]:(breaks[i+1]-1),drop=F]=Matrix(apply(u[non_zero_mask,cell_mask[breaks[i]:(breaks[i+1]-1)],drop=F],2,downsamp_one,min_umis))
+ }
+  
+  
+  return(ds)
+}
+
+
+
+import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA){
+ 
+  require(Matrix)
+  require(Matrix.utils)
+
+  output<-list()
+  output$scDissector_params<-list()
+  
+  
+  
+  
+  get_cluster_set_list=function(clusts,i){
+    if (i==0){
+      return(clusts)
+    }
+    else{
+      l=split(clusts,a[clusts,i])
+      return(lapply(l,get_cluster_set_list,i-1))
+    }
+  }
+  
+  
+ 
+ 
+  clusters=unique(cell_to_cluster)
+  samples=unique(cell_to_sample)
+  
+  dataset<-new.env()
+  dataset$ds=list()
+  
+  dataset$ds_numis=NULL
+  dataset$ll<-c()
+  dataset$cell_to_cluster<-c()
+
+  dataset$cell_to_sample<-c()
+  
+  dataset$alpha_noise=rep(NA,length(samples))
+  
+  names(dataset$alpha_noise)=samples
+  
+  genes=rownames(umitab)
+  message("")
+  dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
+  dataset$gated_out_umitabs<-list()
+  dataset$counts<-array(0,dim=c(length(samples),length(genes),length(clusters)),dimnames = list(samples,genes,clusters))
+
+  
+  for (ds_i in 1:length(ds_numis)){
+    dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
+  }
+    
+    dataset$numis_before_filtering=colSums(umitab)
+    
+    if (is.null(insilico_gating)){
+      umitab=umitab
+    }
+    else{
+      
+      is_res=insilico_sorter(umitab,insilico_gating)
+      umitab=is_res$umitab
+      
+      for (score_i in names(insilico_gating)){
+        dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+        if (is.null(dataset$gated_out_umitabs[[score_i]])){
+          dataset$gated_out_umitabs[[score_i]]=list()
+        }
+        dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
+      }
+    }
+    
+    barcode_mask=dataset$numis_before_filtering[colnames(umitab)]>min_umis&dataset$numis_before_filtering[colnames(umitab)]<max_umis
+    dataset$min_umis=min_umis
+    dataset$max_umis=max_umis
+    umitab=umitab[,barcode_mask]
+ 
+    
+    
+    dataset$cell_to_cluster<-cell_to_cluster
+    
+    for (sampi in samples){
+      maski=cell_to_sample==sampi
+      tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[,maski]),cell_to_cluster[maski],fun="sum")))
+      dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
+    }
+    
+    models=apply(dataset$counts,2:3,sum)
+    models=t(t(models)/colSums(models))
+    
+    
+    
+    dataset$samples=samples
+  
+    if (is.na(clustAnnots)){
+      clustAnnots<-rep("",ncol(models))
+      names(clustAnnots)<-colnames(models)
+    }
+    output$clustAnnots=clustAnnots
+    
+  
+   
+   cluster_order=colnames(models)
+    
+  model=new.env()
+  model$models=models
+    
+  output$dataset=dataset
+  rm("dataset")
+  included_clusters=unique(cell_to_cluster)
+  ncells_per_cluster<-rep(0,length(included_clusters))
+  names(ncells_per_cluster)<-included_clusters
+  temptab=table(cell_to_cluster)
+  #  temptab=temptab[setdiff(names(temptab),output$scDissector_params$excluded_cluster_sets)]
+  ncells_per_cluster[names(temptab)]<-temptab
+  output$ncells_per_cluster=ncells_per_cluster
+  
+  
+  output$clustAnnots=output$clustAnnots[included_clusters]
+  output$ncells_per_cluster=output$ncells_per_cluster[included_clusters]
+ 
+  output$model=model
+  output$cluster_order<-intersect(cluster_order,included_clusters)
+  output$default_clusters<-intersect(cluster_order,included_clusters)
+  output$loaded_model_version<-model_version_name
+  return(output)
+  
+}
+
+
+
+
 
