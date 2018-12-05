@@ -457,7 +457,7 @@ tab3_left_margin=12
     pref=ggs_res$pref
     cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
     genes=intersect(genes,rownames(session$userData$dataset$umitab))
-    
+  
     counts_to_chisq=session$userData$dataset$counts[samples,genes,clusters,drop=F]
     batch_corrected=!is.null(session$userData$dataset$noise_counts)
     if (batch_corrected){
@@ -1521,7 +1521,7 @@ tab3_left_margin=12
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
       if(length(leg)==0){
-        return()
+        leg=rep("",length(insamples))
       }
       ncol=ceiling(length(insamples)/10)
       leg[is.na(leg)]=insamples[is.na(leg)]
@@ -1538,7 +1538,7 @@ tab3_left_margin=12
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
       if(length(leg)==0){
-        return()
+        leg=rep("",length(insamples))
       }
       ncol=ceiling(length(insamples)/10)
       leg[is.na(leg)]=insamples[is.na(leg)]
