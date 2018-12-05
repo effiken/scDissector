@@ -2,6 +2,8 @@
 
 export(run_scDissector)
 export(load_dataset_and_model)
+export(import_dataset_and_model)
+export(load_seurat_rds)
 export(insilico_sorter)
 export(plot_avg_heatmap)
 export(plot_avg_heatmap_interactive)
