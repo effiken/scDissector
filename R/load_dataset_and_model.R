@@ -258,7 +258,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
 
 
 downsample=function(u,min_umis,chunk_size=100){
-  non_zero_mask=rowSums(u)!=0
+  non_zero_mask=Matrix::rowSums(u)!=0
   all_op=1:nrow(u[non_zero_mask,])
   base_tab=rep(0,sum(non_zero_mask))
   names(base_tab)=all_op
@@ -270,7 +270,7 @@ downsample=function(u,min_umis,chunk_size=100){
     return(tab)
   }
   
-  cell_mask=colnames(u)[colSums(u,na.rm=T)>min_umis]  
+  cell_mask=colnames(u)[Matrix::colSums(u,na.rm=T)>min_umis]  
   print(paste("Downsampling ", length(cell_mask), " cells to ",min_umis," UMIs",sep=""))
   
   
@@ -339,7 +339,7 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
     dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
   }
     
-    dataset$numis_before_filtering=colSums(umitab)
+    dataset$numis_before_filtering=Matrix::colSums(umitab)
     
     if (is.null(insilico_gating)){
       umitab=umitab
@@ -380,7 +380,7 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
     
     dataset$samples=samples
     dataset$ds_numis=ds_numis
-    if (is.na(clustAnnots)){
+    if (all(is.na(clustAnnots))){
       clustAnnots<-rep("",ncol(models))
       names(clustAnnots)<-colnames(models)
     }

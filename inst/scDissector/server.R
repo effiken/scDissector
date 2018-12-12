@@ -1915,7 +1915,7 @@ tab3_left_margin=12
       hideTab(inputId = "inMain", target = "Data")
       ldm=default_model_dataset
       if (!exists("scDissector_datadir")){
-        stop("Error! Undefined scDissector_datadir")
+        scDissector_datadir=""
       }
       session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
