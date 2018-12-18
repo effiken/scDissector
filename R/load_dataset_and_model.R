@@ -30,6 +30,29 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       }
     }
     
+    get_cluster_set_tree=function(mat,nodes_to_add=NULL){
+     
+      if (is.null(nodes_to_add)){
+        nodes_to_add=setdiff(mat$parent,mat$node)
+      }
+      mask=mat$node%in%nodes_to_add
+      tr=list()  
+      for (node in nodes_to_add){
+        if (any(mat$parent==node)){
+          tr[[node]]= get_cluster_set_tree(mat,mat$node[mat$parent==node])
+          if (!is.null(tr[[node]])){
+            names(tr)[length(tr)]=node
+          }
+        }
+        else{
+          tr[[length(tr)+1]]=node
+        }
+      }
+        
+    #  names(tr)=nodes_to_add
+      return(tr)
+    }
+    
     annnot_fn=paste(fn_prefix,"_annots.txt",sep="")
     if (file.exists(annnot_fn)){
         a=read.delim(annnot_fn,header=F,stringsAsFactors = F,row.names = 1)
@@ -37,9 +60,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         clustAnnots[is.na(clustAnnots)]<-""
         names(clustAnnots)<-rownames(a)
         
-         if (ncol(a)>1){
-            output$cluster_sets<-get_cluster_set_list(rownames(a),ncol(a))
-          }
+    #     if (ncol(a)>1){
+    #        output$cluster_sets<-get_cluster_set_list(rownames(a),ncol(a))
+    #      }
         
     }
     else{
@@ -47,6 +70,16 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         names(clustAnnots)<-colnames(model$models)
     }
     output$clustAnnots=clustAnnots
+    
+    cluster_sets_fn=paste(fn_prefix,"_cluster_sets.txt",sep="")
+    if (file.exists(cluster_sets_fn)){
+      a=read.delim(cluster_sets_fn,header=T,stringsAsFactors = F)
+      
+      output$cluster_sets<-get_cluster_set_tree(a)
+      
+    }
+    
+    
     
     order_fn=paste(fn_prefix,"_order.txt",sep="")
     if (file.exists(order_fn)){

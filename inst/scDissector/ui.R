@@ -1,5 +1,5 @@
 library(ggvis)
-
+library(shinyTree)
 # For dropdown menu
 
 actionLink <- function(inputId, ...) {
@@ -115,7 +115,7 @@ mainPanel(width=12,
                      hr()) 
             )), 
                 tabPanel("Cells", fluidRow(
-                      plotOutput("truthplot",width="100%",height = "700"),
+                      plotOutput("truthplot",width="100%",height = "900"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
@@ -124,6 +124,10 @@ mainPanel(width=12,
                       selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200),
                       downloadButton('downloadTruthPlot', 'Download Plot')
                   )),
+                tabPanel("ClusterSets",
+                        fluidRow(
+                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T),
+                        uiOutput("subtype_freqs"))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(

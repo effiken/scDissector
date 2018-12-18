@@ -16,6 +16,34 @@ print(getwd())
 #load_on_startup()
 
 
+as_list_recursive=function(l){
+  for (i in 1:length(l)){
+    if (is.list(l[[i]])){
+      l[[i]]=as_list_recursive(l[[i]])
+    }
+    else{
+      items=l[[i]]
+      l[[i]]=as.list(rep("",length(l[[i]])))
+      names(l[[i]])=items
+    }
+  }
+  return(l)
+}
+
+as_cluster_sets_recursive=function(l){
+  l2=list()
+    for (i in 1:length(l)){
+      if (length(l[[i]])==1&length(unlist(l[[i]]))==1){
+        l2[[i]]=names(l)[i]
+      }
+      else{
+        l2[[i]]=as_cluster_sets_recursive(l[[i]])
+      }
+    }
+  names(l2)=names(l)
+  return(l2)
+}
+
 hide_all_tabs=function(){
   for (tab in non_data_tabs){
     hideTab(inputId = "inMain", target = tab)
@@ -49,12 +77,13 @@ update_all= function(session,ldm){
   for (item in names(ldm)){
     session$userData[[item]]=ldm[[item]]
   }
+  
   session$userData$sample_colors=default_sample_colors[1:length(session$userData$dataset$samples)]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$samples))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
-
+  session$userData$scDissector_params$cluster_sets=ldm$cluster_sets
   update_clusters(session,session$userData$default_clusters,T)
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
@@ -255,6 +284,14 @@ tab3_left_margin=12
     }
     #TODO check is sample_colors are valid colors
     return(sample_colors)
+  })
+  
+  cluster_sets_reactive <-reactive ({
+#    print(input$clusters_sets_shinytree)
+    if (is.null(input$clusters_sets_shinytree)){
+      return(NULL)
+    }
+    print(as_cluster_sets_recursive(input$clusters_sets_shinytree))
   })
   
   
@@ -703,63 +740,7 @@ tab3_left_margin=12
   })
   
   
-  observeEvent(input$inBirdDefineClusterSet,{
-    clusts_to_add=strsplit(input$inBirdAddClusters,",| ,|, ")[[1]]
-    if (!all(clusts_to_add%in%colnames(session$userData$model$models))){
-      updateTextInput(session,"inBirdAddClusters","Clusters:",value = paste(clusts_to_add[clusts_to_add%in%colnames(session$userData$model$models)],collapse = ","))  
-      message("Warning! Cluster list contained unknown clusters. Cluster-set was not defined.")
-      return()
-    }
-    intersect_with_defined=intersect(clusts_to_add,unlist(session$userData$scDissector_params$cluster_sets))
-    if (length(intersect_with_defined)>0){
-      message("warning! Cluster list contained clusters that have been already defined as cluster sets: ",paste(intersect_with_defined,collapse=","),". Cluster-set was not defined.")
-      return()
-    }
-    
-    if (input$inBirdAddClusterSetName%in%names(session$userData$scDissector_params$cluster_sets)){
-      message("warning! Name has already been used. Cluster-set was not defined.")
-      return()
-    }
-    
-    session$userData$scDissector_params$cluster_sets[[input$inBirdAddClusterSetName]]<-clusts_to_add
-    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-   })
-  
-  observeEvent(input$inBirdUndefineClusterSet,{
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
-    session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]<-NULL
-    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(session$userData$scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =session$userData$scDissector_params$excluded_cluster_sets)
-    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-  })
-  
-  observeEvent(input$inBirdSaveClusterSets,{
-    f=paste(input$inDatapath, session$userData$vers_tab$path[ session$userData$vers_tab$title==session$userData$loaded_model_version],sep="/")
-  
-    clusters_set_tab=data.frame(name=names(session$userData$scDissector_params$cluster_sets),clusters=sapply(session$userData$scDissector_params$cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(session$userData$scDissector_params$cluster_sets)%in%session$userData$scDissector_params$excluded_cluster_sets,"T","F"))
-    clusterset_fn=paste(strsplit(f,"\\.")[[1]][1],"_clustersets.txt",sep="")
-    write.table(file=clusterset_fn,clusters_set_tab,row.names=F,col.names=T,quote=F,sep="\t")
-   
-  })
-  
-  observeEvent(input$inBirdClusterSetExclude,{
-    
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<-T
-    session$userData$scDissector_params$excluded_cluster_sets<-unique(c(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
-    
-  })
-  
-  observeEvent(input$inBirdClusterSetInclude,{
-    
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<-F
-    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
-  })
+
   
   ###########################################################
   modules_varmean_reactive=reactive({
@@ -967,6 +948,13 @@ tab3_left_margin=12
     }
   })
   
+  output$subtype_freqs <- renderUI({
+    cluster_sets_reactive()
+    if (!is.null(session$userData$scDissector_params$cluster_sets)){
+      he=max(c(200,200*length(session$userData$scDissector_params$cluster_sets),na.rm=T))
+      plotOutput("subtype_freqs_barplots", width = "100%", height = he)
+    }
+  })
   
   output$gating_plots <- renderPlot({
     nplots=length(session$userData$dataset$insilico_gating_scores)
@@ -1544,6 +1532,29 @@ tab3_left_margin=12
       leg[is.na(leg)]=insamples[is.na(leg)]
       legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
     })
+    
+    
+    output$subtype_freqs_barplots <- renderPlot({
+      insamples=samples_reactive()
+     
+      freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,session$userData$scDissector_params$cluster_sets,pool_subtype = T,reg = 0)
+
+      celltypes=names(freq_norm)[(!sapply(freq_norm,is.null))]
+      celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]
+      layout(matrix(1:(length(celltypes)*2),length(celltypes),2,byrow = T))
+      par(mar=c(8,6,2,1))
+      for (cluster_set_name in celltypes){
+        plot_subtype_freqs(freq_norm,cluster_set_name,plot_legend = T,cex.names=1.5,cex.axis=1.5,cex.legend=1.5,cluster_set_name=cluster_set_name)
+      }
+      
+    })
+    
+   
+    
+    output$clusters_sets_shinytree <- renderTree({
+      as_list_recursive(session$userData$scDissector_params$cluster_sets)
+    })
+    
     
     # Function for generating tooltip text
     gene_tooltip <- function(x) {
