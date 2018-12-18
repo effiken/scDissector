@@ -15,5 +15,6 @@ import_seurat=function(rds_fn,model_name,sample_id){
   return(ldm)
 }
 #example
+# Download pbmc3k_final.rds from https://www.dropbox.com/s/kwd3kcxkmpzqg6w/pbmc3k_final.rds?dl=1
 #default_model_dataset=  import_seurat("~/Downloads/pbmc3k_final.rds","seurat_pbmc3k","pbmc3k")
 # run_scDissector()
