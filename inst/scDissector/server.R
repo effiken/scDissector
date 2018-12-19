@@ -17,14 +17,16 @@ print(getwd())
 
 
 as_list_recursive=function(l){
+  if (is.null(l)){
+    return(NULL)
+  }
   for (i in 1:length(l)){
     if (is.list(l[[i]])){
       l[[i]]=as_list_recursive(l[[i]])
     }
     else{
-      items=l[[i]]
-      l[[i]]=as.list(rep("",length(l[[i]])))
-      names(l[[i]])=items
+      item=l[[i]]
+      names(l)[i]=item
     }
   }
   return(l)
@@ -33,7 +35,7 @@ as_list_recursive=function(l){
 as_cluster_sets_recursive=function(l){
   l2=list()
     for (i in 1:length(l)){
-      if (length(l[[i]])==1&length(unlist(l[[i]]))==1){
+      if (!is.list(l[[i]])){
         l2[[i]]=names(l)[i]
       }
       else{
@@ -291,7 +293,7 @@ tab3_left_margin=12
     if (is.null(input$clusters_sets_shinytree)){
       return(NULL)
     }
-    print(as_cluster_sets_recursive(input$clusters_sets_shinytree))
+    as_cluster_sets_recursive(input$clusters_sets_shinytree)
   })
   
   
@@ -949,7 +951,10 @@ tab3_left_margin=12
   })
   
   output$subtype_freqs <- renderUI({
-    cluster_sets_reactive()
+    if(is.null(cluster_sets_reactive())){
+      return()
+    }
+    session$userData$scDissector_params$cluster_sets=cluster_sets_reactive()
     if (!is.null(session$userData$scDissector_params$cluster_sets)){
       he=max(c(200,200*length(session$userData$scDissector_params$cluster_sets),na.rm=T))
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
@@ -1536,8 +1541,8 @@ tab3_left_margin=12
     
     output$subtype_freqs_barplots <- renderPlot({
       insamples=samples_reactive()
-     
-      freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,session$userData$scDissector_params$cluster_sets,pool_subtype = T,reg = 0)
+      cluster_sets=cluster_sets_reactive()
+      freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0)
 
       celltypes=names(freq_norm)[(!sapply(freq_norm,is.null))]
       celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]

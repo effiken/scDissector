@@ -31,11 +31,11 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     }
     
     get_cluster_set_tree=function(mat,nodes_to_add=NULL){
-     
+    
       if (is.null(nodes_to_add)){
         nodes_to_add=setdiff(mat$parent,mat$node)
       }
-      mask=mat$node%in%nodes_to_add
+
       tr=list()  
       for (node in nodes_to_add){
         if (any(mat$parent==node)){
