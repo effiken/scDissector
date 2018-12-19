@@ -78,7 +78,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       output$cluster_sets<-get_cluster_set_tree(a)
       
     }
-    
+    else{
+      output$cluster_sets<-get_cluster_set_tree(data.frame(node=names(clustAnnots),parent=clustAnnots))
+    }
     
     
     order_fn=paste(fn_prefix,"_order.txt",sep="")

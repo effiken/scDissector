@@ -20,6 +20,9 @@ as_list_recursive=function(l){
   if (is.null(l)){
     return(NULL)
   }
+  if (length(l)==0){
+    return(l)
+  }
   for (i in 1:length(l)){
     if (is.list(l[[i]])){
       l[[i]]=as_list_recursive(l[[i]])
@@ -538,6 +541,49 @@ tab3_left_margin=12
     session$userData$geneList<-geneList
     updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
      
+  })
+  
+  observeEvent(input$inAddClusterSetButton, {
+    if (is.null(input$clusters_sets_shinytree)){
+      l=list()
+    }
+    else{
+      l=cluster_sets_reactive()
+      l[[input$inAddClusterSet]]=list()
+    }
+    updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
+ 
+  })
+  
+  observeEvent(input$saveClusterSetButtion,{
+    get_edges=function(l,name=NA){
+      if (is.null(l)){
+        return()
+      }
+      else{
+        node=c()
+        parent=c()
+        for (i in 1:length(names(l))){
+          if (!is.na(name)&!is.null(names(l))){
+            parent[i]=name
+            node[i]=names(l)[i]
+          }
+        }
+        print(node)
+        print(parent)
+        m=data.frame(node=node,parent=parent)
+        for (i in length(l):1){
+          if (!is.null(names(l))){
+            m=rbind(get_edges(l[[i]],names(l)[i]),m)
+          }
+        }
+        return(m)
+      }
+    }
+    m=get_edges(cluster_sets_reactive())
+    cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    write.table(file=cluster_set_fn,m,row.names=F,col.names=T,quote=F,sep="\t")
+    message("Cluster-sets were saved to ",cluster_set_fn,".")
   })
   
   chisq_genes=function(counts){
@@ -1383,7 +1429,7 @@ tab3_left_margin=12
     ingenes=cgs$genes
     insamples=cgs$samples
 
-    print(insamples)
+
     if (!session$userData$loaded_flag){
       return()
     }
@@ -1576,7 +1622,6 @@ tab3_left_margin=12
     
      models=session$userData$model$models[,intersect(inclusters,colnames(session$userData$model$models))]
      gene_mask=apply(models,1,max)>5e-5
-     print(sum(gene_mask))
      m=log2(1e-5+models[gene_mask,])
      m=m-rowMeans(m)
      cormat=cor(m)
@@ -1586,8 +1631,8 @@ tab3_left_margin=12
      
      image(cormat,col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=seq(-1,1,l=101))
      box(lwd=2)
-     mtext(rownames(cormat),1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.6,line =.5)
-     mtext(rownames(cormat),2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.6,line =.5)
+     mtext(rownames(cormat),1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.8,line =.5)
+     mtext(rownames(cormat),2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.8,line =.5)
    })
     
     output$clusters_sets_shinytree <- renderTree({
@@ -1922,7 +1967,7 @@ tab3_left_margin=12
       else {
         return(NULL)
       }
-      print(x)
+
       x
     },rownames=T,colnames=T,width=18)
     
@@ -1935,7 +1980,7 @@ tab3_left_margin=12
       }
       tab=table(session$userData$model$cell_to_cluster,projected$source_cell_to_cluster)
       x=matrix(tab,nrow(tab),ncol(tab),dimnames=list(rownames(tab),colnames(tab)))
-      print(x)
+
       x
       
     })

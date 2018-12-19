@@ -127,7 +127,13 @@ mainPanel(width=12,
                 tabPanel("ClusterSets",
                         fluidRow(
                         plotOutput("correlation_betwen_clusters",width=600,height=600),
-                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T))),
+                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T)
+                        ),fluidRow(column(4,wellPanel(
+                        actionButton("inAddClusterSetButton","Add a cluster-set"),
+                        textInput("inAddClusterSet", "Name:",value="")
+                        ))),fluidRow(column(4,wellPanel(
+                          actionButton("saveClusterSetButtion","Save Cluster-sets")
+                        )))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
