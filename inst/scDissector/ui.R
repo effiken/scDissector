@@ -95,7 +95,7 @@ mainPanel(width=12,
                             textInput("inClusters","Clusters:",width=2000),
                             wellPanel( 
                             actionButton("inOrderClusters", "Reorder Clusters"),
-                            selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Formula")),
+                            selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Cluster-sets","Formula")),
                             textInput("inOrderClusetersByGenes","Order by gene formula:",width=2000),
                             actionButton("inResetClusters", "Reset Clusters"),
                             actionButton("inSaveClusterOrder","Save Order"),
@@ -126,8 +126,8 @@ mainPanel(width=12,
                   )),
                 tabPanel("ClusterSets",
                         fluidRow(
-                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T),
-                        uiOutput("subtype_freqs"))),
+                        plotOutput("correlation_betwen_clusters",width=600,height=600),
+                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
@@ -183,6 +183,7 @@ mainPanel(width=12,
                       )
               )),
                 tabPanel("Samples",fluidRow(
+                         uiOutput("subtype_freqs"),
                           column(12,uiOutput("sample_avg_profile_plot")),
                           column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
                           column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),

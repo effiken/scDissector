@@ -6,10 +6,10 @@ plot_subtype_freqs=function(freq_norm,celltype,plot_legend=T,cex.names=1,cex.axi
   cols=alt_cols[1:ncol(m)]
   if (plot_legend){
     
-    barplot(t(m),col=cols,las=2,cex.names = cex.names,cex.axis = cex.axis)
+    barplot(t(m[,ncol(m):1]),col=rev(cols),las=2,cex.names = cex.names,cex.axis = cex.axis)
     mtext(cluster_set_name,side = 2,cex = cex.names,line = 4)
     plot.new()
-    legend("bottomleft",legend=rev(colnames(m)),col=rev(cols),pch=15,cex=cex.legend,bty = "n")
+    legend("bottomleft",legend=colnames(m),col=cols,pch=15,cex=cex.legend,bty = "n")
   }
   else{
     barplot(t(m),col=cols,las=2,cex.names=cex.names,cex.axis=1)

@@ -715,6 +715,17 @@ tab3_left_margin=12
     else if (input$inReorderingClustersMethod=="Diagonal"){
       reorderv1=order(apply(mat[ingenes,],2,which.max))
     }
+    else if (input$inReorderingClustersMethod=="Cluster-sets"){
+      cluster_sets=cluster_sets_reactive()
+      if (is.null(cluster_sets)){
+        reorderv1=1:length(inclusts)
+      }
+      else{
+        x=function(l){if (!is.list(l)){return(l)}; for (i in 1:length(l)){return(sapply(l,x))}}
+        y=function(l){if (!is.list(l)){return(intersect(inclusts,l))}else{sapply(l,y)}}
+        reorderv1=order(match(inclusts,unlist(y(x(cluster_sets)))))
+      }
+    }
     else if (input$inReorderingClustersMethod=="Formula"){
       s=input$inOrderClusetersByGenes
       s1=substr(s,1,1)
@@ -1554,7 +1565,30 @@ tab3_left_margin=12
       
     })
     
-   
+   output$correlation_betwen_clusters <-renderPlot({
+
+     cgs=clusters_genes_sampples_reactive()
+    cluster_sets=cluster_sets_reactive()
+     if (is.null(cluster_sets)){
+       return()
+     }
+      inclusters=rev(unlist(cluster_sets))
+    
+     models=session$userData$model$models[,intersect(inclusters,colnames(session$userData$model$models))]
+     gene_mask=apply(models,1,max)>5e-5
+     print(sum(gene_mask))
+     m=log2(1e-5+models[gene_mask,])
+     m=m-rowMeans(m)
+     cormat=cor(m)
+     d=as.dist(1-cormat)
+  #   order=seriate(d,method = "GW")
+  #   ord=get_order(order)
+     
+     image(cormat,col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=seq(-1,1,l=101))
+     box(lwd=2)
+     mtext(rownames(cormat),1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.6,line =.5)
+     mtext(rownames(cormat),2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.6,line =.5)
+   })
     
     output$clusters_sets_shinytree <- renderTree({
       as_list_recursive(session$userData$scDissector_params$cluster_sets)
