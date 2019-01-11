@@ -1,6 +1,7 @@
 
 plot_subtype_freqs=function(freq_norm,celltype,plot_legend=T,cex.names=1,cex.axis=1,cex.legend=1,cluster_set_name=""){
- 
+  alt_cols<-rep(c("#e6194b","#3cb44b","#ffe119","#0082c8","#f58231","#911eb4","#46f0f0","#f032e6","#d2f53c","#fabebe","#008080","#e6beff","#aa6e28","#fffac8","#800000","#aaffc3","#808000","#ffd8b1","#000080","#808080",
+                   "#FFFFFF","#000000"),10)
   m=freq_norm[[celltype]]
   #cols=brewer.pal(length(ordc),"Set3")
   cols=alt_cols[1:ncol(m)]
