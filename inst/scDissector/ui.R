@@ -102,10 +102,18 @@ mainPanel(width=12,
                             actionButton("inUndoClusterChanges","Undo")
                             ),
                             wellPanel(
-                              selectInput("inAnnotateClusterNum","Cluster",choices=c()),
-                            textInput("inClustAnnot", "New Annotation:"),
-                            actionButton("inAnnotateCluster","Annotate"),
-                            actionButton("inSaveAnnot", "Save Annotations"))
+                              actionButton("inAddClusterSetButton","Add a cluster-set"),
+                              textInput("inAddClusterSet", "Name:",value=""),
+                              selectInput("removeClusterSetSelectInput","Remove",choices = c()),
+                              actionButton("inRemoveClusterSetButton","Remove a cluster-set"),
+                              actionButton("saveClusterSetButtion","Save Cluster-sets")
+                            ),
+                            shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T)
+          #                  wellPanel(
+          #                    selectInput("inAnnotateClusterNum","Cluster",choices=c()),
+          #                  textInput("inClustAnnot", "New Annotation:"),
+          #                  actionButton("inAnnotateCluster","Annotate"),
+          #                  actionButton("inSaveAnnot", "Save Annotations"))
                             ),
                     column(12,
                      hr(),
@@ -126,14 +134,9 @@ mainPanel(width=12,
                   )),
                 tabPanel("ClusterSets",
                         fluidRow(
-                        plotOutput("correlation_betwen_clusters",width=600,height=600),
-                        shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T)
-                        ),fluidRow(column(4,wellPanel(
-                        actionButton("inAddClusterSetButton","Add a cluster-set"),
-                        textInput("inAddClusterSet", "Name:",value="")
-                        ))),fluidRow(column(4,wellPanel(
-                          actionButton("saveClusterSetButtion","Save Cluster-sets")
-                        )))),
+                        plotOutput("correlation_betwen_clusters",width=600,height=600)
+                        
+                        )),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(

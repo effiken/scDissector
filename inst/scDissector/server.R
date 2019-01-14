@@ -49,6 +49,44 @@ as_cluster_sets_recursive=function(l){
   return(l2)
 }
 
+get_nodes=function(l){
+  if (is.list(l)){
+    return(c(names(l),sapply(l,get_nodes)))
+  }
+  else {
+    if (length(l)>0){
+      return(unlist(l))
+    }
+    else {
+      retrun(NULL)
+    }
+  }
+}
+
+remove_node=function(l,node){
+  if (is.list(l)){
+    if (node%in%names(l)){
+      l2=l
+      l2[[node]]=NULL
+      if (is.list(l[[node]])){
+        for (n in names(l[[node]])){
+          l2[[as.character(n)]]=l[[node]][[as.character(n)]]
+        }
+      }
+      return(l2)
+    }
+    else {
+      return(sapply(l,remove_node,node,simplify = F))
+    }
+  }
+  else{
+    return(l)
+  }
+}
+
+
+
+
 hide_all_tabs=function(){
   for (tab in non_data_tabs){
     hideTab(inputId = "inMain", target = tab)
@@ -93,6 +131,7 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
+  updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
   updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
   updateTextInput(session,"inSampleColors",value = paste(session$userData$sample_colors,collapse=", "))
   updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
@@ -299,6 +338,21 @@ tab3_left_margin=12
     as_cluster_sets_recursive(input$clusters_sets_shinytree)
   })
   
+  cluster_annots_reactive<-reactive({
+    cluster_sets=cluster_sets_reactive()
+    if (is.null(session$userData$clustAnnots)&&(is.null(cluster_sets))){
+      return()
+    }
+    else{
+      if (is.null(cluster_sets)){
+        return(session$userData$clustAnnots)
+      }
+      else{
+        return(session$userData$clustAnnots)
+      }
+    }
+  })
+  
   
   clusters_genes_sampples_reactive <-reactive({
     xy_range <- event_data("plotly_relayout")
@@ -427,17 +481,17 @@ tab3_left_margin=12
   
  
   
-  observeEvent(input$inAnnotateCluster, {
-    session$userData$clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<-input$inClustAnnot
-    updateTextInput(session,"inClustAnnot",value="")
-  })
+#  observeEvent(input$inAnnotateCluster, {
+#    session$userData$clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<-input$inClustAnnot
+#    updateTextInput(session,"inClustAnnot",value="")
+#  })
   
-  observeEvent(input$inSaveAnnot, {
-    annot_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_annots.txt",sep="")
-    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
-    message("Cluster annotations saved to ",annot_fn,".")
-    
-  })
+#  observeEvent(input$inSaveAnnot, {
+#    annot_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_annots.txt",sep="")
+#    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
+#    message("Cluster annotations saved to ",annot_fn,".")
+#    
+#  })
   
   
   observeEvent(input$inClusterGenes, {
@@ -552,7 +606,17 @@ tab3_left_margin=12
       l[[input$inAddClusterSet]]=list()
     }
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
- 
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
+  })
+  
+  observeEvent(input$inRemoveClusterSetButton, {
+    if (is.null(input$clusters_sets_shinytree)){
+      return()
+    }
+    l=cluster_sets_reactive()
+    l2=remove_node(l,input$removeClusterSetSelectInput)
+    updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l2))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
   })
   
   observeEvent(input$saveClusterSetButtion,{
@@ -656,7 +720,7 @@ tab3_left_margin=12
   
   
   observeEvent(input$inResetClusters, {
-     clust_title=paste(session$userData$default_clusters," - ",session$userData$clustAnnots[session$userData$default_clusters],sep="") 
+     clust_title=paste(session$userData$default_clusters," - ",cluster_annots_reactive()[session$userData$default_clusters],sep="") 
     update_clusters(session,session$userData$default_clusters)
     updateSelectInput(session,"inQCClust",choices=clust_title)
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title)
@@ -791,7 +855,7 @@ tab3_left_margin=12
       
       reorderv1=order(score)
     }
-    clust_title=paste(inclusts," - ",session$userData$clustAnnots[inclusts],sep="") 
+    clust_title=paste(inclusts," - ",cluster_annots_reactive()[inclusts],sep="") 
     
     update_clusters(session,inclusts[reorderv1])
     updateSelectInput(session,"inQCClust",choices=clust_title[reorderv1])
@@ -991,7 +1055,7 @@ tab3_left_margin=12
     
    # sort(apply(obs,1,function(x){chisq.test(x,simulate.p.value = 1000)$p.value}))
     image(logr[,ncol(logr):1],col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=c(-100,seq(-2,2,l=99),100),main="Batch enrichment")
-    mtext(text = session$userData$clustAnnots[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
+    mtext(text = cluster_annots_reactive()[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
     # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =colnames(logr), side=2,  at=seq(1,0,l=dim(logr)[2]),las=2,cex=1)
     #print(obs)
@@ -1266,7 +1330,7 @@ tab3_left_margin=12
     gene.cols=session$userData$gcol[toupper(rownames(mat1))]
     clusters=colnames(mat1)
     clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
-    annots=session$userData$clustAnnots[inclusts]
+    annots=cluster_annots_reactive()[inclusts]
     plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel)
   
   })
@@ -1348,7 +1412,7 @@ tab3_left_margin=12
       gene.cols=session$userData$gcol[toupper(rownames(mat1))]
       clusters=colnames(mat1)
       clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
-      annots=session$userData$clustAnnots[inclusts]
+      annots=cluster_annots_reactive()[inclusts]
       return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,session$userData$modelColorGrad))
   })
   
@@ -1419,7 +1483,7 @@ tab3_left_margin=12
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
     mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(cluster_annots_reactive()[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
@@ -1870,11 +1934,11 @@ tab3_left_margin=12
       m[2,names(percents2)]=percents2
       
       par(mar=c(5,10,1,1))
-      barplot(m[,dim(m)[2]:1],beside=T,names.arg = rev(paste(session$userData$clustAnnots[inclusts]," - ",inclusts,sep="")),horiz = T,las=2)
+      barplot(m[,dim(m)[2]:1],beside=T,names.arg = rev(paste(cluster_annots_reactive()[inclusts]," - ",inclusts,sep="")),horiz = T,las=2)
       legend("bottomright",pch=15,col= gray.colors(2),legend=c("1","2"),border=T)
     #  reg=100*10/((ncol(model$umitab)+ncol(projected$umitab))/2)
       reg=1e-3
-      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusts]," - ",inclusts,sep="")),horiz = T,las=2,xlab="log2(2/1)")
+      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(cluster_annots_reactive()[inclusts]," - ",inclusts,sep="")),horiz = T,las=2,xlab="log2(2/1)")
     })
     
     click_tooltip_gene_proj_vs_ref <- function(x) {
