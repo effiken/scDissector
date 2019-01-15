@@ -84,7 +84,30 @@ remove_node=function(l,node){
   }
 }
 
-
+get_edges=function(l,name=NA){
+  if (is.null(l)){
+    return()
+  }
+  else{
+    node=c()
+    parent=c()
+    for (i in 1:length(names(l))){
+      if (!is.na(name)&!is.null(names(l))){
+        parent[i]=name
+        node[i]=names(l)[i]
+      }
+    }
+    print(node)
+    print(parent)
+    m=data.frame(node=node,parent=parent)
+    for (i in length(l):1){
+      if (!is.null(names(l))){
+        m=rbind(get_edges(l[[i]],names(l)[i]),m)
+      }
+    }
+    return(m)
+  }
+}
 
 
 hide_all_tabs=function(){
@@ -348,7 +371,11 @@ tab3_left_margin=12
         return(session$userData$clustAnnots)
       }
       else{
-        return(session$userData$clustAnnots)
+        edges=get_edges(cluster_sets)
+        edges=edges[match(session$userData$default_clusters,edges[,"node"]),]
+        annots=edges[,2]
+        names(annots)=edges[,1]
+        return(annots)
       }
     }
   })
@@ -620,30 +647,7 @@ tab3_left_margin=12
   })
   
   observeEvent(input$saveClusterSetButtion,{
-    get_edges=function(l,name=NA){
-      if (is.null(l)){
-        return()
-      }
-      else{
-        node=c()
-        parent=c()
-        for (i in 1:length(names(l))){
-          if (!is.na(name)&!is.null(names(l))){
-            parent[i]=name
-            node[i]=names(l)[i]
-          }
-        }
-        print(node)
-        print(parent)
-        m=data.frame(node=node,parent=parent)
-        for (i in length(l):1){
-          if (!is.null(names(l))){
-            m=rbind(get_edges(l[[i]],names(l)[i]),m)
-          }
-        }
-        return(m)
-      }
-    }
+   
     m=get_edges(cluster_sets_reactive())
     cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
     write.table(file=cluster_set_fn,m,row.names=F,col.names=T,quote=F,sep="\t")
