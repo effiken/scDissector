@@ -97,8 +97,6 @@ get_edges=function(l,name=NA){
         node[i]=names(l)[i]
       }
     }
-    print(node)
-    print(parent)
     m=data.frame(node=node,parent=parent)
     for (i in length(l):1){
       if (!is.null(names(l))){
@@ -151,6 +149,9 @@ update_all= function(session,ldm){
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
   session$userData$scDissector_params$cluster_sets=ldm$cluster_sets
   update_clusters(session,session$userData$default_clusters,T)
+  #print("*****")
+  #print(as_list_recursive(session$userData$cluster_sets))
+  #updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(session$userData$cluster_sets))
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
@@ -354,7 +355,7 @@ tab3_left_margin=12
   })
   
   cluster_sets_reactive <-reactive ({
-#    print(input$clusters_sets_shinytree)
+   # print(input$clusters_sets_shinytree)
     if (is.null(input$clusters_sets_shinytree)){
       return(NULL)
     }
@@ -633,7 +634,7 @@ tab3_left_margin=12
       l[[input$inAddClusterSet]]=list()
     }
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
-    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(l)))
   })
   
   observeEvent(input$inRemoveClusterSetButton, {
@@ -643,7 +644,7 @@ tab3_left_margin=12
     l=cluster_sets_reactive()
     l2=remove_node(l,input$removeClusterSetSelectInput)
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l2))
-    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(l2)))
   })
   
   observeEvent(input$saveClusterSetButtion,{
@@ -1704,7 +1705,7 @@ tab3_left_margin=12
    })
     
     output$clusters_sets_shinytree <- renderTree({
-      as_list_recursive(session$userData$scDissector_params$cluster_sets)
+      return(as_list_recursive(session$userData$cluster_sets))
     })
     
     

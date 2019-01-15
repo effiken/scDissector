@@ -46,6 +46,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         }
         else{
           tr[[length(tr)+1]]=node
+          names(tr)[length(tr)]=node
         }
       }
         
@@ -66,7 +67,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         
     }
     else{
-        clustAnnots<-rep("",ncol(model$models))
+        clustAnnots<-rep("unannotated",ncol(model$models))
         names(clustAnnots)<-colnames(model$models)
     }
     output$clustAnnots=clustAnnots
@@ -79,7 +80,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       
     }
     else{
-      output$cluster_sets<-get_cluster_set_tree(data.frame(node=names(clustAnnots),parent=clustAnnots))
+      output$cluster_sets<-get_cluster_set_tree(data.frame(node=names(clustAnnots),parent=as.character(clustAnnots)))
     }
     
     
