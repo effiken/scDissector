@@ -51,15 +51,10 @@ as_cluster_sets_recursive=function(l){
 
 get_nodes=function(l){
   if (is.list(l)){
-    return(c(names(l),sapply(l,get_nodes)))
+    return(setdiff(c(names(l),unlist(sapply(l,get_nodes))),unlist(l)))
   }
   else {
-    if (length(l)>0){
-      return(unlist(l))
-    }
-    else {
-      retrun(NULL)
-    }
+    return(c())
   }
 }
 
@@ -107,6 +102,29 @@ get_edges=function(l,name=NA){
   }
 }
 
+get_cluster_set_tree=function(mat,nodes_to_add=NULL){
+  
+  if (is.null(nodes_to_add)){
+    nodes_to_add=setdiff(mat$parent,mat$node)
+  }
+  
+  tr=list()  
+  for (node in nodes_to_add){
+    if (any(mat$parent==node)){
+      tr[[node]]= get_cluster_set_tree(mat,mat$node[mat$parent==node])
+      if (!is.null(tr[[node]])){
+        names(tr)[length(tr)]=node
+      }
+    }
+    else{
+      tr[[length(tr)+1]]=node
+      names(tr)[length(tr)]=node
+    }
+  }
+  
+  #  names(tr)=nodes_to_add
+  return(tr)
+}
 
 hide_all_tabs=function(){
   for (tab in non_data_tabs){
@@ -155,7 +173,9 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
-  updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets)))))
+  cluster_sets=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets))))
+  updateSelectInput(session,"removeClusterSetSelectInput",choices=cluster_sets)
+  updateSelectInput(session,"inReorderSamplesBy",choices=c("All",cluster_sets))
   updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
   updateTextInput(session,"inSampleColors",value = paste(session$userData$sample_colors,collapse=", "))
   updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
@@ -305,6 +325,35 @@ tab3_left_margin=12
     
   })
   
+  
+  observeEvent(input$inSamplesAddClusterSet,{
+    cluster_sets=vis_freqs_cluster_sets_reactive()
+    if (input$inReorderSamplesBy=="All"){
+      added=names(cluster_sets_reactive())
+    }
+    else{
+      added=input$inReorderSamplesBy
+    }
+    print(names(added))
+    updateTextAreaInput(session,"inSamplesClusterSets",value=paste(unique(c(cluster_sets,added)),collapse = ", "))
+  })
+  
+  observeEvent(input$inReorderSamples,{
+    insamples=samples_reactive()
+    cluster_sets=cluster_sets_reactive()
+
+    freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0)
+    
+    reorderby=vis_freqs_cluster_sets_reactive()
+  
+    x=do.call(cbind,freq_norm[reorderby])
+    x=pmax(x,0,na.rm=T)
+    ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
+    
+    updateTextAreaInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
+    updateTextAreaInput(session,"inSampleColors",value = input$inSampleColors[ord])
+  })
+  
   observeEvent(input$inAddSample,{
     s1=paste(unique(c(strsplit(input$inSamples,",|, | ,")[[1]],input$inSampleToAdd)),collapse=", ")
     updateTextInput(session,"inSamples",value=s1) 
@@ -361,6 +410,13 @@ tab3_left_margin=12
     }
     as_cluster_sets_recursive(input$clusters_sets_shinytree)
   })
+  
+  
+  vis_freqs_cluster_sets_reactive <-reactive ({
+    return(cluster_sets=unique(strsplit(input$inSamplesClusterSets,",|, | ,")[[1]]))
+
+  })
+  
   
   cluster_annots_reactive<-reactive({
     cluster_sets=cluster_sets_reactive()
@@ -634,7 +690,8 @@ tab3_left_margin=12
       l[[input$inAddClusterSet]]=list()
     }
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
-    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(l)))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(get_nodes(l)))
+    updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(get_nodes(l))))
   })
   
   observeEvent(input$inRemoveClusterSetButton, {
@@ -644,7 +701,8 @@ tab3_left_margin=12
     l=cluster_sets_reactive()
     l2=remove_node(l,input$removeClusterSetSelectInput)
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l2))
-    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(l2)))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(l2))))
+    updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(unlist(get_nodes(l2)))))
   })
   
   observeEvent(input$saveClusterSetButtion,{
@@ -653,6 +711,19 @@ tab3_left_margin=12
     cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
     write.table(file=cluster_set_fn,m,row.names=F,col.names=T,quote=F,sep="\t")
     message("Cluster-sets were saved to ",cluster_set_fn,".")
+  })
+  
+  observeEvent(input$reloadClusterSetButtion,{
+    cluster_sets_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    if (file.exists(cluster_sets_fn)){
+      a=read.delim(cluster_sets_fn,header=T,stringsAsFactors = F)
+      l=get_cluster_set_tree(a)
+      
+      updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
+      updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(get_nodes(l)))
+      updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(get_nodes(l))))
+    }
+    
   })
   
   chisq_genes=function(counts){
@@ -1077,12 +1148,13 @@ tab3_left_margin=12
   })
   
   output$subtype_freqs <- renderUI({
-    if(is.null(cluster_sets_reactive())){
+    cluster_sets=vis_freqs_cluster_sets_reactive()
+    if(is.null(cluster_sets)){
       return()
     }
-    session$userData$scDissector_params$cluster_sets=cluster_sets_reactive()
-    if (!is.null(session$userData$scDissector_params$cluster_sets)){
-      he=max(c(200,200*length(session$userData$scDissector_params$cluster_sets),na.rm=T))
+
+    if (!is.null(cluster_sets)){
+      he=max(c(200,200*length(cluster_sets),na.rm=T))
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
     }
   })
@@ -1668,9 +1740,10 @@ tab3_left_margin=12
     output$subtype_freqs_barplots <- renderPlot({
       insamples=samples_reactive()
       cluster_sets=cluster_sets_reactive()
+      cluster_set_names=vis_freqs_cluster_sets_reactive()
       freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0)
 
-      celltypes=names(freq_norm)[(!sapply(freq_norm,is.null))]
+      celltypes=intersect(names(freq_norm)[(!sapply(freq_norm,is.null))],cluster_set_names)
       celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]
       layout(matrix(1:(length(celltypes)*2),length(celltypes),2,byrow = T))
       par(mar=c(8,6,2,1))

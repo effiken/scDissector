@@ -106,7 +106,8 @@ mainPanel(width=12,
                               textInput("inAddClusterSet", "Name:",value=""),
                               selectInput("removeClusterSetSelectInput","Remove",choices = c()),
                               actionButton("inRemoveClusterSetButton","Remove a cluster-set"),
-                              actionButton("saveClusterSetButtion","Save Cluster-sets")
+                              actionButton("saveClusterSetButtion","Save Cluster-sets"),
+                              actionButton("reloadClusterSetButtion","Reload Cluster-sets")
                             ),
                             shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T)
           #                  wellPanel(
@@ -193,6 +194,12 @@ mainPanel(width=12,
               )),
                 tabPanel("Samples",fluidRow(
                          uiOutput("subtype_freqs"),
+                         column(6,wellPanel(
+                           selectInput("inReorderSamplesBy", "ClusterSet:",choices=c()),
+                           actionButton("inSamplesAddClusterSet","Add clusterSet"),
+                           textAreaInput("inSamplesClusterSets",label = "ClusterSets to view:",value = ""),
+                           actionButton("inReorderSamples","Reorder samples")
+                         )),
                           column(12,uiOutput("sample_avg_profile_plot")),
                           column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
                           column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),

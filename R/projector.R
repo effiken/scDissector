@@ -111,7 +111,7 @@ if (trace){
   i=0
   min_n_moved=min(10,ncol(umitab)/100)
   while (nmoved>=min_n_moved&&i<6){
-    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
+    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,  avg_numis_per_model,reg=reg)
     prev_cell_to_cluster=cell_to_cluster
     cell_to_cluster=MAP(res_boll$ll)
     tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
@@ -127,7 +127,7 @@ if (trace){
     i=i+1
   }
 
-  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
+  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,  avg_numis_per_model,reg=reg)
 
   return(list(beta_noise=beta_noise,avg_numis_per_model=avg_numis_per_model,ll=res_boll$ll))
 }

@@ -1,5 +1,5 @@
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA){
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
   }
@@ -30,29 +30,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       }
     }
     
-    get_cluster_set_tree=function(mat,nodes_to_add=NULL){
     
-      if (is.null(nodes_to_add)){
-        nodes_to_add=setdiff(mat$parent,mat$node)
-      }
-
-      tr=list()  
-      for (node in nodes_to_add){
-        if (any(mat$parent==node)){
-          tr[[node]]= get_cluster_set_tree(mat,mat$node[mat$parent==node])
-          if (!is.null(tr[[node]])){
-            names(tr)[length(tr)]=node
-          }
-        }
-        else{
-          tr[[length(tr)+1]]=node
-          names(tr)[length(tr)]=node
-        }
-      }
-        
-    #  names(tr)=nodes_to_add
-      return(tr)
-    }
     
     annnot_fn=paste(fn_prefix,"_annots.txt",sep="")
     if (file.exists(annnot_fn)){
@@ -138,23 +116,29 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
         
         colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
-        for (ds_i in 1:length(tmp_env$ds)){
+        if (!is.na(ds_numis)){
+          ds_numis_sampi=intersect(as.character(ds_numis),as.character(tmp_env$ds_numis))
+        }
+        else{
+          ds_numis_sampi=tmp_env$ds_numis
+        }
+        for (ds_i in 1:length(ds_numis_sampi)){
             tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
             colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
         }
         if (sampi==samples[1]){
-            for (ds_i in 1:length(tmp_env$ds_numis)){
+            for (ds_i in 1:length(ds_numis_sampi)){
                 dataset$ds[[ds_i]]<-Matrix(,length(genes),,dimnames = list(genes,NA))
             }
             
         }
         if (is.null(dataset$ds_numis)){
-            dataset$ds_numis=tmp_env$ds_numis
+            dataset$ds_numis=ds_numis_sampi
         }
         else{
-            if (!all(dataset$ds_numis==tmp_env$ds_numis)){
+            if (!all(dataset$ds_numis==ds_numis_sampi)){
                 message("Warning! Some of the samples don't share the same downsampling UMIs values")
-                dataset$ds_numis=intersect(dataset$ds_numis,tmp_env$ds_numis)
+                dataset$ds_numis=intersect(dataset$ds_numis,ds_numis_sampi)
             }
         }
         tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
@@ -236,7 +220,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         
-        for (ds_i in 1:length(tmp_env$ds_numis)){
+        for (ds_i in 1:length(ds_numis_sampi)){
             dataset$ds[[ds_i]]<-cBind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
         }
         dataset$umitab<-cBind(dataset$umitab[genes,],umitab[genes,])
