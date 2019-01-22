@@ -118,9 +118,6 @@ mainPanel(width=12,
                             ),
                     column(12,
                      hr(),
-                     textInput("inSamplesToShow", width=2000, "Samples:"),
-                     textInput("inSampleColors", width=2000, "Colors:"),
-                     actionButton("inResetSamples","Reset"),
                      hr()) 
             )), 
                 tabPanel("Cells", fluidRow(
@@ -138,6 +135,30 @@ mainPanel(width=12,
                         plotOutput("correlation_betwen_clusters",width=600,height=600)
                         
                         )),
+                tabPanel("Samples",fluidRow(
+                  wellPanel(
+                  textInput("inSamplesToShow", width=2000, "Samples:"),
+                  textInput("inSampleColors", width=2000, "Colors:"),
+                  actionButton("inResetSamples","Reset"))),
+                  column(12,wellPanel(
+                    selectInput("inReorderSamplesBy", "ClusterSet:",choices=c()),
+                    actionButton("inSamplesAddClusterSet","Add clusterSet"),
+                    textAreaInput("inSamplesClusterSets",label = "ClusterSets to view:",value = ""),
+                    actionButton("inReorderSamples","Reorder samples")
+                  )),
+                  column(12,
+                  uiOutput("subtype_freqs"),
+                  hr()),
+                  column(12,uiOutput("sample_avg_profile_plot")),
+                  column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
+                  column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),
+                  column(6,textInput("inProjectSampleGroup2","Samples Group 2:")),
+                  column(12,selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
+                         uiOutput("projection_barplot_plot"),
+                         selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
+                         wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
+                                   tableOutput("Gene1ExprsTableRefVsProj")),
+                         plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
@@ -191,26 +212,8 @@ mainPanel(width=12,
                         selectInput("inModuleSelect","Show Module:",choices=c()),
                         textOutput("textModuleGenes")
                       )
-              )),
-                tabPanel("Samples",fluidRow(
-                         uiOutput("subtype_freqs"),
-                         column(6,wellPanel(
-                           selectInput("inReorderSamplesBy", "ClusterSet:",choices=c()),
-                           actionButton("inSamplesAddClusterSet","Add clusterSet"),
-                           textAreaInput("inSamplesClusterSets",label = "ClusterSets to view:",value = ""),
-                           actionButton("inReorderSamples","Reorder samples")
-                         )),
-                          column(12,uiOutput("sample_avg_profile_plot")),
-                          column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
-                          column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),
-                          column(6,textInput("inProjectSampleGroup2","Samples Group 2:")),
-                          column(12,selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
-                          uiOutput("projection_barplot_plot"),
-                   selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
-                   wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
-                   tableOutput("Gene1ExprsTableRefVsProj")),
-                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))))
-              )
+              ))
+            )
          )
           
   

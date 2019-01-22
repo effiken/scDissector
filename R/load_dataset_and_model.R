@@ -1,4 +1,31 @@
 #' @export
+
+
+get_cluster_set_tree=function(mat,nodes_to_add=NULL){
+  
+  if (is.null(nodes_to_add)){
+    nodes_to_add=setdiff(mat$parent,mat$node)
+  }
+  
+  tr=list()  
+  for (node in nodes_to_add){
+    if (any(mat$parent==node)){
+      tr[[node]]= get_cluster_set_tree(mat,mat$node[mat$parent==node])
+      if (!is.null(tr[[node]])){
+        names(tr)[length(tr)]=node
+      }
+    }
+    else{
+      tr[[length(tr)+1]]=node
+      names(tr)[length(tr)]=node
+    }
+  }
+  
+  #  names(tr)=nodes_to_add
+  return(tr)
+}
+
+
 load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA){
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()

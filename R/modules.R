@@ -62,10 +62,12 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
   ds=ldm$dataset$ds[[match(ds_version,ldm$dataset$ds_numis)]]
   ds=ds[,ldm$dataset$cell_to_cluster[colnames(ds)]%in%clusters]
   s1=Matrix::rowSums(ds,na.rm=T) 
+  s2=Matrix::rowSums(ds^2,na.rm=T)
   mask1=s1>=min_number_of_UMIs&(!rownames(ds)%in%genes_to_exclude)
   message(sum(mask1)," genes passed expression threshold")
-  v1=apply(ds[mask1,],1,var,na.rm=T)
   m1=s1[mask1]/ncol(ds)
+  m2=s2[mask1]/ncol(ds)
+  v1=m2-m1^2
   x=log10(m1)
   breaks=seq(min(x,na.rm=T),max(x,na.rm=T),.2)
   lv=log2(v1/m1)

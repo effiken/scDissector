@@ -102,6 +102,7 @@ get_edges=function(l,name=NA){
   }
 }
 
+
 get_cluster_set_tree=function(mat,nodes_to_add=NULL){
   
   if (is.null(nodes_to_add)){
@@ -1154,7 +1155,7 @@ tab3_left_margin=12
     }
 
     if (!is.null(cluster_sets)){
-      he=max(c(200,200*length(cluster_sets),na.rm=T))
+      he=200*length(cluster_sets)
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
     }
   })
@@ -1743,7 +1744,7 @@ tab3_left_margin=12
       cluster_set_names=vis_freqs_cluster_sets_reactive()
       freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0)
 
-      celltypes=intersect(names(freq_norm)[(!sapply(freq_norm,is.null))],cluster_set_names)
+      celltypes=intersect(cluster_set_names,names(freq_norm)[(!sapply(freq_norm,is.null))])
       celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]
       layout(matrix(1:(length(celltypes)*2),length(celltypes),2,byrow = T))
       par(mar=c(8,6,2,1))
