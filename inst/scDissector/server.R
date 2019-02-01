@@ -1020,7 +1020,11 @@ tab3_left_margin=12
     ds=ds[genemask,]
     ds_mean=ds_mean[genemask]
     message("Estimating variance for ",nrow(ds)," genes")
-    ds_var<-apply(ds,1,var)
+    s1=Matrix::rowSums(ds,na.rm=T) 
+    s2=Matrix::rowSums(ds^2,na.rm=T)
+    ds_mean=s1/ncol(ds)
+    m2=s2/ncol(ds)
+    ds_var=m2-ds_mean^2
     df=data.frame(m=ds_mean,v=ds_var,gene=rownames(ds))
     rownames(df)=names(ds_mean)
     return(df)
