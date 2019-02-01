@@ -1212,12 +1212,14 @@ tab3_left_margin=12
   
   output$subtype_freqs <- renderUI({
     cluster_sets=vis_freqs_cluster_sets_reactive()
+    cluster_sets_length=sapply(cluster_sets_reactive(),length)[cluster_sets]
+    cluster_sets=cluster_sets[pmax(cluster_sets_length,0,na.rm=T)>1]
     if(is.null(cluster_sets)){
       return()
     }
 
     if (!is.null(cluster_sets)){
-      he=200*length(cluster_sets)
+      he=300*length(cluster_sets)
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
     }
   })
