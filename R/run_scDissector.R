@@ -8,4 +8,5 @@ run_scDissector <- function(preloaded_data=NULL,clustering_data_path=NULL) {
   .scDissector_preloaded_data<<-preloaded_data
   .scDissector_clustering_data_path<<-clustering_data_path
   shiny::runApp(appDir, display.mode = "normal")
+  on.exit(rm(list= list(.scDissector_preloaded_data,.scDissector_clustering_data_path)))
 }
