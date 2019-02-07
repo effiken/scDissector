@@ -1742,7 +1742,7 @@ tab3_left_margin=12
       insamples=samples_reactive()
       cluster_sets=cluster_sets_reactive()
       cluster_set_names=vis_freqs_cluster_sets_reactive()
-      freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0)
+      freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0.00)
 
       celltypes=intersect(cluster_set_names,names(freq_norm)[(!sapply(freq_norm,is.null))])
       celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]
@@ -1800,7 +1800,7 @@ tab3_left_margin=12
     
     
     
-    if (exists("default_model_dataset")){
+    if (exists(".scDissector_preloaded_data")){
       
       hideTab(inputId = "inMain", target = "Data")
     }
@@ -2144,15 +2144,15 @@ tab3_left_margin=12
     }
     
     
-    if (exists("scDissector_datadir")){
-      updateTextInput(session,"inDatapath",,scDissector_datadir)
+    if (exists(".scDissector_clustering_data_path")){
+      updateTextInput(session,"inDatapath",,.scDissector_clustering_data_path)
     }
     
-    if (exists("default_model_dataset")){
+    if (exists(".scDissector_preloaded_data")){
       
       hideTab(inputId = "inMain", target = "Data")
-      ldm=default_model_dataset
-      if (!exists("scDissector_datadir")){
+      ldm=.scDissector_preloaded_data
+      if (!exists(".scDissector_clustering_data_path")){
         scDissector_datadir=""
       }
       session$userData$loaded_model_file<-ldm$model$model_filename

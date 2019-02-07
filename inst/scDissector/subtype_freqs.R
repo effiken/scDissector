@@ -45,7 +45,7 @@ normalize_by_clusterset_frequency=function(dataset,samples,cluster_sets,pool_sub
     }
     if (pool_subtype==F){
       tot=rowSums(reg+freqs[,unlist(one_clusterset),drop=F])
-      norm_subtypes_freqs=reg+freqs[,unlist(one_clusterset),drop=F]/(tot)
+      norm_subtypes_freqs=(reg+freqs[,unlist(one_clusterset),drop=F])/(tot)
     } 
     else {
       if (length(unlist(one_clusterset))==1){
