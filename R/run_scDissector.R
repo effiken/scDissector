@@ -1,3 +1,8 @@
+#' Runs scDissector shiny app
+#'  
+#' @param preloaded_data LDM object (optional)
+#' @param clustering_data_path path to clustering data folder (optional)
+#' 
 #' @export
 run_scDissector <- function(preloaded_data=NULL,clustering_data_path=NULL) {
   appDir <- system.file("scDissector", package = "scDissector")
