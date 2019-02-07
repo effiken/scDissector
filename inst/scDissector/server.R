@@ -628,6 +628,59 @@ tab3_left_margin=12
   })
 
   
+  observeEvent(input$inVarMeanScreenSelectedClusters, {
+    dataset=session$userData$dataset
+    ds_i=match("1000",dataset$ds_numis)
+    if (is.na(ds_i)){
+      ds_i=which.max(as.numeric(dataset$ds_numis))
+    }
+    if (!session$userData$loaded_flag)
+    {
+      return(data.frame(m=0,v=0,gene=""))
+    }
+    cgs=clusters_genes_sampples_reactive()
+    ggs_res=get_genes_to_screen()
+    genes=ggs_res$genes
+    pref=ggs_res$pref
+    inclusts=cgs$clusters
+    insamples=cgs$samples
+    cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=ds[intersect(rownames(ds),genes),]
+    s1=Matrix::rowSums(ds,na.rm=T) 
+    s2=Matrix::rowSums(ds^2,na.rm=T)
+    mask1=s1/ncol(ds)>10^as.numeric(input$inMinExprForScreen[1])&s1/ncol(ds)<10^as.numeric(input$inMinExprForScreen[2])
+    
+    m1=s1[mask1]/ncol(ds)
+    m2=s2[mask1]/ncol(ds)
+    v1=m2-m1^2
+    x=log10(m1)
+    breaks=seq(min(x,na.rm=T),max(x,na.rm=T),.2)
+    lv=log2(v1/m1)
+    llv=split(lv,cut(x,breaks))
+    mask_llv=sapply(llv,length)>0   
+    z=sapply(llv[mask_llv],min,na.rm=T)
+    b=breaks[-length(breaks)]
+    b=b[mask_llv]
+    lo=loess(z~b)
+    ngenes_to_show=as.numeric(input$inNgenes)
+    high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
+    genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
+    new_set_name=paste("Varmean_",pref,"_",ngenes_to_show,"_",date(),sep="")
+    if (!is.null(session$userData$geneList)){
+      geneList=session$userData$geneList
+      geneList[length(geneList)+1]=genes_to_show_comma_delimited
+    }
+    else{
+      geneList=c(genes_to_show_comma_delimited)
+    }
+    names(geneList)[length(geneList)]=new_set_name
+    
+    session$userData$geneList<-geneList
+    updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
+    
+  })
+  
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
     cgs=clusters_genes_sampples_reactive()
@@ -943,6 +996,11 @@ tab3_left_margin=12
 
   
   ###########################################################
+  
+   
+  
+  
+  
   modules_varmean_reactive=reactive({
     dataset=session$userData$dataset
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
@@ -962,7 +1020,11 @@ tab3_left_margin=12
     ds=ds[genemask,]
     ds_mean=ds_mean[genemask]
     message("Estimating variance for ",nrow(ds)," genes")
-    ds_var<-apply(ds,1,var)
+    s1=Matrix::rowSums(ds,na.rm=T) 
+    s2=Matrix::rowSums(ds^2,na.rm=T)
+    ds_mean=s1/ncol(ds)
+    m2=s2/ncol(ds)
+    ds_var=m2-ds_mean^2
     df=data.frame(m=ds_mean,v=ds_var,gene=rownames(ds))
     rownames(df)=names(ds_mean)
     return(df)
@@ -1150,12 +1212,14 @@ tab3_left_margin=12
   
   output$subtype_freqs <- renderUI({
     cluster_sets=vis_freqs_cluster_sets_reactive()
+    cluster_sets_length=sapply(cluster_sets_reactive(),length)[cluster_sets]
+    cluster_sets=cluster_sets[pmax(cluster_sets_length,0,na.rm=T)>1]
     if(is.null(cluster_sets)){
       return()
     }
 
     if (!is.null(cluster_sets)){
-      he=200*length(cluster_sets)
+      he=300*length(cluster_sets)
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
     }
   })
