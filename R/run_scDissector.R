@@ -10,8 +10,12 @@ run_scDissector <- function(preloaded_data=NULL,clustering_data_path=NULL) {
     stop("Could not find example directory. Try re-installing `scDissector`.", call. = FALSE)
   }
   
-  .scDissector_preloaded_data<<-preloaded_data
-  .scDissector_clustering_data_path<<-clustering_data_path
+  if (!is.null(preloaded_data)){
+    .scDissector_preloaded_data<<-preloaded_data
+  }
+  if (!is.null(clustering_data_path)){
+    .scDissector_clustering_data_path<<-clustering_data_path
+  }
   shiny::runApp(appDir, display.mode = "normal")
   on.exit(rm(list= list(.scDissector_preloaded_data,.scDissector_clustering_data_path)))
 }

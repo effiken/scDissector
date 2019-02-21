@@ -3,7 +3,7 @@ fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
 fisher.z2r <- function (z) {(exp(2 * z) - 1)/(1 + exp(2 * z))}
 
 
-get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL){
+get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F){
   zmat=matrix(0,nrow(ds),nrow(ds),dimnames=list(rownames(ds),rownames(ds)))
   samples_inp=unique(cell_to_sample)
   if (is.null(samples)){
@@ -11,21 +11,72 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL){
   }
   else{
     samples=intersect(samples,samples_inp)
-    }
+  }
+  
+  if (weighted){
+    w=table(cell_to_sample)[samples]
+    w=w/sum(w)
+  }
+  else{
+    rep(1/length(samples),length(samples))
+  }
   for (samp in samples){
     print(samp)
-    dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp])>5,cell_to_sample==samp]
+    dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>5,cell_to_sample==samp,drop=F]
     z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi))))
     #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
     rm(dsi)
     z[is.na(z)]=0
     #   print(range(z))
-    zmat[rownames(z),colnames(z)]=z+ zmat[rownames(z),colnames(z)]
+    zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z)]
     rm(z)
     gc()
   }
-  return(fisher.z2r(zmat/length(samples)))
+  
+  return(fisher.z2r(zmat/sum(w)))
 }
+
+get_avg_module_to_gene_cor=function(ds,genes,modules_list,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=10,min_umi_counts_per_samples=1){
+  if (is.null(names(modules_list))){
+    names(modules_list)=1:length(modules_list)
+  }
+  zmat=matrix(0,length(modules_list),length(genes),dimnames=list(names(modules_list),genes))
+  samples_inp=unique(cell_to_sample)
+  if (is.null(samples)){
+    samples=samples_inp
+  }
+  else{
+    samples=intersect(samples,samples_inp)
+  }
+  
+  if (weighted){
+    w=table(cell_to_sample)[samples]
+    w=w/sum(w)
+  }
+  else{
+    rep(1/length(samples),length(samples))
+  }
+  for (samp in samples){
+    print(samp)
+    genes=genes[Matrix::rowSums(ds[genes,cell_to_sample==samp,drop=F],na.rm=T)>=min_umi_counts_per_samples]
+    dsi=log2(1+ds[genes,cell_to_sample==samp,drop=F])
+    if (ncol(dsi)>=min_number_of_cell_per_sample){
+      ds_mods_i=t(sapply(modules_list,function(x,ds){colSums(log2(1+ds[x,,drop=F]))},ds[,cell_to_sample==samp,drop=F]))
+      z=fisher.r2z(.99*cor(as.matrix(Matrix::t(ds_mods_i)),as.matrix(Matrix::t(dsi))))
+    #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
+      z[is.na(z)]=0
+    #   print(range(z))
+      zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z),drop=F]
+      rm(z)
+    }
+    rm(dsi)
+    
+    gc()
+  }
+  
+  return(fisher.z2r(zmat/sum(w)))
+}
+
 
 get_gene_cormap=function(ldm,ds_version="2000",cells=NA){
   
@@ -55,7 +106,7 @@ save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),
 }
 
 
-gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL,samples=NULL){
+gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL,samples=NULL,weighted=F,modules_list=NULL){
   if (is.null(clusters)){
     clusters=colnames(ldm$model$models)
   }
@@ -79,7 +130,12 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
   lo=loess(z~b)
   high_var_genes=names(which((lv-predict(lo,newdata =x))>min_varmean_per_gene))
   message(length(high_var_genes)," High var genes")
-  cormat=get_avg_gene_to_gene_cor(log2(1+ds[high_var_genes,]),ldm$dataset$cell_to_sample[colnames(ds)],samples=samples) 
+  if (is.null(modules_list)){
+    cormat=get_avg_gene_to_gene_cor(log2(1+ds[high_var_genes,]),ldm$dataset$cell_to_sample[colnames(ds)],samples=samples,weighted = weighted) 
+  }
+  else{
+    cormat=get_avg_module_to_gene_cor(ds,genes=high_var_genes,modules_list = modules_list,ldm$dataset$cell_to_sample[colnames(ds)],samples=samples,weighted = weighted) 
+  }
 }
 
 

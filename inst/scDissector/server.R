@@ -36,6 +36,9 @@ as_list_recursive=function(l){
 }
 
 as_cluster_sets_recursive=function(l){
+  if (is.null(l)){
+    return(l)
+  }
   l2=list()
     for (i in 1:length(l)){
       if (!is.list(l[[i]])){
@@ -2211,7 +2214,6 @@ tab3_left_margin=12
     if (exists(".scDissector_clustering_data_path")){
       updateTextInput(session,"inDatapath",,.scDissector_clustering_data_path)
     }
-    
     if (exists(".scDissector_preloaded_data")){
       
       hideTab(inputId = "inMain", target = "Data")

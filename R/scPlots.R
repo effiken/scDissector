@@ -73,7 +73,7 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 
 
 plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10){
-  ds=ds[ingenes,]
+  ds=ds[ingenes,cell_to_cluster[colnames(ds)]%in%inclusts]
   ds=ds[,order(match(cell_to_cluster[colnames(ds)],inclusts))]
   samps=cell_to_sample[colnames(ds)]
   ncells=rep(0,length(inclusts))
