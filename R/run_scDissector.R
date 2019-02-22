@@ -13,8 +13,18 @@ run_scDissector <- function(preloaded_data=NULL,clustering_data_path=NULL) {
   if (!is.null(preloaded_data)){
     .scDissector_preloaded_data<<-preloaded_data
   }
+  else{
+    if (exists(".scDissector_preloaded_data")){
+      rm(.scDissector_preloaded_data,envir = globalenv())
+    }
+  }
   if (!is.null(clustering_data_path)){
     .scDissector_clustering_data_path<<-clustering_data_path
+  }
+  else{
+    if (exists(".scDissector_clustering_data_path")){
+      rm(.scDissector_clustering_data_path,envir=globalenv())
+    }
   }
   shiny::runApp(appDir, display.mode = "normal")
   on.exit(rm(list= list(.scDissector_preloaded_data,.scDissector_clustering_data_path)))
