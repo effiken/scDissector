@@ -3,7 +3,7 @@ fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
 fisher.z2r <- function (z) {(exp(2 * z) - 1)/(1 + exp(2 * z))}
 
 
-get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F){
+get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=5,min_umi_counts_per_samples=5){
   zmat=matrix(0,nrow(ds),nrow(ds),dimnames=list(rownames(ds),rownames(ds)))
   samples_inp=unique(cell_to_sample)
   if (is.null(samples)){
@@ -12,6 +12,8 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F){
   else{
     samples=intersect(samples,samples_inp)
   }
+  
+  samples=samples[table(cell_to_sample)[samples]>=min_number_of_cell_per_sample]
   
   if (weighted){
     w=table(cell_to_sample)[samples]
@@ -22,7 +24,7 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F){
   }
   for (samp in samples){
     print(samp)
-    dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>5,cell_to_sample==samp,drop=F]
+    dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>min_umi_counts_per_samples,cell_to_sample==samp,drop=F]
     z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi))))
     #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
     rm(dsi)
@@ -36,7 +38,7 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F){
   return(fisher.z2r(zmat/sum(w)))
 }
 
-get_avg_module_to_gene_cor=function(ds,genes,modules_list,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=10,min_umi_counts_per_samples=1){
+get_avg_module_to_gene_cor=function(ds,genes,modules_list,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=5,min_umi_counts_per_samples=5){
   if (is.null(names(modules_list))){
     names(modules_list)=1:length(modules_list)
   }
@@ -56,23 +58,29 @@ get_avg_module_to_gene_cor=function(ds,genes,modules_list,cell_to_sample,samples
   else{
     rep(1/length(samples),length(samples))
   }
+  samples=samples[table(cell_to_sample)[samples]>=min_number_of_cell_per_sample]
+  if (length(sample)==0){
+    return()
+  }
   for (samp in samples){
     print(samp)
     genes=genes[Matrix::rowSums(ds[genes,cell_to_sample==samp,drop=F],na.rm=T)>=min_umi_counts_per_samples]
     dsi=log2(1+ds[genes,cell_to_sample==samp,drop=F])
-    if (ncol(dsi)>=min_number_of_cell_per_sample){
-      ds_mods_i=t(sapply(modules_list,function(x,ds){colSums(log2(1+ds[x,,drop=F]))},ds[,cell_to_sample==samp,drop=F]))
-      z=fisher.r2z(.99*cor(as.matrix(Matrix::t(ds_mods_i)),as.matrix(Matrix::t(dsi))))
+   
+    ds_mods_i=t(sapply(modules_list,function(x,ds){colSums(log2(1+ds[x,,drop=F]))},ds[,cell_to_sample==samp,drop=F]))
+    z=fisher.r2z(.99*cor(as.matrix(Matrix::t(ds_mods_i)),as.matrix(Matrix::t(dsi))))
     #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
-      z[is.na(z)]=0
+    z[is.na(z)]=0
     #   print(range(z))
-      zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z),drop=F]
-      rm(z)
-    }
+    zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z),drop=F]
+    rm(z)
+    
     rm(dsi)
     
     gc()
   }
+  
+  zmat[,setdiff(colnames(zmat),genes)]=NA
   
   return(fisher.z2r(zmat/sum(w)))
 }
