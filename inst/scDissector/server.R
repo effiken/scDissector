@@ -6,7 +6,7 @@ library(gplots)
 library("heatmaply")
 set.seed(3505)
 source("subtype_freqs.R")
-non_data_tabs=c("Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
+non_data_tabs=c("Gating","Basics","Clusters","Cells","ClusterSets","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
 
@@ -18,7 +18,7 @@ print(getwd())
 
 as_list_recursive=function(l){
   if (is.null(l)){
-    return(NULL)
+    return(list())
   }
   if (length(l)==0){
     return(l)
