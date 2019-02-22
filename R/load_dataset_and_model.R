@@ -85,7 +85,11 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       
     }
     else{
-      output$cluster_sets<-get_cluster_set_tree(data.frame(node=names(clustAnnots),parent=as.character(clustAnnots)))
+      nodes=names(clustAnnots)
+      parents=as.character(clustAnnots)
+      nodes[nodes==""]="unannotated"
+      parents[parents==""]="unannotated"
+      output$cluster_sets<-get_cluster_set_tree(data.frame(node=nodes,parent=parents))
     }
     
     
