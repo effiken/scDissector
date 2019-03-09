@@ -1,5 +1,5 @@
 export(run_scDissector)
-export(read_or_compile_data)
+export(load_dataset_and_model)
 export(import_dataset_and_model)
 export(load_seurat_rds)
 export(insilico_sorter)
