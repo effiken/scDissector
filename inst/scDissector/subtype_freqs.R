@@ -60,7 +60,7 @@ normalize_by_clusterset_frequency=function(dataset,samples,cluster_sets,pool_sub
     }
     return(norm_subtypes_freqs)
   }
-  return(sapply(cluster_sets,norm_one_clusterset))
+  return(sapply(cluster_sets,norm_one_clusterset,simplify = F))
   
 }
 

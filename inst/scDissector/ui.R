@@ -56,6 +56,7 @@ mainPanel(width=12,
                   ),
                   tabPanel("Basics", 
                            fluidRow(
+                             plotOutput("correlation_betwen_clusters",width=600,height=600),
                              plotOutput("ncells_barplot",width="100%",height=200),
                              plotOutput("UMI_boxplot",width="100%",height=200)
                           )
@@ -132,11 +133,6 @@ mainPanel(width=12,
                       selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 250,width=200),
                       downloadButton('downloadTruthPlot', 'Download Plot')
                   )),
-                tabPanel("ClusterSets",
-                        fluidRow(
-                        plotOutput("correlation_betwen_clusters",width=600,height=600)
-                        
-                        )),
                 tabPanel("Samples",fluidRow(
                   wellPanel(
                   textInput("inSamplesToShow", width=2000, "Samples:"),
