@@ -6,7 +6,7 @@ library(gplots)
 library("heatmaply")
 set.seed(3505)
 source("subtype_freqs.R")
-non_data_tabs=c("Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
+non_data_tabs=c("MetaData","Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
 
@@ -178,16 +178,16 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inQCClust",choices =clust_title)
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
   cluster_sets=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets))))
+  updateSelectInput(session,"categorizeSamplesBy",choices=colnames(session$userData$sample_annots),selected = "sample_ID")
   updateSelectInput(session,"removeClusterSetSelectInput",choices=cluster_sets)
   updateSelectInput(session,"inReorderSamplesBy",choices=c("All",cluster_sets))
-  updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
-  updateTextInput(session,"inSampleColors",value = paste(session$userData$sample_colors,collapse=", "))
   updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
   updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
   updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
   updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
+
   if (is.null(ldm$model$noise_models)){
      updateSelectInput(session,"inModelOrAverage",choices=c("Model","Average"))
   }
@@ -200,6 +200,64 @@ update_all= function(session,ldm){
   session$userData$loaded_flag<-T
 }
 
+
+load_metadata=function(session,datapath){
+  verfile=paste(datapath,"model_versions.csv",sep="/")
+  samples_file=paste(datapath,"samples.csv",sep="/")
+  read_flag=T
+  if (!file.exists(verfile)){
+    message(verfile ," not found")
+    read_flag=F
+  }
+  if  (!file.exists(samples_file)){
+    message(samples_file ," not found")
+    read_flag=F
+  }
+  
+  if (!read_flag){
+    updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
+    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
+    return()
+  }
+  session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+  session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
+  
+  
+  myGeneListFile= paste(datapath,"gene_sets.txt",sep="/")
+  
+  if (file.exists(myGeneListFile)){
+    added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
+    
+    if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
+      message(myGeneListFile, " was not loaded since gene sets names are not unique.")
+    }
+    else{
+      names2=c(added_gene_list_tmp[,1],names(session$userData$geneList))
+      session$userData$geneList<-c(added_gene_list_tmp[,2],session$userData$geneList)
+      names(session$userData$geneList)=names2
+    }
+  }  
+  
+  sample_annots_fn=paste(datapath,"metadata","sample_annots.csv",sep="/")
+  if (dir.exists(paste(datapath,"metadata",sep="/"))){
+    if (file.exists(sample_annots_fn)){
+      session$userData$sample_annots=read.csv(sample_annots_fn,stringsAsFactors = F)
+      rownames(session$userData$sample_annots)=session$userData$sample_annots$sample_ID
+      session$userData$sample_annots=session$userData$sample_annots
+    }
+  }
+  
+  
+  mySampleSetsFile= paste(datapath,"sample_sets.txt",sep="/")
+  samples_to_show=session$userData$samples_tab$index
+  if (file.exists(mySampleSetsFile)){
+    sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
+    session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
+    names(session$userData$sample_sets)<-rownames(sample_sets_tab)
+    session$userData$samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
+  }
+  
+}
 
 
 
@@ -224,62 +282,16 @@ tab3_left_margin=12
     session$userData$click_flag<-T
     
     
-    
-    
     observeEvent(input$inDatapath,{
       if (input$inDatapath==""){
         return()
       }
-      verfile=paste(input$inDatapath,"model_versions.csv",sep="/")
-      samples_file=paste(input$inDatapath,"samples.csv",sep="/")
-      read_flag=T
-      if (!file.exists(verfile)){
-        message(verfile ," not found")
-        read_flag=F
-      }
-      if  (!file.exists(samples_file)){
-        message(samples_file ," not found")
-        read_flag=F
-      }
-    
-      if (!read_flag){
-        updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
-        updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
-        return()
-      }
-      session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-      session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
-      
-   
-      myGeneListFile= paste(input$inDatapath,"gene_sets.txt",sep="/")
-   
-      if (file.exists(myGeneListFile)){
-        added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
-       
-        if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
-          message(myGeneListFile, " was not loaded since gene sets names are not unique.")
-        }
-        else{
-          names2=c(added_gene_list_tmp[,1],names(session$userData$geneList))
-          session$userData$geneList<-c(added_gene_list_tmp[,2],session$userData$geneList)
-          names(session$userData$geneList)=names2
-        }
-      }  
-    
-    
-    mySampleSetsFile= paste(input$inDatapath,"sample_sets.txt",sep="/")
-    samples_to_show=session$userData$samples_tab$index
-    if (file.exists(mySampleSetsFile)){
-      sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
-      session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
-      names(session$userData$sample_sets)<-rownames(sample_sets_tab)
-      samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
-     }
+      load_metadata(session,input$inDatapath)
     session$userData$scDissector_datadir<-input$inDatapath
     
     updateSelectInput(session,"inGeneSets",choices = names(session$userData$geneList))
     updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
-    updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_to_show)
+    updateSelectInput(session,"inSampleToAdd", "Samples:",choices =session$userData$samples_to_show)
     updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
   })
   
@@ -325,8 +337,9 @@ tab3_left_margin=12
     
 
     show_all_tabs()
+
     update_all(session,ldm)
-    
+   
   })
   
   
@@ -353,9 +366,8 @@ tab3_left_margin=12
     x=do.call(cbind,freq_norm[reorderby])
     x=pmax(x,0,na.rm=T)
     ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
-    
-    updateTextAreaInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
-    updateTextAreaInput(session,"inSampleColors",value = input$inSampleColors[ord])
+    proxy <- DT::dataTableProxy("mytable")
+    DT::replaceData(proxy, data=sample_annots_reactive()[ord,],clearSelection ="none" ,resetPaging = FALSE)
   })
   
   observeEvent(input$inAddSample,{
@@ -363,10 +375,9 @@ tab3_left_margin=12
     updateTextInput(session,"inSamples",value=s1) 
   })
   
-  observeEvent(input$inResetSamples,{
-    samples=session$userData$dataset$samples
-    updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
-    updateTextAreaInput(session,"inSampleColors",value = paste(default_sample_colors[1:length(session$userData$dataset$samples)],collapse=", "))
+  observeEvent(input$selectAllSamples,{
+    proxy <- DT::dataTableProxy("mytable")
+    DT::selectRows(proxy,selected = input$mytable_rows_all)
   })
   
   observeEvent(input$inAbsOrRel,{
@@ -389,23 +400,16 @@ tab3_left_margin=12
     }
   })
   
-  samples_reactive <-reactive({
-    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
-    if (is.null(session$userData$dataset)){
-      return(c())
-    }
-    samples=intersect(samples,session$userData$dataset$samples)
-    return(samples)
-  })
+#  samples_reactive <-reactive({
+#    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
+#    if (is.null(session$userData$dataset)){
+#      return(c())
+#    }
+#    samples=intersect(samples,session$userData$dataset$samples)
+#    return(samples)
+#  })
   
-  sample_colors_reactive <-reactive({
-    sample_colors=strsplit(input$inSampleColors,",|, | ,")[[1]]
-    if (is.null(session$userData$dataset)){
-      return(c())
-    }
-    #TODO check is sample_colors are valid colors
-    return(sample_colors)
-  })
+
   
   cluster_sets_reactive <-reactive ({
    # print(input$clusters_sets_shinytree)
@@ -486,6 +490,10 @@ tab3_left_margin=12
     return(list(clusters=clusts,genes=genes,samples=samples_reactive()))
   })
   
+  sample_annots_reactive<-reactive({
+    return(session$userData$sample_annots[intersect(session$userData$dataset$samples,rownames(session$userData$sample_annots)),])
+  })
+  
   
   cells_reactive <-reactive({
     inclusts=clusters_genes_sampples_reactive()$clusters
@@ -559,7 +567,7 @@ tab3_left_margin=12
     }
     data_genes=rownames(session$userData$dataset$umitab)
  
-    gene_strings_adj=adjust_gene_names(genes_string, data_genes)
+    gene_strings_adj=unique(adjust_gene_names(genes_string, data_genes))
  
     session$userData$gcol<-ifelse(toupper(gene_strings_adj)%in%tfs ,4,1)
     names(session$userData$gcol)<-toupper(gene_strings_adj)
@@ -667,6 +675,8 @@ tab3_left_margin=12
     b=b[mask_llv]
     lo=loess(z~b)
     ngenes_to_show=as.numeric(input$inNgenes)
+    
+    
     high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
     genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
     new_set_name=paste("Varmean_",pref,"_",ngenes_to_show,"_",date(),sep="")
@@ -1049,6 +1059,13 @@ tab3_left_margin=12
     return(lo)
   })
   
+  sample_to_category<-reactive({
+    samps=samples_reactive()
+    v=session$userData$sample_annots[samps,input$categorizeSamplesBy]
+    names(v)=as.character(samps)
+    return(v)
+  })
+  
   
   getGeneModuleMask=function(){
     if (!session$userData$loaded_flag)
@@ -1137,6 +1154,17 @@ tab3_left_margin=12
     
   })
  
+  samples_reactive<-reactive({
+    samples=intersect(input$mytable_rows_all,input$mytable_rows_selected)
+    print(samples)
+    if (is.null(samples)){
+      return(session$userData$dataset$samples)
+    }
+    samples=as.character(session$userData$sample_annots[session$userData$dataset$samples,"sample_ID"][samples])
+  return(samples)
+  #  updateTextAreaInput(session,inputId = "inSamples2",label = "ffsdfdsdsf")
+  
+  })
   
   output$textModuleGenes<- renderText({
     modsl=gene_to_module_reactive()
@@ -1158,6 +1186,20 @@ tab3_left_margin=12
   )
   
   ###########################################################
+  
+  output$mytable = DT::renderDataTable({
+    tab=sample_annots_reactive()
+   # v=sprintf(
+  #    '<input type="checkbox" name="%s" value="%s"/>',
+  #    1:nrow(tab), T)
+    
+    DT::datatable(tab,filter = "top",options = list(pageLength = 50),rownames = F,escape=F,selection=list(mode = 'multiple', selected =1:nrow(tab), target = 'row'))
+    
+  })
+  
+  
+ 
+  
   
   output$ncells_barplot <-renderPlot({
     input$inModelVer
@@ -1368,9 +1410,16 @@ tab3_left_margin=12
   
   output$samples_enrichment_plot <- renderPlot({
     cgs=clusters_genes_sampples_reactive()
-    sample_cols=sample_colors_reactive()
+    
+#    sample_cols=sample_colors_reactive()
     inclusts=cgs$clusters
     insamples=cgs$samples
+    samp_to_cat=sample_to_category()[insamples]
+    cats=as.character(unique(samp_to_cat))
+    cat_cols= session$userData$sample_colors[1:length(cats)]
+  
+    names(cat_cols)=cats
+    sample_cols=cat_cols[as.character(samp_to_cat)]
     par(mar=c(7,0,1.6,0))
     tab=matrix(0,ncol(session$userData$model$models),length(session$userData$dataset$samples))
     rownames(tab)=colnames(session$userData$model$models)
@@ -1413,11 +1462,17 @@ tab3_left_margin=12
     input$inBirdClusterSetExclude
     input$inBirdClusterSetInclude
   #####
-    sample_cols=sample_colors_reactive()
+    
+#    sample_cols=sample_colors_reactive()
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
     ingenes=cgs$genes
     insamples=cgs$samples
+    samp_to_cat=sample_to_category()[insamples]
+    cats=unique(samp_to_cat)
+    cat_cols= session$userData$sample_colors[1:length(cats)]
+    names(cat_cols)=cats
+    sample_cols=cat_cols[samp_to_cat]
      if (!session$userData$loaded_flag){
       return()
     }
@@ -1431,7 +1486,7 @@ tab3_left_margin=12
     }
 
     zlim=input$inModelColorScale
-
+    
     if (length(insamples)>1&(length(inclusts)>1)){
       layout(matrix(1:2,1,2),widths=c(1,10))
       par(mar=c(7,1,1,.1))
@@ -1498,6 +1553,8 @@ tab3_left_margin=12
       inclusts=cgs$clusters
       ingenes=cgs$genes
       insamples=cgs$samples
+      
+      
       if (!session$userData$loaded_flag){
         return()
       }
@@ -1715,11 +1772,16 @@ tab3_left_margin=12
   
   plot_truth_heatmap_wrapper=function(){
     zlim=input$inTruthColorScale
-    sample_cols=sample_colors_reactive()
+    #sample_cols=sample_colors_reactive()
     cgs=clusters_genes_sampples_reactive()
     inclusts=cgs$clusters
     ingenes=cgs$genes
     insamples=cgs$samples
+    samp_to_cat=sample_to_category()[insamples]
+    cats=unique(samp_to_cat)
+    cat_cols= session$userData$sample_colors[1:length(cats)]
+    names(cat_cols)=cats
+    sample_cols=cat_cols[samp_to_cat]
     nclust=length(inclusts)
     if (!session$userData$loaded_flag){
       return()
@@ -1775,24 +1837,41 @@ tab3_left_margin=12
     output$modelSampleLegend <- renderPlot({
     
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
+     # sample_cols=cat_cols[samp_to_cat]
+      #sample_cols=sample_colors_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
-      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
-      if(length(leg)==0){
-        leg=rep("",length(insamples))
-      }
-      ncol=ceiling(length(insamples)/10)
-      leg[is.na(leg)]=insamples[is.na(leg)]
-      leg[leg==""]=insamples[leg==""]
-   #   legend("topleft",pch=15,col=sample_cols[match(insamples,session$userData$dataset$samples)],legend=leg,cex=1,xpd=T,ncol=ncol)
-      legend("topleft",pch=15,col=sample_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
+    #  leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]a
+    #  if(length(leg)==0){
+    #    leg=rep("",length(insamples))
+    #  }
+    #  ncol=ceiling(length(insamples)/10)
+    #  leg[is.na(leg)]=insamples[is.na(leg)]
+    #  leg[leg==""]=insamples[leg==""]
+    #  legend("topleft",pch=15,col=sample_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
+       leg=names(cat_cols)
+       if(length(leg)==0){
+          leg=rep("",length(cat_cols))
+        }
+        ncol=ceiling(length(cat_cols)/10)
+        leg[is.na(leg)]=cat_cols[is.na(leg)]
+        leg[leg==""]=cat_cols[leg==""]
+        legend("topleft",pch=15,col=cat_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
     
     output$truthSampleLegend <- renderPlot({
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
+      sample_cols=cat_cols[samp_to_cat]
+    #  sample_cols=sample_colors_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
       leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
@@ -1914,7 +1993,12 @@ tab3_left_margin=12
     output$cellcor<-renderPlot({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
+      sample_cols=cat_cols[samp_to_cat]
+  #    sample_cols=sample_colors_reactive()
       ds=ds_QC_reactive()
       dataset=session$userData$dataset
       if (is.null(ds)){
@@ -2212,6 +2296,7 @@ tab3_left_margin=12
     
     
     if (exists(".scDissector_clustering_data_path")){
+      load_metadata(session,.scDissector_clustering_data_path)
       updateTextInput(session,"inDatapath",,.scDissector_clustering_data_path)
     }
     if (exists(".scDissector_preloaded_data")){
@@ -2224,7 +2309,7 @@ tab3_left_margin=12
       session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
       show_all_tabs()
-      updateTabsetPanel(session, "inMain", selected = "Clusters")
+      updateTabsetPanel(session, "inMain", selected = "MetaData")
     }
     
   }

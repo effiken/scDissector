@@ -47,7 +47,12 @@ mainPanel(width=12,
                   #                ),
                   br(),br(),br(),br(),br(),br(),br(),br())
                                   )),
-                  tabPanel("Gating",
+          tabPanel("MetaData",
+                   fluidRow(
+                     DT::dataTableOutput("mytable",height = 600)),fluidRow(
+                       actionButton("selectAllSamples","Select All")
+                     )),
+           tabPanel("Gating",
                            fluidRow(
                              selectInput("inGatingSample", "Sample:",choices = c()),
                              selectInput("inGatingShowClusters", "Cluster to highlight:",choices = c()),
@@ -92,7 +97,8 @@ mainPanel(width=12,
                                actionButton("inFC", "Fold Change screen (FG/BG)"),
                             textInput("inFC_fgClusts","Fold Change FG clusters"),
                             textInput("inFC_bgClusts","Fold Change BG clusters")
-                            )
+                            ),
+                            selectInput("categorizeSamplesBy",label = "Categorize Samples By:",choices=c())
                            ),
                           column(6,
                             textInput("inClusters","Clusters:",width=2000),
@@ -133,11 +139,7 @@ mainPanel(width=12,
                       selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 250,width=200),
                       downloadButton('downloadTruthPlot', 'Download Plot')
                   )),
-                tabPanel("Samples",fluidRow(
-                  wellPanel(
-                  textInput("inSamplesToShow", width=2000, "Samples:"),
-                  textInput("inSampleColors", width=2000, "Colors:"),
-                  actionButton("inResetSamples","Reset"))),
+                tabPanel("Samples",
                   column(12,wellPanel(
                     selectInput("inReorderSamplesBy", "ClusterSet:",choices=c()),
                     actionButton("inSamplesAddClusterSet","Add clusterSet"),
