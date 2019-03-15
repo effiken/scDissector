@@ -176,6 +176,7 @@ update_all= function(session,ldm){
   #updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(session$userData$cluster_sets))
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
+  updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
   cluster_sets=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets))))
   updateSelectInput(session,"categorizeSamplesBy",choices=colnames(session$userData$sample_annots),selected = "sample_ID")
@@ -366,8 +367,9 @@ tab3_left_margin=12
     x=do.call(cbind,freq_norm[reorderby])
     x=pmax(x,0,na.rm=T)
     ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
-    proxy <- DT::dataTableProxy("mytable")
-    DT::replaceData(proxy, data=sample_annots_reactive()[ord,],clearSelection ="none" ,resetPaging = FALSE)
+  #  ord=get_order(seriate(as.dist(1-cor(t(x))),method = "GW"))
+    updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
+    
   })
   
   observeEvent(input$inAddSample,{
@@ -400,16 +402,14 @@ tab3_left_margin=12
     }
   })
   
-#  samples_reactive <-reactive({
-#    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
-#    if (is.null(session$userData$dataset)){
-#      return(c())
-#    }
-#    samples=intersect(samples,session$userData$dataset$samples)
-#    return(samples)
-#  })
-  
-
+  samples_reactive <-reactive({
+    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
+    if (is.null(session$userData$dataset)){
+      return(c())
+    }
+    samples=intersect(samples,session$userData$dataset$samples)
+    return(samples)
+  })
   
   cluster_sets_reactive <-reactive ({
    # print(input$clusters_sets_shinytree)
@@ -793,6 +793,19 @@ tab3_left_margin=12
     
   })
   
+  observeEvent(input$selectSamples,{
+    #rows_all is ordered as the table
+    
+    samples=intersect(input$mytable_rows_all,input$mytable_rows_selected)
+    
+    samples=as.character(sample_annots_reactive()[samples,"sample_ID"])
+
+      updateTextAreaInput(session,inputId = "inSamplesToShow",value = paste(samples,collapse=", "))
+    
+  })
+  
+  
+  
   chisq_genes=function(counts){
     counts=apply(counts,2:3,sum)
     gene_mask=apply(counts,1,max)>3
@@ -1154,18 +1167,7 @@ tab3_left_margin=12
     
   })
  
-  samples_reactive<-reactive({
-    samples=intersect(input$mytable_rows_all,input$mytable_rows_selected)
-    print(samples)
-    if (is.null(samples)){
-      return(session$userData$dataset$samples)
-    }
-    samples=as.character(session$userData$sample_annots[session$userData$dataset$samples,"sample_ID"][samples])
-  return(samples)
-  #  updateTextAreaInput(session,inputId = "inSamples2",label = "ffsdfdsdsf")
-  
-  })
-  
+ 
   output$textModuleGenes<- renderText({
     modsl=gene_to_module_reactive()
     if (!is.null(modsl)){
@@ -1193,7 +1195,7 @@ tab3_left_margin=12
   #    '<input type="checkbox" name="%s" value="%s"/>',
   #    1:nrow(tab), T)
     
-    DT::datatable(tab,filter = "top",options = list(pageLength = 50),rownames = F,escape=F,selection=list(mode = 'multiple', selected =1:nrow(tab), target = 'row'))
+    DT::datatable(tab,filter = "top",options = list(pageLength = 50),rownames = F,escape=F,selection=list(mode = 'multiple', selected =1:nrow(tab)))
     
   })
   
@@ -1417,7 +1419,6 @@ tab3_left_margin=12
     samp_to_cat=sample_to_category()[insamples]
     cats=as.character(unique(samp_to_cat))
     cat_cols= session$userData$sample_colors[1:length(cats)]
-  
     names(cat_cols)=cats
     sample_cols=cat_cols[as.character(samp_to_cat)]
     par(mar=c(7,0,1.6,0))
@@ -1469,10 +1470,10 @@ tab3_left_margin=12
     ingenes=cgs$genes
     insamples=cgs$samples
     samp_to_cat=sample_to_category()[insamples]
-    cats=unique(samp_to_cat)
+    cats=as.character(unique(samp_to_cat))
     cat_cols= session$userData$sample_colors[1:length(cats)]
     names(cat_cols)=cats
-    sample_cols=cat_cols[samp_to_cat]
+    sample_cols=cat_cols[as.character(samp_to_cat)]
      if (!session$userData$loaded_flag){
       return()
     }
@@ -1778,10 +1779,10 @@ tab3_left_margin=12
     ingenes=cgs$genes
     insamples=cgs$samples
     samp_to_cat=sample_to_category()[insamples]
-    cats=unique(samp_to_cat)
+    cats=as.character(unique(samp_to_cat))
     cat_cols= session$userData$sample_colors[1:length(cats)]
     names(cat_cols)=cats
-    sample_cols=cat_cols[samp_to_cat]
+    sample_cols=cat_cols[as.character(samp_to_cat)]
     nclust=length(inclusts)
     if (!session$userData$loaded_flag){
       return()
@@ -1886,6 +1887,7 @@ tab3_left_margin=12
     
     output$subtype_freqs_barplots <- renderPlot({
       insamples=samples_reactive()
+
       cluster_sets=cluster_sets_reactive()
       cluster_set_names=vis_freqs_cluster_sets_reactive()
       freq_norm=normalize_by_clusterset_frequency(session$userData$dataset,insamples,cluster_sets,pool_subtype = T,reg = 0.00)

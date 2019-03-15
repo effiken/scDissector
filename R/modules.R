@@ -67,7 +67,8 @@ get_avg_module_to_gene_cor=function(ds,genes,modules_list,cell_to_sample,samples
     genes=genes[Matrix::rowSums(ds[genes,cell_to_sample==samp,drop=F],na.rm=T)>=min_umi_counts_per_samples]
     dsi=log2(1+ds[genes,cell_to_sample==samp,drop=F])
    
-    ds_mods_i=t(sapply(modules_list,function(x,ds){colSums(log2(1+ds[x,,drop=F]))},ds[,cell_to_sample==samp,drop=F]))
+    get_one_mod_sum=function(x,ds){colSums(log2(1+as.matrix(ds[x,,drop=F])))}
+    ds_mods_i=t(sapply(modules_list,get_one_mod_sum,ds[,cell_to_sample==samp,drop=F]))
     z=fisher.r2z(.99*cor(as.matrix(Matrix::t(ds_mods_i)),as.matrix(Matrix::t(dsi))))
     #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
     z[is.na(z)]=0

@@ -50,7 +50,9 @@ mainPanel(width=12,
           tabPanel("MetaData",
                    fluidRow(
                      DT::dataTableOutput("mytable",height = 600)),fluidRow(
-                       actionButton("selectAllSamples","Select All")
+                       actionButton("selectAllSamples","Select All"),
+                       actionButton("selectSamples","Copy Selected Ids"),
+                       textInput("inSamplesToShow", width=2000, "Samples:")
                      )),
            tabPanel("Gating",
                            fluidRow(
