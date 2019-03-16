@@ -5,7 +5,6 @@ library(dplyr)
 library(gplots)
 library("heatmaply")
 set.seed(3505)
-source("subtype_freqs.R")
 non_data_tabs=c("MetaData","Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
