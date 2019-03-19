@@ -1199,7 +1199,12 @@ tab3_left_margin=12
    # v=sprintf(
   #    '<input type="checkbox" name="%s" value="%s"/>',
   #    1:nrow(tab), T)
-    
+    if (is.null(tab)){
+      removeUI("#selectAllSamples",immediate = T)
+      removeUI("#selectSamples",immediate = T)
+      removeUI("#mytable",immediate = T)
+      return()
+    }
     DT::datatable(tab,filter = "top",options = list(pageLength = 50),rownames = F,escape=F,selection=list(mode = 'multiple', selected =1:nrow(tab)))
     
   })
