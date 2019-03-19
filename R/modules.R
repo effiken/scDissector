@@ -20,7 +20,7 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
     w=w/sum(w)
   }
   else{
-    rep(1/length(samples),length(samples))
+    w=rep(1/length(samples),length(samples))
   }
   for (samp in samples){
     print(samp)
@@ -30,7 +30,7 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
     rm(dsi)
     z[is.na(z)]=0
     #   print(range(z))
-    zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z)]
+      zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z)]
     rm(z)
     gc()
   }
@@ -99,8 +99,8 @@ get_gene_cormap=function(ldm,ds_version="2000",cells=NA){
 }
 
 
-save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),1),ser_method="OLD_ward",cor_cols=colorRampPalette(c("blue","white","red"))(100)){
-  pdf(paste(modules_version,"gene_cor.png",sep="_"),width=ncol(cormat)/12,height=ncol(cormat)/12)
+save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),1),ser_method="GW",cor_cols=colorRampPalette(c("blue","white","red"))(100)){
+  pdf(paste(modules_version,"gene_cor.pdf",sep="_"),width=ncol(cormat)/12,height=ncol(cormat)/12)
   #  ord=hclust(as.dist(1-cormat))$order
   #  browser()
   par(mar=c(3,3,3,3))

@@ -1073,8 +1073,14 @@ tab3_left_margin=12
   
   sample_to_category<-reactive({
     samps=samples_reactive()
-    v=session$userData$sample_annots[samps,input$categorizeSamplesBy]
-    names(v)=as.character(samps)
+    if (input$categorizeSamplesBy==""){
+      v=samps
+      names(v)=as.character(samps)
+    }
+    else{
+      v=session$userData$sample_annots[samps,input$categorizeSamplesBy]
+      names(v)=as.character(samps)
+    }
     return(v)
   })
   
