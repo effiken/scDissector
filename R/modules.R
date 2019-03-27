@@ -25,12 +25,12 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
   for (samp in samples){
     print(samp)
     dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>min_umi_counts_per_samples,cell_to_sample==samp,drop=F]
-    z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi))))
+    z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi)),use="complete.obs"))
     #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
     rm(dsi)
     z[is.na(z)]=0
     #   print(range(z))
-      zmat[rownames(z),colnames(z)]=z+ w[samp]*zmat[rownames(z),colnames(z)]
+    zmat[rownames(z),colnames(z)]= zmat[rownames(z),colnames(z)] + w[samp]*z
     rm(z)
     gc()
   }
