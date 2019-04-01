@@ -121,6 +121,8 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     dataset$numis_before_filtering=list()
     dataset$cell_to_sample<-c()
     
+    dataset$adt_by_sample=list()
+    dataset$hto_by_sample=list()
     dataset$alpha_noise=rep(NA,length(samples))
 
     dataset$avg_numis_per_sample_model<-matrix(NA,length(samples),ncol(model$models),dimnames = list(samples,colnames(model$models)))
@@ -174,6 +176,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         }
         tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
         
+        
         if (is.null(model$params$insilico_gating)){
             umitab=tmp_env$umitab
         }
@@ -194,6 +197,13 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             
         }
   
+        
+        if (!is.null(tmp_env$adttab)){
+          dataset$adt_by_sample[[sampi]]=tmp_env$adttab
+          dataset$hto_by_sample[[sampi]]=tmp_env$htottab
+        }
+        
+        
         barcode_mask=tmp_env$numis_before_filtering[colnames(umitab)]>min_umis&tmp_env$numis_before_filtering[colnames(umitab)]<max_umis
         dataset$min_umis=min_umis
         dataset$max_umis=max_umis
