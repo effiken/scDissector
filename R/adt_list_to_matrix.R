@@ -1,3 +1,4 @@
+#' @export
 
 adt_list_to_matrix <- function(adt_list){
   
