@@ -199,12 +199,12 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
   
         ### AL edit 4/1/19
         if (!is.null(tmp_env$adttab)){
-          colnames(tmp$adttab) <- paste(sampi,colnames(tmp_env$adttab),sep="_")
+          colnames(tmp_env$adttab) <- paste(sampi,colnames(tmp_env$adttab),sep="_")
           dataset$adt_by_sample[[sampi]]=tmp_env$adttab
           #dataset$hto_by_sample[[sampi]]=tmp_env$htottab
         }
         if (!is.null(tmp_env$htotab)){
-          colnames(tmp$htotab) <- paste(sampi,colnames(tmp_env$htotab),sep="_")
+          colnames(tmp_env$htotab) <- paste(sampi,colnames(tmp_env$htotab),sep="_")
           dataset$hto_by_sample[[sampi]]=tmp_env$htottab
         }
         
