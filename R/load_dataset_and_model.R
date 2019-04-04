@@ -396,16 +396,25 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
   
   genes=rownames(umitab)
   message("")
-  dataset$umitab<-umitab
+ 
   dataset$gated_out_umitabs<-list()
   dataset$counts<-array(0,dim=c(length(samples),length(genes),length(clusters)),dimnames = list(samples,genes,clusters))
 
   
-  for (ds_i in 1:length(ds_numis)){
-    dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
-  }
+  dataset$numis_before_filtering=Matrix::colSums(umitab)
     
-    dataset$numis_before_filtering=Matrix::colSums(umitab)
+    barcode_mask=dataset$numis_before_filtering[colnames(umitab)]>min_umis&dataset$numis_before_filtering[colnames(umitab)]<max_umis
+    dataset$min_umis=min_umis
+    dataset$max_umis=max_umis
+    umitab=umitab[,barcode_mask]
+    cell_to_cluster=cell_to_cluster[barcode_mask]
+    cell_to_sample=cell_to_sample[barcode_mask]
+   
+     for (ds_i in 1:length(ds_numis)){
+      dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
+    }
+    
+   
     
     if (is.null(insilico_gating)){
       umitab=umitab
@@ -424,16 +433,10 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
       }
     }
     
-    barcode_mask=dataset$numis_before_filtering[colnames(umitab)]>min_umis&dataset$numis_before_filtering[colnames(umitab)]<max_umis
-    dataset$min_umis=min_umis
-    dataset$max_umis=max_umis
-    umitab=umitab[,barcode_mask]
-    cell_to_cluster=cell_to_cluster[barcode_mask]
-    cell_to_sample=cell_to_sample[barcode_mask]
-    
-    
     dataset$cell_to_cluster<-cell_to_cluster
     dataset$cell_to_sample<-cell_to_sample
+    dataset$umitab<-umitab
+    
     for (sampi in samples){
       maski=cell_to_sample==sampi
       tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[,maski]),cell_to_cluster[maski],fun="sum")))
