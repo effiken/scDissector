@@ -518,7 +518,7 @@ load_seurat_rds=function(rds_file,name=""){
     names(cell_to_cluster)=names(cluster_factor)
     cell_to_sample=attributes(a)$meta.data$orig.ident
     names(cell_to_sample)=cells
-    l=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(500),insilico_gating=NULL)#ds_numis=c(200,500,1000,2000),insilico_gating=NULL)
+    l=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL)
     return(l)
   }
 }
