@@ -428,7 +428,8 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
     dataset$min_umis=min_umis
     dataset$max_umis=max_umis
     umitab=umitab[,barcode_mask]
- 
+    cell_to_cluster=cell_to_cluster[barcode_mask]
+    cell_to_sample=cell_to_sample[barcode_mask]
     
     
     dataset$cell_to_cluster<-cell_to_cluster
@@ -447,10 +448,19 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
     dataset$samples=samples
     dataset$ds_numis=ds_numis
     if (all(is.na(clustAnnots))){
-      clustAnnots<-rep("",ncol(models))
+      clustAnnots<-rep("unannotated",ncol(models))
       names(clustAnnots)<-colnames(models)
     }
+    
     output$clustAnnots=clustAnnots
+    
+    
+    nodes=names(clustAnnots)
+    parents=as.character(clustAnnots)
+    nodes[nodes==""]="unannotated"
+    parents[parents==""]="unannotated"
+    output$cluster_sets<-get_cluster_set_tree(data.frame(node=nodes,parent=parents))
+    
     
   
    
@@ -485,19 +495,32 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
 
 load_seurat_rds=function(rds_file,name=""){
   a=readRDS(rds_file)
-  umitab=attributes(a)[["raw.data"]]
+  if (unlist(attributes(a)$version)[1]<3){
+    umitab=attributes(a)[["raw.data"]]
   
-  cells=attributes(a)[["cell.names"]]
-  umitab=umitab[,cells]
-  cluster_factor=as.factor(attributes(a)[["ident"]])
-  annots=levels(cluster_factor)
-  names(annots)=1:length(annots)
-  cell_to_cluster=as.numeric(cluster_factor)
-  names(cell_to_cluster)=cells
-  colnames(umitab)=cells
-  cell_to_sample=attributes(a)$meta.data$orig.ident
-  names(cell_to_sample)=cells
-  import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
+    cells=attributes(a)[["cell.names"]]
+    umitab=umitab[,cells]
+    cluster_factor=as.factor(attributes(a)[["ident"]])
+    annots=levels(cluster_factor)
+    names(annots)=1:length(annots)
+    cell_to_cluster=as.numeric(cluster_factor)
+    names(cell_to_cluster)=cells
+    colnames(umitab)=cells
+    cell_to_sample=attributes(a)$meta.data$orig.ident
+    names(cell_to_sample)=cells
+    import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
+  }
+  else {
+    umitab=attributes(a)$assay$RNA@counts
+    cluster_factor=attributes(a)$active.ident
+    cells=colnames(umitab)
+    cell_to_cluster=as.numeric(cluster_factor)
+    names(cell_to_cluster)=names(cluster_factor)
+    cell_to_sample=attributes(a)$meta.data$orig.ident
+    names(cell_to_sample)=cells
+    l=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(500),insilico_gating=NULL)#ds_numis=c(200,500,1000,2000),insilico_gating=NULL)
+    return(l)
+  }
 }
 
 
