@@ -165,7 +165,7 @@ update_all= function(session,ldm){
   
   session$userData$sample_colors=default_sample_colors[1:length(session$userData$dataset$samples)]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
-  ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$samples))-ncells_choices))]
+  ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$dataset$samples))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
   session$userData$scDissector_params$cluster_sets=ldm$cluster_sets
@@ -510,7 +510,8 @@ tab3_left_margin=12
           randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
           for (sampi in dataset$samples){
             maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
-            
+            print(paste(nrandom_cells,sampi))
+            browser()
             if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
               randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
             }
