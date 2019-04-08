@@ -485,20 +485,49 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
 
 load_seurat_rds=function(rds_file,name=""){
   a=readRDS(rds_file)
-  umitab=attributes(a)[["raw.data"]]
-  
-  cells=attributes(a)[["cell.names"]]
-  umitab=umitab[,cells]
-  cluster_factor=as.factor(attributes(a)[["ident"]])
-  annots=levels(cluster_factor)
-  names(annots)=1:length(annots)
-  cell_to_cluster=as.numeric(cluster_factor)
-  names(cell_to_cluster)=cells
-  colnames(umitab)=cells
-  cell_to_sample=attributes(a)$meta.data$orig.ident
-  names(cell_to_sample)=cells
+  version_vec=unlist(attributes(a)$version)
+  if (version_vec[1]<3){
+    umitab=attributes(a)[["raw.data"]]
+    cells=attributes(a)[["cell.names"]]
+    umitab=umitab[,cells]
+    cluster_factor=as.factor(attributes(a)[["active.ident"]])
+    annots=levels(cluster_factor)
+    names(annots)=1:length(annots)
+    cell_to_cluster=as.numeric(cluster_factor)
+    names(cell_to_cluster)=cells
+    colnames(umitab)=cells
+    cell_to_sample=attributes(a)$meta.data$orig.ident
+    names(cell_to_sample)=cells
+  }
+  else{
+    
+  }
   import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
+
+  
 }
+
+
+
+load_metacell_clustering=function(mc_rda,mat_rda,name=""){
+  mc=new.env()
+  mat=new.env()
+  load(mc_rda,envir = mc)
+  load(mat_rda,envir=mat)
+  umitab=attributes(mat$object)$mat
+  cell_to_cluster=attributes(mc$object)$mc
+  
+  cell_to_sample=attributes(mat$object)$cell_metadata$amp_batch_id
+  names(cell_to_sample)=rownames(attributes(mat$object)$cell_metadata)
+  cells=intersect(intersect(names(cell_to_cluster),names(cell_to_sample)),colnames(umitab))
+  umitab=umitab[,cells]
+  cell_to_cluster=cell_to_cluster[cells]
+  cell_to_sample=cell_to_sample[cells]
+  ldm=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NULL)
+  return(ldm)
+  
+}
+
 
 
 
