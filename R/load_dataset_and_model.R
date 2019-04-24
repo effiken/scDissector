@@ -26,7 +26,7 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 }
 
 
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL){
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
   }
@@ -127,8 +127,12 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
 
     dataset$avg_numis_per_sample_model<-matrix(NA,length(samples),ncol(model$models),dimnames = list(samples,colnames(model$models)))
     names(dataset$alpha_noise)=samples
-
-    genes=rownames(model$models)
+    if (is.null(genes)){
+      genes=rownames(model$models)
+    }
+    else{
+      genes=intersect(genes,rownames(model$models))
+    }
     message("")
     dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
     dataset$gated_out_umitabs<-list()
@@ -214,14 +218,14 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$max_umis=max_umis
         umitab=umitab[,barcode_mask]
         dataset$noise_models[genes,sampi]=tmp_env$noise_model[genes,1]
-        genemask=intersect(rownames(umitab),rownames(model$models))
-        projection_genemask=setdiff(genemask,model$params$genes_excluded)
+      #  genemask=intersect(rownames(umitab),rownames(model$models))
+        projection_genemask=setdiff(genes,model$params$genes_excluded)
         noise_model=dataset$noise_models[projection_genemask,sampi]
         noise_model=noise_model/sum(noise_model)
         models=model$models[projection_genemask,]
         models=t(t(models)/colSums(models))
         message("Projecting ",ncol(umitab)," cells")
-        genes=intersect(rownames(umitab),genes)
+  #      genes=intersect(rownames(umitab),genes)
         if (is.null(model$alpha_noise)){
             ll=getLikelihood(umitab[projection_genemask,],models =models,reg = model$params$reg)
         }
@@ -262,7 +266,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         
         dataset$cell_to_cluster<-c(dataset$cell_to_cluster,cell_to_cluster)
         
-        tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genemask,]),cell_to_cluster,fun="sum")))
+        tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genes,]),cell_to_cluster,fun="sum")))
         dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         
