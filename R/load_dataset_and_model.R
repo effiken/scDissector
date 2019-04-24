@@ -141,8 +141,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     init_alpha=rep(NA,length(samples))
     names(init_alpha)=samples
     init_alpha[names(model$alpha_noise)]=model$alpha_noise
-    init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
-    
+    if (any(is.na(init_alpha))){
+      init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
+    }
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
@@ -502,21 +503,22 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
 
 load_seurat_rds=function(rds_file,name=""){
   a=readRDS(rds_file)
-  if (unlist(attributes(a)$version)[1]<3){
-    umitab=attributes(a)[["raw.data"]]
-  
-    cells=attributes(a)[["cell.names"]]
-    umitab=umitab[,cells]
-    cluster_factor=as.factor(attributes(a)[["ident"]])
-    annots=levels(cluster_factor)
-    names(annots)=1:length(annots)
-    cell_to_cluster=as.numeric(cluster_factor)
-    names(cell_to_cluster)=cells
-    colnames(umitab)=cells
-    cell_to_sample=attributes(a)$meta.data$orig.ident
-    names(cell_to_sample)=cells
-    import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
-  }
+
+    if (unlist(attributes(a)$version)[1]<3){
+      umitab=attributes(a)[["raw.data"]]
+      
+      cells=attributes(a)[["cell.names"]]
+      umitab=umitab[,cells]
+      cluster_factor=as.factor(attributes(a)[["ident"]])
+      annots=levels(cluster_factor)
+      names(annots)=1:length(annots)
+      cell_to_cluster=as.numeric(cluster_factor)
+      names(cell_to_cluster)=cells
+      colnames(umitab)=cells
+      cell_to_sample=attributes(a)$meta.data$orig.ident
+      names(cell_to_sample)=cells
+      import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
+    }
   else {
     umitab=attributes(a)$assay$RNA@counts
     cluster_factor=attributes(a)$active.ident
@@ -531,5 +533,26 @@ load_seurat_rds=function(rds_file,name=""){
 }
 
 
+
+
+
+load_metacell_clustering=function(mc_rda,mat_rda,name=""){
+  mc=new.env()
+  mat=new.env()
+  load(mc_rda,envir = mc)
+  load(mat_rda,envir=mat)
+  umitab=attributes(mat$object)$mat
+  cell_to_cluster=attributes(mc$object)$mc
+  
+  cell_to_sample=attributes(mat$object)$cell_metadata$amp_batch_id
+  names(cell_to_sample)=rownames(attributes(mat$object)$cell_metadata)
+  cells=intersect(intersect(names(cell_to_cluster),names(cell_to_sample)),colnames(umitab))
+  umitab=umitab[,cells]
+  cell_to_cluster=cell_to_cluster[cells]
+  cell_to_sample=cell_to_sample[cells]
+  ldm=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NULL)
+  return(ldm)
+  
+}
 
 
