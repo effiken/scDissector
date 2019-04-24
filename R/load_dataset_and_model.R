@@ -90,8 +90,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     init_alpha=rep(NA,length(samples))
     names(init_alpha)=samples
     init_alpha[names(model$alpha_noise)]=model$alpha_noise
-    init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
-    
+    if (any(is.na(init_alpha))){
+      init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
+    }
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
