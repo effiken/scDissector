@@ -58,7 +58,7 @@ if (trace){
     res_boll=getOneBatchCorrectedLikelihood_beta(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
     prev_cell_to_cluster=cell_to_cluster
     cell_to_cluster=MAP(res_boll$ll)
-    tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
+    tmptab=sapply(split((Matrix::colSums(umitab)),cell_to_cluster[colnames(umitab)]),mean)
     avg_numis_per_model[names(tmptab)]=tmptab
    
     beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)

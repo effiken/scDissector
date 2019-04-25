@@ -81,6 +81,26 @@ update_alpha_single_batch=function(umitab,models,noise_model,cell_to_cluster=NUL
 
 
 
+getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NULL,reg,calc_ll_noise=F){
+
+  ll=matrix(NA,ncol(umitab),ncol(models))
+  rownames(ll)=colnames(umitab)
+  colnames(ll)=colnames(models)
+
+  ll_noise=matrix(NA,ncol(umitab),1)
+  rownames(ll_noise)=colnames(umitab)
+
+
+  adjusted_models=t((1-alpha_noise)*t(models)+alpha_noise*matrix(noise_model,ncol(models),nrow(models),byrow=T))
+  ll[colnames(umitab),colnames(adjusted_models)]=getLikelihood(umitab,adjusted_models,reg=reg)
+  if (calc_ll_noise){
+    ll_noise[,1]=getLikelihood(umitab,noise_model,reg=reg)[,1]
+  }
+  return(list(ll=ll,ll_noise=ll_noise))
+}
+
+
+
 
 get_expected_noise_UMI_counts_beta=function(umis,cluster,batch,noise_models,beta_noise,clusters){
  ngenes=nrow(noise_models)
