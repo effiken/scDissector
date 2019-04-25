@@ -138,11 +138,15 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     dataset$gated_out_umitabs<-list()
     dataset$noise_models=matrix(0,length(genes),length(samples),dimnames = list(genes,samples))
     dataset$counts<-array(0,dim=c(length(samples),nrow(model$models),ncol(model$models)),dimnames = list(samples,rownames(model$models),colnames(model$models)))
-    init_alpha=rep(NA,length(samples))
-    names(init_alpha)=samples
-    init_alpha[names(model$alpha_noise)]=model$alpha_noise
-    if (any(is.na(init_alpha))){
-      init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
+    
+    if (!is.null(model$alpha_noise)){
+      init_alpha=rep(NA,length(samples))
+      names(init_alpha)=samples
+      init_alpha[names(model$alpha_noise)]=model$alpha_noise
+    
+      if (any(is.na(init_alpha))){
+        init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
+      }
     }
     for (sampi in samples){
         message("Loading sample ",sampi)
@@ -227,10 +231,18 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         models=t(t(models)/colSums(models))
         message("Projecting ",ncol(umitab)," cells")
   #      genes=intersect(rownames(umitab),genes)
-        if (is.null(model$alpha_noise)){
+        if (is.null(model$alpha_noise)&is.null(model$avg_numis_per_model)){
             ll=getLikelihood(umitab[projection_genemask,],models =models,reg = model$params$reg)
         }
         else {
+          if (!is.null(model$avg_numis_per_model)){
+            avg_numis_per_model=model$avg_numis_per_model
+            gobclle_res=noiseEMsingleBatch(umitab=umitab[projection_genemask,],models=models,noise_model=noise_model,avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+            ll=gobclle_res$ll
+            dataset$beta_noise[sampi]=gobclle_res$beta_noise
+            dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
+          }
+          else if (!is.null(model$alpha_noise)){
       #        alpha_b=init_alpha[sampi]
     #          print(round(alpha_b,digits=6))
     #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
@@ -254,9 +266,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           #    message("%Noise = ",round(100*alpha_b,digits=2))
             
               dataset$alpha_noise[sampi]=alpha_b
-          
+              ll=res_l$ll[,1:ncol(models)]  
         }
-        ll=res_l$ll[,1:ncol(models)]
+       
         cell_to_cluster=MAP(ll)
         cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%excluded_clusters]
         
@@ -282,7 +294,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
         message("")
         rm(list=c("ll","cell_to_cluster","tmp_env","umitab"))
-        
+        }
     }
     
     message("...")
