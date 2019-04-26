@@ -1,17 +1,17 @@
 #colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 #sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
-plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative"){
+plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative",colgrad,reg,cex.genes=1,cex.clusters=1,line.genes=1){
   if (Relative_or_Absolute=="Relative"){
     if (ncol(m)>1){
-      m=log2(1e-6+m/pmax(1e-6,rowMeans(m,na.rm=T)))
+      m=log2((reg+m)/pmax(reg,rowMeans(m,na.rm=T)))
     }
     else{
       return()
     }
   }
   else if (Relative_or_Absolute=="Absolute"){
-    m=log10(1e-6+m)
+    m=log10(reg+m)
   }
   else{
     plot.new()
@@ -24,9 +24,9 @@ plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_te
   
   image(m[,ncol(m):1],col=colgrad,breaks=breaks,axes=F,main=main_title)
   box()
-  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=1,col=gene.cols)
-  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=1)
-  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
+  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=cex.genes,col=gene.cols,line=line.genes)
+  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=cex.clusters)
+  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=cex.clusters)
 }
 
 plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative",colgrad){
