@@ -609,8 +609,9 @@ tab3_left_margin=12
       update_genes(session,genes,F)
     }
     else if (input$inReorderingMethod=="Diagonal"){
-        ord=order(apply(mat[,inclusts],1,which.max))
-        genes=rownames(mat)[ord]
+        mat2=mat[!rowSums(is.na(mat))==ncol(mat),]
+        ord=order(apply(mat2[,inclusts],1,which.max))
+        genes=rownames(mat2)[ord]
         update_genes(session,genes,F)
       }
   })
@@ -979,7 +980,7 @@ tab3_left_margin=12
     
     }
     else if (input$inReorderingClustersMethod=="Diagonal"){
-      reorderv1=order(apply(mat[ingenes,],2,which.max))
+      reorderv1=order(apply(mat[ingenes,],2,which.max,na.rm=T))
     }
     else if (input$inReorderingClustersMethod=="Cluster-sets"){
       cluster_sets=cluster_sets_reactive()
