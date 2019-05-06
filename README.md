@@ -11,21 +11,26 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
     
 2.  Install devtools package in R (in case you don't have it already installed):
 
-    install.packages("devtools")
+    **install.packages("devtools")**
     
-    library(devtools)
+    **ibrary(devtools)**
     
 3.  Install scDissector:
 
-    install_github("effiken/scDissector")
+    **install_github("effiken/scDissector")**
 
 
 
 ## Running scDissector in R
 
-library(scDissector)
+**library(scDissector)**
 
-run_scDissector()
+**run_scDissector()**
+
+*or*
+
+**run_scDissector(clustering_data_path =**[PATH]**)**
+
 
 ## Usage
 
