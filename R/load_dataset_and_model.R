@@ -102,12 +102,12 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     }
     
 
-    if (is.null(model$avg_numis_per_model)){
-        model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
-        names(model$avg_numis_per_model)=colnames(model$models)
-        tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
-        model$avg_numis_per_model[names(tmptab)]=tmptab
-    }
+#    if (is.null(model$avg_numis_per_model)){
+#        model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
+#        names(model$avg_numis_per_model)=colnames(model$models)
+#        tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
+#        model$avg_numis_per_model[names(tmptab)]=tmptab
+#    }
     
  
     samples=names(sample_fns)
