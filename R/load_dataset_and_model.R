@@ -102,12 +102,12 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     }
     
 
-#    if (is.null(model$avg_numis_per_model)){
-#        model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
-#        names(model$avg_numis_per_model)=colnames(model$models)
-#        tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
-#        model$avg_numis_per_model[names(tmptab)]=tmptab
-#    }
+    if (is.null(model$avg_numis_per_model)){
+        model$avg_numis_per_model=rep(mean(Matrix::colSums(model$umitab)),ncol(model$models))
+        names(model$avg_numis_per_model)=colnames(model$models)
+        tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
+        model$avg_numis_per_model[names(tmptab)]=tmptab
+    }
     
  
     samples=names(sample_fns)
@@ -235,40 +235,42 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             ll=getLikelihood(umitab[projection_genemask,],models =models,reg = model$params$reg)
         }
         else {
-          if (!is.null(model$avg_numis_per_model)){
-            avg_numis_per_model=model$avg_numis_per_model
-            gobclle_res=noiseEMsingleBatch(umitab=umitab[projection_genemask,],models=models,noise_model=noise_model,avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
-            ll=gobclle_res$ll
-            dataset$beta_noise[sampi]=gobclle_res$beta_noise
-            dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
-          }
-          else if (!is.null(model$alpha_noise)){
-      #        alpha_b=init_alpha[sampi]
-    #          print(round(alpha_b,digits=6))
-    #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
-    #          cell_to_cluster=MAP(res_l$ll)
-    #          alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,cell_to_cluster =cell_to_cluster,reg=model$params$reg )
-              alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg )
-  
-              message("%Noise = ",round(100*alpha_b,digits=2))
-              res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
-        #     cells_to_exclude=apply(res_l$ll,1,which.max)==ncol(models)+1
-        #      if (sum(cells_to_exclude)>0){
-        #        message("Excluding ",sum(cells_to_exclude)," noisy barcodes")
-        #        alpha_b=update_alpha_single_batch( umitab[projection_genemask,!cells_to_exclude],models,noise_model,reg=model$params$reg )
-        #        message("%Noise = ",round(100*alpha_b,digits=2))
-        #        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,!cells_to_exclude],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
-                
-          #      print(median(colSums(umitab[projection_genemask,cells_to_exclude])))
-          #      print(median(colSums(umitab[projection_genemask,!cells_to_exclude])))
-          #    }
-              
-          #    message("%Noise = ",round(100*alpha_b,digits=2))
+           if (!is.null(model$alpha_noise)){
+            #        alpha_b=init_alpha[sampi]
+            #          print(round(alpha_b,digits=6))
+            #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+            #          cell_to_cluster=MAP(res_l$ll)
+            #          alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,cell_to_cluster =cell_to_cluster,reg=model$params$reg )
+            alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg )
             
-              dataset$alpha_noise[sampi]=alpha_b
-              ll=res_l$ll[,1:ncol(models)]  
-        }
-       
+            message("%Noise = ",round(100*alpha_b,digits=2))
+            res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+            #     cells_to_exclude=apply(res_l$ll,1,which.max)==ncol(models)+1
+            #      if (sum(cells_to_exclude)>0){
+            #        message("Excluding ",sum(cells_to_exclude)," noisy barcodes")
+            #        alpha_b=update_alpha_single_batch( umitab[projection_genemask,!cells_to_exclude],models,noise_model,reg=model$params$reg )
+            #        message("%Noise = ",round(100*alpha_b,digits=2))
+            #        res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,!cells_to_exclude],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+            
+            #      print(median(colSums(umitab[projection_genemask,cells_to_exclude])))
+            #      print(median(colSums(umitab[projection_genemask,!cells_to_exclude])))
+            #    }
+            
+            #    message("%Noise = ",round(100*alpha_b,digits=2))
+            
+            dataset$alpha_noise[sampi]=alpha_b
+            ll=res_l$ll[,1:ncol(models)]  
+          }
+          else {
+            if (!is.null(model$avg_numis_per_model)){
+              avg_numis_per_model=model$avg_numis_per_model
+              gobclle_res=noiseEMsingleBatch(umitab=umitab[projection_genemask,],models=models,noise_model=noise_model,avg_numis_per_model=avg_numis_per_model,reg=model$params$reg,max_noise_fraction=.75)
+              ll=gobclle_res$ll
+              dataset$beta_noise[sampi]=gobclle_res$beta_noise
+              dataset$avg_numis_per_sample_model[sampi,names(gobclle_res$avg_numis_per_model)]=gobclle_res$avg_numis_per_model
+            }
+          }
+         
         cell_to_cluster=MAP(ll)
         cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%excluded_clusters]
         
