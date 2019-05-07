@@ -7,7 +7,9 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
 1.  Install R (in case you don't have it already installed):
 
-    Download and install [RStudio](https://www.rstudio.com/) or [R](https://cran.r-project.org/).
+    Download and install [R](https://cran.r-project.org/).
+    
+    You may want to install [RStudio](https://www.rstudio.com/) as well.
     
 2.  Install devtools package in R (in case you don't have it already installed):
 
