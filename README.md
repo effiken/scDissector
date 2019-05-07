@@ -18,6 +18,10 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 3.  Install scDissector:
 
     **install_github("effiken/scDissector")**
+    
+    *or alternatively if you would like to take a risk...*
+    
+    **install_github("effiken/scDissector",ref = "devel")**
 
 
 
