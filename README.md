@@ -13,7 +13,7 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
     **install.packages("devtools")**
     
-    **ibrary(devtools)**
+    **library(devtools)**
     
 3.  Install scDissector:
 
@@ -23,7 +23,13 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
     
     **install_github("effiken/scDissector",ref = "devel")**
 
+## Update
 
+1. Load devtools
+
+**library(devtools)**
+
+2. Install the package as in (3) above
 
 ## Running scDissector in R
 
