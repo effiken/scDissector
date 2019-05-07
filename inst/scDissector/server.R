@@ -511,7 +511,6 @@ tab3_left_margin=12
           for (sampi in dataset$samples){
             maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
             print(paste(nrandom_cells,sampi))
-            browser()
             if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
               randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
             }
