@@ -510,7 +510,7 @@ tab3_left_margin=12
           randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
           for (sampi in dataset$samples){
             maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
-            print(paste(nrandom_cells,sampi))
+       #     print(paste(nrandom_cells,sampi))
             if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
               randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
             }
@@ -1041,7 +1041,7 @@ tab3_left_margin=12
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
     ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
-    ds_mean<-rowMeans(ds)
+    ds_mean<-Matrix::rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
     ds=ds[genemask,]
     ds_mean=ds_mean[genemask]
@@ -1834,7 +1834,7 @@ tab3_left_margin=12
       if (is.null(ds))(return(data.frame(m=0,varmean=0,gene=0)))
       if (ncol(ds)<2)(return(data.frame(m=0,varmean=0,gene=0)))
       
-      m=rowMeans(ds)
+      m=Matrix::rowMeans(ds)
       logm=log10(m)
       mask1=logm>input$mean[1]&logm<input$mean[2]
       v=apply(ds[mask1,],1,var)
@@ -2022,8 +2022,13 @@ tab3_left_margin=12
         return()
       }
 
-      v=apply(ds,1,var)
-      m=rowMeans(ds)
+      s1=Matrix::rowSums(ds,na.rm=T) 
+      s2=Matrix::rowSums(ds^2,na.rm=T)
+      ds_mean=s1/ncol(ds)
+      m2=s2/ncol(ds)
+      ds_var=m2-ds_mean^2
+      m=ds_mean
+      v=ds_var
       genemask=rownames(ds)[m>1e-1]
       var_genes=head(genemask[order(v[genemask]/m[genemask],decreasing=T)],200)
       z=ds[var_genes,]

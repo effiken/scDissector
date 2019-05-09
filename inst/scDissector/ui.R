@@ -113,10 +113,9 @@ mainPanel(width=12,
                             actionButton("inUndoClusterChanges","Undo")
                             ),
                             wellPanel(
-                              actionButton("inAddClusterSetButton","Add a cluster-set"),
-                              textInput("inAddClusterSet", "Name:",value=""),
-                              selectInput("removeClusterSetSelectInput","Remove",choices = c()),
-                              actionButton("inRemoveClusterSetButton","Remove a cluster-set"),
+                              h4("Cluster-sets"),
+                              fluidRow(column(6,textInput("inAddClusterSet", "Type in name",value="")),column(6,h2(""),actionButton("inAddClusterSetButton","Add"))),
+                              fluidRow(column(6,selectInput("removeClusterSetSelectInput","Select to remove",choices = c())),column(6,h2(""),actionButton("inRemoveClusterSetButton","Remove"))),
                               actionButton("saveClusterSetButtion","Save Cluster-sets"),
                               actionButton("reloadClusterSetButtion","Reload Cluster-sets")
                             ),
