@@ -23,7 +23,7 @@ mainPanel(width=12,
     titlePanel("scDissector v0.99"),
       navbarPage("",id = "inMain",footer = fluidPage(
         img(src = 'sinai_logo.png',height = '70px', width = '70px'),
-        p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
+        p(em("(c) 2019 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
   #   tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),

@@ -532,7 +532,7 @@ tab3_left_margin=12
     dataset=session$userData$dataset
     if (is.null(session$userData$randomly_selected_cells_by_sample)){
       session$userData$randomly_selected_cells_by_sample=list()
-      for (i in 1:length(session$userData$dataset$ds_numis)){
+      for (i in 1:(length(session$userData$dataset$ds_numis))+1){
         session$userData$randomly_selected_cells_by_sample[[i]]=list()
       }
     }
@@ -688,7 +688,7 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,colnames(dataset$ds[[ds_i]]))]
     ds=ds[intersect(rownames(ds),genes),]
     s1=Matrix::rowSums(ds,na.rm=T) 
     s2=Matrix::rowSums(ds^2,na.rm=T)
@@ -1071,8 +1071,8 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
-    
+    ds=    dataset$ds[[ds_i]][,intersect(cell_mask,colnames(dataset$ds[[ds_i]]))]
+
     ds_mean<-Matrix::rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
     ds=ds[genemask,]
@@ -1172,7 +1172,7 @@ tab3_left_margin=12
     cell_mask=cells_reactive()
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
     #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells_by_sample[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=    dataset$ds[[ds_i]][,intersect(cell_mask,colnames(dataset$ds[[ds_i]]))]
     
     message("calculating gene-to-gene correlations..")
     cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],dataset$cell_to_sample[colnames(ds)])
@@ -1591,7 +1591,6 @@ tab3_left_margin=12
       input$inBirdClusterSetExclude
       input$inBirdClusterSetInclude
       #####
-      
       cgs=clusters_genes_sampples_reactive()
       
       inclusts=cgs$clusters
