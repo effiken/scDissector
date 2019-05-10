@@ -581,7 +581,7 @@ tab3_left_margin=12
     }
     dataset=session$userData$dataset
     ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    sampling_mask=sample_cells_reactive()[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    sampling_mask=sample_cells_by_sample_reactive()[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
     cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
     return(ds[,intersect(sampling_mask,cluster_mask),drop=F])
   })
@@ -688,7 +688,7 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     ds=ds[intersect(rownames(ds),genes),]
     s1=Matrix::rowSums(ds,na.rm=T) 
     s2=Matrix::rowSums(ds^2,na.rm=T)
