@@ -502,27 +502,32 @@ tab3_left_margin=12
   })
   
   sample_cells_reactive <-reactive({
-      randomly_selected_cells=list()
-      dataset=session$userData$dataset
-      for (ds_i in 1:length(dataset$ds_numis)){
-        randomly_selected_cells[[ds_i]]<-list()
-        for (nrandom_cells in params$nrandom_cells_per_sample_choices){
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
-          for (sampi in dataset$samples){
-            maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
-       #     print(paste(nrandom_cells,sampi))
-            if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
-              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
-            }
-            else{
-              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
-            }
-          }
-        }
+    dataset=session$userData$dataset
+    if (is.null(session$userData$randomly_selected_cells)){
+      session$userData$randomly_selected_cells=list()
+      for (i in 1:length(session$userData$dataset$ds_numis)){
+        session$userData$randomly_selected_cells[[i]]=list()
       }
-      return(randomly_selected_cells)
+    }
+    
+    ds_i=match(input$inTruthDownSamplingVersion, session$userData$dataset$ds_numis)
+    nrandom_cells=input$inTruthNcellsPerSample
+    if (is.na(match(nrandom_cells,session$userData$randomly_selected_cells[[ds_i]]))){
+      session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
+    }
+    for (sampi in dataset$samples){
+      maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
+      #     print(paste(nrandom_cells,sampi))
+      if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
+        session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
+      }
+      else{
+        session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
+      }
+    }
+    return(session$userData$randomly_selected_cells)
   })
-
+  
   
   
   output$event <- renderPrint({
@@ -1808,7 +1813,7 @@ tab3_left_margin=12
     
     cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=sample_cells_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
+    cells_selected=sample_cells_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[input$inTruthNcellsPerSample]]
     cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[,cell_mask]
