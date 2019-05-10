@@ -12,7 +12,6 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
   else{
     samples=intersect(samples,samples_inp)
   }
-  
   samples=samples[table(cell_to_sample)[samples]>=min_number_of_cell_per_sample]
   
   if (weighted){
@@ -21,6 +20,7 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
   }
   else{
     w=rep(1/length(samples),length(samples))
+    names(w)=samples
   }
   for (samp in samples){
     print(samp)
