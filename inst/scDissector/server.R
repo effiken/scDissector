@@ -183,7 +183,7 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inReorderSamplesBy",choices=c("All",cluster_sets))
   updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
   updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
-  updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
+  updateSelectInput(session,"input$inTruthNcellsPer",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
   updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
   updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
@@ -501,31 +501,58 @@ tab3_left_margin=12
     return(sort(names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]))
   })
   
-  sample_cells_reactive <-reactive({
+  sample_cells_by_cluster_reactive <-reactive({
     dataset=session$userData$dataset
-    if (is.null(session$userData$randomly_selected_cells)){
-      session$userData$randomly_selected_cells=list()
+    if (is.null(session$userData$randomly_selected_cells_by_cluster)){
+      session$userData$randomly_selected_cells_by_cluster=list()
       for (i in 1:length(session$userData$dataset$ds_numis)){
-        session$userData$randomly_selected_cells[[i]]=list()
+        session$userData$randomly_selected_cells_by_cluster[[i]]=list()
       }
     }
     
     ds_i=match(input$inTruthDownSamplingVersion, session$userData$dataset$ds_numis)
-    nrandom_cells=input$inTruthNcellsPerSample
-    if (is.na(match(nrandom_cells,session$userData$randomly_selected_cells[[ds_i]]))){
-      session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
+    nrandom_cells=input$inTruthNcellsPer
+    if (is.na(match(nrandom_cells,session$userData$randomly_selected_cells_by_cluster[[ds_i]]))){
+      session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]=c()
+    }
+    for (clusteri in unlist(session$userData$cluster_sets)){
+      maski=dataset$cell_to_cluster[colnames(dataset$ds[[ds_i]])]==clusteri
+      #     print(paste(nrandom_cells,sampi))
+      if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
+        session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
+      }
+      else{
+        session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
+      }
+    }
+    return(session$userData$randomly_selected_cells_by_cluster)
+  })
+  
+  sample_cells_by_sample_reactive <-reactive({
+    dataset=session$userData$dataset
+    if (is.null(session$userData$randomly_selected_cells_by_sample)){
+      session$userData$randomly_selected_cells_by_sample=list()
+      for (i in 1:length(session$userData$dataset$ds_numis)){
+        session$userData$randomly_selected_cells_by_sample[[i]]=list()
+      }
+    }
+    
+    ds_i=match(input$inTruthDownSamplingVersion, session$userData$dataset$ds_numis)
+    nrandom_cells=input$inTruthNcellsPer
+    if (is.na(match(nrandom_cells,session$userData$randomly_selected_cells_by_sample[[ds_i]]))){
+      session$userData$randomly_selected_cells_by_sample[[ds_i]][[nrandom_cells]]=c()
     }
     for (sampi in dataset$samples){
       maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
       #     print(paste(nrandom_cells,sampi))
       if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
-        session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
+        session$userData$randomly_selected_cells_by_sample[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_sample[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
       }
       else{
-        session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
+        session$userData$randomly_selected_cells_by_sample[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_sample[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
       }
     }
-    return(session$userData$randomly_selected_cells)
+    return(session$userData$randomly_selected_cells_by_sample)
   })
   
   
@@ -1044,7 +1071,7 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     ds_mean<-Matrix::rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
@@ -1144,8 +1171,8 @@ tab3_left_margin=12
     
     cell_mask=cells_reactive()
     ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
-    #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+    #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells_by_sample[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
+    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_by_sample_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
     
     message("calculating gene-to-gene correlations..")
     cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],dataset$cell_to_sample[colnames(ds)])
@@ -1810,10 +1837,15 @@ tab3_left_margin=12
 
     samps_cl=list() 
     ds=session$userData$dataset$ds[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]]
-    
-    cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
+    cells_per_sample=as.numeric(input$inTruthNcellsPer)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=sample_cells_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[input$inTruthNcellsPerSample]]
+    if (input$inTruthEqualRepresent=="equally_represent_samples"){
+      cells_selected=sample_cells_by_sample_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[input$inTruthNcellsPer]]
+    }
+    else {
+      cells_selected=sample_cells_by_cluster_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[input$inTruthNcellsPer]]
+      
+    }
     cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[,cell_mask]
