@@ -41,8 +41,13 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
 *or*
 
-**run_scDissector(clustering_data_path =**[PATH]**)**
+**run_scDissector(clustering_data_path =**["PATH"]**)**
 
+*or*
+
+Launch scDissector with preloaded "ldm" object (see an example in R/loading_samples_and_running_scDissector):
+
+**run_scDissector(preloaded_data = **[ldm_object]**,clustering_data_path = **["PATH"]**)**
 
 ## Usage
 
