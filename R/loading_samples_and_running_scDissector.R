@@ -1,6 +1,6 @@
 #' preload scRNA sample and project onto a model
 #'  
-#' @param clustering_data_dir path to the folder that cntains the compiled samples, model versions and metadata
+#' @param clustering_data_path path to the folder that cntains the compiled samples, model versions and metadata
 #' @param model_name model name as defined in clustering_data_dir/model_versions.csv
 #' @param sample_names vector containing sample names as defined in clustering_data_dir/samples.csv
 #' @return ldm object
@@ -14,7 +14,7 @@
 #' # run_scDissector(preloaded_data = ldm,clustering_data_path =clustering_data_dir)
 #' @export
 #
-load_scDissector_data=function(clustering_data_dir,model_name,sample_names){
+load_scDissector_data=function(clustering_data_path,model_name,sample_names){
 #sample_annots file can be used to select specific samples by their metadata
   annots=read.csv(paste(clustering_data_dir,"/metadata/","sample_annots.csv",sep=""),stringsAsFactors = F)
 
