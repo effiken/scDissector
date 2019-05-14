@@ -14,7 +14,7 @@
 #' # run_scDissector(preloaded_data = ldm,clustering_data_path =clustering_data_dir)
 #' @export
 #
-load_ldm=function(clustering_data_dir,model_name,sample_names){
+load_scDissector_data=function(clustering_data_dir,model_name,sample_names){
 #sample_annots file can be used to select specific samples by their metadata
   annots=read.csv(paste(clustering_data_dir,"/metadata/","sample_annots.csv",sep=""),stringsAsFactors = F)
 
