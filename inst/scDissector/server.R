@@ -688,6 +688,7 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
+
     ds=dataset$ds[[ds_i]][,intersect(cell_mask,colnames(dataset$ds[[ds_i]]))]
     ds=ds[intersect(rownames(ds),genes),]
     s1=Matrix::rowSums(ds,na.rm=T) 
@@ -1609,7 +1610,6 @@ tab3_left_margin=12
       if (length(inclusts)==0){
         return()
       }
-      
       zlim=input$inModelColorScale
       par(mar=c(7,tab3_left_margin,1,9))
       if (input$inModelOrAverage=="Model"){
@@ -1647,6 +1647,10 @@ tab3_left_margin=12
         mat=avg_per_sample_cluster=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
         rownames(mat)=ingenes
       }
+      if (min(dim(mat))==0){
+        return()
+      }
+      
       isolate({
         mat1=mat
         abs_or_rel=input$inAbsOrRel
