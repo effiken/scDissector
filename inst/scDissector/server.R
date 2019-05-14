@@ -1887,25 +1887,14 @@ tab3_left_margin=12
     
     
     output$modelSampleLegend <- renderPlot({
-    
       insamples=samples_reactive()
       samp_to_cat=sample_to_category()[insamples]
       cats=unique(samp_to_cat)
       cat_cols= session$userData$sample_colors[1:length(cats)]
       names(cat_cols)=cats
-     # sample_cols=cat_cols[samp_to_cat]
-      #sample_cols=sample_colors_reactive()
-      par(mar=c(0,0,0,0))
+       par(mar=c(0,0,0,0))
       plot.new()
-    #  leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]a
-    #  if(length(leg)==0){
-    #    leg=rep("",length(insamples))
-    #  }
-    #  ncol=ceiling(length(insamples)/10)
-    #  leg[is.na(leg)]=insamples[is.na(leg)]
-    #  leg[leg==""]=insamples[leg==""]
-    #  legend("topleft",pch=15,col=sample_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
-       leg=names(cat_cols)
+         leg=names(cat_cols)
        if(length(leg)==0){
           leg=rep("",length(cat_cols))
         }
@@ -1922,17 +1911,16 @@ tab3_left_margin=12
       cats=unique(samp_to_cat)
       cat_cols= session$userData$sample_colors[1:length(cats)]
       names(cat_cols)=cats
-      sample_cols=cat_cols[samp_to_cat]
-    #  sample_cols=sample_colors_reactive()
       par(mar=c(0,0,0,0))
       plot.new()
-      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
+      leg=names(cat_cols)
       if(length(leg)==0){
-        leg=rep("",length(insamples))
+        leg=rep("",length(cat_cols))
       }
-      ncol=ceiling(length(insamples)/10)
-      leg[is.na(leg)]=insamples[is.na(leg)]
-      legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
+      ncol=ceiling(length(cat_cols)/10)
+      leg[is.na(leg)]=cat_cols[is.na(leg)]
+      leg[leg==""]=cat_cols[leg==""]
+      legend("topleft",pch=15,col=cat_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
     
