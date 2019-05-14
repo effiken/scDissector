@@ -45,10 +45,13 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
 *or*
 
-Launch scDissector with preloaded "ldm" object (see an example in R/loading_samples_and_running_scDissector):
+Launch scDissector with preloaded "ldm" object (see ?load_scDissector_data):
 
-**run_scDissector(preloaded_data = **[ldm_object]**,clustering_data_path = **["PATH"]**)**
+**ldm = load_scDissector_data(clustering_data_path=**["PATH"]**, model_name=[STRING], sample_names=[VECTOR_OF_STRINGS])**
+
+**run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
 
 ## Usage
 
 TBD
+
