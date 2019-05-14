@@ -46,7 +46,9 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 *or*
 
 Launch scDissector with preloaded "ldm" object (see ?load_scDissector_data):
+
 **load_scDissector_data(clustering_data_path,model_name,sample_names)**
+
 **run_scDissector(preloaded_data = **[ldm_object]**,clustering_data_path = **["PATH"]**)**
 
 ## Usage
