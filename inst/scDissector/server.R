@@ -415,6 +415,46 @@ tab3_left_margin=12
     update_clusters_genes_samples_reactive()
   })
   
+  
+  observe({
+    genes=init_genes(input$inGenes)
+    genes=init_genes(input$inGenes)
+    clusts=strsplit(input$inClusters,",|, | ,")[[1]]
+    clusts=intersect(clusts,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters))
+    
+    xy_range <- event_data("plotly_relayout")
+    if ((!is.null(xy_range))&(sum(c('xaxis.range[0]','xaxis.range[1]')%in%names(xy_range))==2)){
+      if(!all(session$userData$prev_xy_range_G==unlist(xy_range))){
+        if (min(unlist(xy_range),na.rm=T)<0){
+          session$userData$prev_xy_range_G=unlist(xy_range) 
+          update_genes(session,genes,T)
+        }
+        else{
+          session$userData$prev_xy_range_G=unlist(xy_range)
+          genes=genes[ceiling(as.numeric(xy_range$'xaxis.range[0]')):floor(as.numeric(xy_range$'xaxis.range[1]'))]
+          update_genes(session,genes,F)
+        }
+      }
+    }
+    
+    if ((!is.null(xy_range))&(sum(c('yaxis.range[0]','yaxis.range[1]')%in%names(xy_range))==2)){
+      if (!all(session$userData$prev_xy_range_C==unlist(xy_range))){
+        if (min(unlist(xy_range),na.rm=T)<0){
+          session$userData$prev_xy_range_C=unlist(xy_range) 
+          clusts=session$userData$scDissector_params$previous_clusters
+        }
+        else{
+          session$userData$prev_xy_range_C=unlist(xy_range)
+          clusts=rev(rev(clusts)[ceiling(as.numeric(xy_range$'yaxis.range[0]')):floor(as.numeric(xy_range$'yaxis.range[1]'))])
+        }
+        session$userData$update_inclusts_text_input=F
+        update_clusters(session,clusts)
+        
+      }
+    }
+    session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=clusts,genes=genes,samples=samples_reactive())
+  })
+    
   samples_reactive <-reactive({
     samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
     if (is.null(session$userData$dataset)){
@@ -460,8 +500,6 @@ tab3_left_margin=12
   
  
   update_clusters_genes_samples_reactive =function(){
-    xy_range <- event_data("plotly_relayout")
-    
     if (!session$userData$loaded_flag){
       return()
     }
@@ -470,35 +508,7 @@ tab3_left_margin=12
     clusts=strsplit(input$inClusters,",|, | ,")[[1]]
     clusts=intersect(clusts,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters))
     
-    if ((!is.null(xy_range))&(sum(c('xaxis.range[0]','xaxis.range[1]')%in%names(xy_range))==2)){
-      if(!all(session$userData$prev_xy_range_G==unlist(xy_range))){
-        if (min(unlist(xy_range),na.rm=T)<0){
-          session$userData$prev_xy_range_G=unlist(xy_range) 
-          update_genes(session,genes,T)
-        }
-        else{
-          session$userData$prev_xy_range_G=unlist(xy_range)
-          genes=genes[ceiling(as.numeric(xy_range$'xaxis.range[0]')):floor(as.numeric(xy_range$'xaxis.range[1]'))]
-          update_genes(session,genes,F)
-        }
-      }
-    }
-    
-    if ((!is.null(xy_range))&(sum(c('yaxis.range[0]','yaxis.range[1]')%in%names(xy_range))==2)){
-      if (!all(session$userData$prev_xy_range_C==unlist(xy_range))){
-        if (min(unlist(xy_range),na.rm=T)<0){
-          session$userData$prev_xy_range_C=unlist(xy_range) 
-          clusts=session$userData$scDissector_params$previous_clusters
-        }
-        else{
-          session$userData$prev_xy_range_C=unlist(xy_range)
-          clusts=rev(rev(clusts)[ceiling(as.numeric(xy_range$'yaxis.range[0]')):floor(as.numeric(xy_range$'yaxis.range[1]'))])
-        }
-        session$userData$update_inclusts_text_input=F
-        update_clusters(session,clusts)
-        
-      }
-    }
+  
     
     session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=clusts,genes=genes,samples=samples_reactive())
   
