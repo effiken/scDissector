@@ -297,9 +297,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         
         for (ds_i in 1:length(ds_numis_sampi)){
-            dataset$ds[[ds_i]]<-cBind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
+            dataset$ds[[ds_i]]<-cbind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
         }
-        dataset$umitab<-cBind(dataset$umitab[genes,],umitab[genes,])
+        dataset$umitab<-cbind(dataset$umitab[genes,],umitab[genes,])
         cellids=colnames(umitab)
         
         cell_to_sampi=rep(sampi,length(cellids))
