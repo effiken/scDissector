@@ -24,6 +24,8 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
     *or alternatively if you would like to take a risk...*
     
     **install_github("effiken/scDissector",ref = "devel")**
+    
+    *see the [readme of the devel version](https://github.com/effiken/scDissector/blob/devel/README.md)*
 
 ## Update
 
