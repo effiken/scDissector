@@ -45,7 +45,7 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
 -----------
 
-### Loading data and running scDissector
+### Loading the data prior to running scDissector
 
 Loading the data prior to running scDissector is recommended: 
 
