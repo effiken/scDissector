@@ -698,7 +698,8 @@ tab3_left_margin=12
   
   observeEvent(input$inVarMeanScreenSelectedClusters, {
     dataset=session$userData$dataset
-    ds_i=match("1000",dataset$ds_numis)
+    numis=1000
+    ds_i=match(as.character(1000),dataset$ds_numis)
     if (is.na(ds_i)){
       ds_i=which.max(as.numeric(dataset$ds_numis))
     }
@@ -718,10 +719,10 @@ tab3_left_margin=12
     ds=ds[intersect(rownames(ds),genes),]
     s1=Matrix::rowSums(ds,na.rm=T) 
     s2=Matrix::rowSums(ds^2,na.rm=T)
-    mask1=s1/ncol(ds)>10^as.numeric(input$inMinExprForScreen[1])&s1/ncol(ds)<10^as.numeric(input$inMinExprForScreen[2])
+    mask1=s1/(numis*ncol(ds))>10^as.numeric(input$inMinExprForScreen[1])&s1/(numis*ncol(ds))<10^as.numeric(input$inMinExprForScreen[2])
     
-    m1=s1[mask1]/ncol(ds)
-    m2=s2[mask1]/ncol(ds)
+    m1=s1[mask1]/(ncol(ds)*numis)
+    m2=s2[mask1]/(ncol(ds)*numis)
     v1=m2-m1^2
     x=log10(m1)
     breaks=seq(min(x,na.rm=T),max(x,na.rm=T),.2)
@@ -733,7 +734,6 @@ tab3_left_margin=12
     b=b[mask_llv]
     lo=loess(z~b)
     ngenes_to_show=as.numeric(input$inNgenes)
-    
     
     high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
     genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
@@ -943,7 +943,6 @@ tab3_left_margin=12
   
   observeEvent(input$inSaveClusterOrder, {
     clusters=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
-   
     order_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_order.txt",sep="")
     if (all(colnames(session$userData$model$models)%in%clusters)){
       session$userData$default_clusters<-clusters

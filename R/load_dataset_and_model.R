@@ -384,7 +384,7 @@ downsample=function(u,min_umis,chunk_size=100){
 
 
 
-import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA){
+import_dataset_and_model<-function(model_version_name,clustering_data_path,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA){
  
   require(Matrix)
   require(Matrix.utils)
@@ -520,13 +520,25 @@ import_dataset_and_model<-function(model_version_name,umitab,cell_to_cluster,cel
   output$cluster_order<-intersect(cluster_order,included_clusters)
   output$default_clusters<-intersect(cluster_order,included_clusters)
   output$loaded_model_version<-model_version_name
+  fn_prefix=paste(clustering_data_path,"/imported_model_",model_version_name,sep="")
+  output$model$model_filename<-paste(fn_prefix,".rd",sep="")
+  
+  order_fn=paste(fn_prefix,"_order.txt",sep="")
+  if (file.exists(order_fn)){
+    output$cluster_order=as.character(read.table(file=order_fn,header = F)[,1])
+  }
+  else{
+    output$cluster_order=colnames(output$model$models)
+  }
+  output$default_clusters<-output$cluster_order
+  
   return(output)
   
 }
 
 
 
-load_seurat_rds=function(rds_file,name=""){
+load_seurat_rds=function(rds_file,model_name="",clustering_data_path=""){
   a=readRDS(rds_file)
 
     if (unlist(attributes(a)$version)[1]<3){
@@ -542,7 +554,7 @@ load_seurat_rds=function(rds_file,name=""){
       colnames(umitab)=cells
       cell_to_sample=attributes(a)$meta.data$orig.ident
       names(cell_to_sample)=cells
-      import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
+      l=import_dataset_and_model(model_name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=annots)
     }
   else {
     umitab=attributes(a)$assay$RNA@counts
@@ -552,9 +564,9 @@ load_seurat_rds=function(rds_file,name=""){
     names(cell_to_cluster)=names(cluster_factor)
     cell_to_sample=attributes(a)$meta.data$orig.ident
     names(cell_to_sample)=cells
-    l=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL)
-    return(l)
+    l=import_dataset_and_model(model_name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL)
   }
+  return(l)
 }
 
 
@@ -580,4 +592,20 @@ load_metacell_clustering=function(mc_rda,mat_rda,name=""){
   
 }
 
+create_clustering_data_dir=function(path,samples=c(),model_names=c()){
+  if(dir.exists(path)){
+    stop("Error! Cannot create ",path,". It already exists!")
+  }
+  dir.create(path)
+  dir.create(paste(path,"/metadata",sep=""))
+  samples_tab=matrix("",length(samples),3,dimnames = list(NULL,c("index","path","title")))
+  samples_tab[,1]=samples
+  model_versions_tab=matrix("",length(model_names),2,dimnames = list(NULL,c("title","path")))
+  model_versions_tab[,1]=model_names
+  sample_annots_tab=matrix("",length(samples),15,dimnames=list(NULL,c("sample_ID","amp_batch_ID","old_lib_name","Disease","Origin","tissue","status","biotherapy_status","Inclusion date (M/D/Y)","drug","Patient ID","GRID ID","COMPASS ID","CHEMISTRY","details")))
+  sample_annots_tab[,1]=samples
+  write.csv(file=paste(path,"/samples.csv",sep=""),samples_tab,row.names = F)
+  write.csv(file=paste(path,"/model_versions.csv",sep=""),model_versions_tab,row.names = F)
+  write.csv(file=paste(path,"/metadata/sample_annots.csv",sep=""),sample_annots_tab,row.names = F)
+}
 
