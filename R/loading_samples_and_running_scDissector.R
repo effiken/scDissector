@@ -14,15 +14,17 @@
 #' # run_scDissector(preloaded_data = ldm,clustering_data_path =clustering_data_path)
 #' @export
 #
-load_scDissector_data=function(clustering_data_path,model_name,sample_names){
+load_scDissector_data=function(clustering_data_path,model_name,sample_names, min_umis=250,max_umis=25000,ds_numis=NA){
+ 
 #sample_annots file can be used to select specific samples by their metadata
   annots=read.csv(paste(clustering_data_path,"/metadata/","sample_annots.csv",sep=""),stringsAsFactors = F)
 
   sample_to_fn=read.csv(paste(clustering_data_path,"/samples.csv",sep=""),stringsAsFactors = F,row.names = 1)
 
+  
   model_fn=paste(clustering_data_path,"/",read.csv(paste(clustering_data_path,"/model_versions.csv",sep=""),stringsAsFactors = F,row.names = 1)[model_name,1],sep="")
   sample_fns=paste(clustering_data_path,sample_to_fn[as.character(sample_names),1],sep="/")
 # Loading the samples and projecting them onto the model
-  ldm=load_dataset_and_model(model_fn = model_fn,sample_fns = sample_fns)
+  ldm=load_dataset_and_model(model_fn = model_fn,sample_fns = sample_fns,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis))
   return(ldm)
 }
