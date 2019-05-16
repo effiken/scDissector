@@ -43,6 +43,8 @@ Please contact Ephraim.Kenigsberg at mssm edu for additional information.
 
 **run_scDissector(clustering_data_path =**["PATH"]**)**
 
+
+
 ### Loading data and running scDissector
 
 Loading the data prior to running scDissector is recommended: 
@@ -50,6 +52,7 @@ Loading the data prior to running scDissector is recommended:
 **ldm = load_scDissector_data(clustering_data_path=**["PATH"]**, model_name=[STRING], sample_names=[VECTOR_OF_STRINGS])**
 
 **run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
+
 
 
 ### Loading Seurat Object and running scDissector
