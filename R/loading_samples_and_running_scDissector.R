@@ -23,6 +23,7 @@ load_scDissector_data=function(clustering_data_path,model_name,sample_names, min
   
   model_fn=paste(clustering_data_path,"/",read.csv(paste(clustering_data_path,"/model_versions.csv",sep=""),stringsAsFactors = F,row.names = 1)[model_name,1],sep="")
   sample_fns=paste(clustering_data_path,sample_to_fn[as.character(sample_names),1],sep="/")
+  names(sample_fns)=sample_names
 # Loading the samples and projecting them onto the model
   ldm=load_dataset_and_model(model_fn = model_fn,sample_fns = sample_fns,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,max_ncells_per_sample=max_ncells_per_sample)
   return(ldm)
