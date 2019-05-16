@@ -60,7 +60,3 @@ Loading the data prior to running scDissector is recommended:
 **ldm=load_seurat_rds("[seurat_rds_file_path]",model_name,clustering_data_path=**["PATH"]**)
 
 **run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
-
-## Usage
-
-TBD
