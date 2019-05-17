@@ -15,9 +15,6 @@
 #' @export
 #
 load_scDissector_data=function(clustering_data_path,model_name,sample_names, min_umis=250,max_umis=25000,ds_numis=NA,max_ncells_per_sample=NA){
-#sample_annots file can be used to select specific samples by their metadata
-  annots=read.csv(paste(clustering_data_path,"/metadata/","sample_annots.csv",sep=""),stringsAsFactors = F)
-
   sample_to_fn=read.csv(paste(clustering_data_path,"/samples.csv",sep=""),stringsAsFactors = F,row.names = 1)
 
   
