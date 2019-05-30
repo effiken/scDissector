@@ -1847,6 +1847,8 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     ingenes=cgs$genes
     insamples=cgs$samples
+    score_genes=init_genes(input$inGenesScore)
+    reverse_score_order=input$inScoreReverseOrder
     samp_to_cat=sample_to_category()[insamples]
     cats=as.character(unique(samp_to_cat))
     cat_cols= session$userData$sample_colors[1:length(cats)]
@@ -1875,7 +1877,7 @@ tab3_left_margin=12
     cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
     session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
     ds=ds[,cell_mask]
-    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
+    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars,score_genes=score_genes,reverse_score_order=reverse_score_order)
 
   }
   
