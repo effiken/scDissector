@@ -1497,10 +1497,10 @@ tab3_left_margin=12
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
     tab=tab[,insamples,drop=F]
     tab=t(t(tab)/colSums(tab))
-    tab=(tab/rowSums(tab))[inclusts,]
+    tab=(tab/rowSums(tab))[inclusts,,drop=F]
     
  #   barplot(t(tab[nrow(tab):1,]),col=sample_cols[match(insamples,session$userData$dataset$samples)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
-    barplot(t(tab[nrow(tab):1,]),col=sample_cols,horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+    barplot(t(tab[nrow(tab):1,,drop=F]),col=sample_cols,horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     
   })
   
