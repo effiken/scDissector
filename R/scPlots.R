@@ -68,8 +68,9 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10,score_genes=NULL,reverse_score_order=F){
 
   ds=ds[ingenes,cell_to_cluster[colnames(ds)]%in%inclusts]
+  score_genes=intersect(score_genes,rownames(ds))
   if ((!is.null(score_genes))&(length(score_genes)>0)){
-    score_rank=rank(colMeans(log2(.1+as.matrix(ds[intersect(score_genes,rownames(ds)),,drop=F]))))/ncol(ds)
+    score_rank=rank(colMeans(log2(.1+as.matrix(ds[score_genes,,drop=F]))))/ncol(ds)
     if (reverse_score_order){
       score_rank=1-score_rank
     }
