@@ -735,7 +735,14 @@ tab3_left_margin=12
     lo=loess(z~b)
     ngenes_to_show=as.numeric(input$inNgenes)
     
-    high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
+    var_score=lv-predict(lo,newdata =x)
+    positive_var_gens=names(var_score)[pmax(var_score,0,na.rm=T)>0.001]
+    umisum=as.matrix(Matrix.utils::aggregate.Matrix(t(ds[positive_var_gens,]),dataset$cell_to_cluster[colnames(ds)],fun="sum"))
+    cluster_avg=(t(umisum/rowSums(umisum)))
+    cluster_avg_normed=log2((1e-6+cluster_avg)/(1e-6+rowMeans(cluster_avg)))
+    high_var_genes=as.vector(unlist(sapply(split(rownames(cluster_avg_normed),apply(cluster_avg_normed,1,which.max)),FUN=function(x){names(head(sort(var_score[x],decreasing = T),floor(ngenes_to_show/ncol(cluster_avg_normed))))})))
+    
+#    high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
     genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
     new_set_name=paste("Varmean_",pref,"_",ngenes_to_show,"_",date(),sep="")
     if (!is.null(session$userData$geneList)){
@@ -751,6 +758,14 @@ tab3_left_margin=12
     updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
     
   })
+  
+  
+  function(cluster_avg,var_score){
+    clusts=sample(colnames(cluster_avg),size=ncol(cluster_avg),replace = F)
+    for (clust in clusts){
+      
+    }
+  }
   
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
