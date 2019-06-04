@@ -69,7 +69,7 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
 
   ds=ds[ingenes,cell_to_cluster[colnames(ds)]%in%inclusts]
   score_genes=intersect(score_genes,rownames(ds))
-  if ((!is.null(score_genes))&(length(score_genes)>0)){
+  if ((!is.null(score_genes))&(length(score_genes)>1)){
     score_rank=rank(colMeans(log2(.1+as.matrix(ds[score_genes,,drop=F]))))/ncol(ds)
     if (reverse_score_order){
       score_rank=1-score_rank
