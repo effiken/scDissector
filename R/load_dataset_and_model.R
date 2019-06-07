@@ -577,7 +577,7 @@ load_seurat_rds=function(rds_file,model_name="",clustering_data_path=""){
 
 
 
-load_metacell_clustering=function(mc_rda,mat_rda,name=""){
+load_metacell_clustering=function(mc_rda,mat_rda,name="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000)){
   mc=new.env()
   mat=new.env()
   load(mc_rda,envir = mc)
@@ -591,7 +591,7 @@ load_metacell_clustering=function(mc_rda,mat_rda,name=""){
   umitab=umitab[,cells]
   cell_to_cluster=cell_to_cluster[cells]
   cell_to_sample=cell_to_sample[cells]
-  ldm=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NULL)
+  ldm=import_dataset_and_model(name,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL,clustAnnots=NULL)
   return(ldm)
   
 }
