@@ -660,7 +660,11 @@ tab3_left_margin=12
       mask=rowSums(!is.na(cormat))>1
       cormat=cormat[mask,mask]
     
-      ord=hclust(dist(1-cormat))$order
+      d1=dist(1-cormat)
+      d1[is.na(d1)]=100
+      #  reorderv1=hclust(d1)$order
+      ord=get_order(seriate(d1,method="GW_complete"))
+      
       genes=c(rownames(cormat)[ord],setdiff(rownames(mat),rownames(cormat)))
       update_genes(session,genes,F)
     }
@@ -1047,11 +1051,11 @@ tab3_left_margin=12
     cormat=cor(mat,use="comp")
     d1=dist(1-cormat)
     d1[is.na(d1)]=100
-    reorderv1=hclust(d1)$order
-    
+  #  reorderv1=hclust(d1)$order
+    reorderv1=get_order(seriate(d1,method="GW_complete"))
     }
     else if (input$inReorderingClustersMethod=="Diagonal"){
-      reorderv1=order(apply(mat[ingenes,],2,which.max,na.rm=T))
+      reorderv1=order(apply(mat[ingenes,],2,which.max))
     }
     else if (input$inReorderingClustersMethod=="Cluster-sets"){
       cluster_sets=cluster_sets_reactive()
