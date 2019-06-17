@@ -189,6 +189,6 @@ get_numis_before_filtering=function(session,samp){
 }
 
 get_clustering_params=function(session){
-  return(session$model$params)
+  return(session$userData$model$params)
 }
 

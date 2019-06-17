@@ -219,7 +219,6 @@ load_metadata=function(session,datapath){
   
   if (!read_flag){
     updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
-    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
     return()
   }
   session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
@@ -295,7 +294,6 @@ tab3_left_margin=12
     updateSelectInput(session,"inGeneSets",choices = names(session$userData$geneList))
     updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
     updateSelectInput(session,"inSampleToAdd", "Samples:",choices =session$userData$samples_to_show)
-    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
   })
   
   observeEvent(input$inLoad,{
@@ -1155,9 +1153,11 @@ tab3_left_margin=12
     }
     input$inModulesGetCormap
      
-    cell_mask=cells_reactive()
-    ds_i=match(input$inModulesDownSamplingVersion,get_ds_options(session))
-    ds= get_dstab(session,cells = cell_mask,ds_version = ds_i)
+    isolate({
+      cell_mask=cells_reactive()
+      ds_i=match(input$inModulesDownSamplingVersion,get_ds_options(session))
+    })
+      ds= get_dstab(session,cells = cell_mask,ds_version = ds_i)
     
     message("calculating gene-to-gene correlations..")
     cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)))
@@ -1238,13 +1238,16 @@ tab3_left_margin=12
     cells=select_cells(session,clusters = clusters,samples = samples)
     ncells=table(get_cell_to_cluster(session,cells =cells))[clusters]
     par(mar=c(1,7,2,2))
-    barplot(ncells,xaxs = "i",log="y",ylab="#cells",names.arg ="")
+    ylim=c(1,10^ceiling(log10(max(ncells,na.rm=T))))
+    barplot(ncells,xaxs = "i",log="y",ylab="#cells",names.arg ="",ylim=ylim)
   })
   
   output$UMI_boxplot <- renderPlot({
     input$inModelVer
     par(xaxs="i")
-    clusters=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    clusters=cgs$clusters
+    samples=cgs$samples
     cells=select_cells(session,clusters = clusters,samples = samples)
     par(mar=c(2,7,1,2))
     u=get_umitab(session,cells = cells)
@@ -1269,7 +1272,7 @@ tab3_left_margin=12
       return()
     }
 
-    if (!is.null(cluster_sets)){
+    if (length(cluster_sets)>0){
       he=300*length(cluster_sets)
       plotOutput("subtype_freqs_barplots", width = "100%", height = he)
     }
@@ -1819,7 +1822,7 @@ tab3_left_margin=12
      m=log2(1e-5+models[gene_mask,])
      m=m-rowMeans(m)
      cormat=cor(m)
-     d=as.dist(1-cormat)
+  #   d=as.dist(1-cormat)
   #   order=seriate(d,method = "GW")
   #   ord=get_order(order)
      
