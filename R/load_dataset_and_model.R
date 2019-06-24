@@ -583,7 +583,7 @@ load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",mi
   load(mc_rda,envir = mc)
   load(mat_rda,envir=mat)
   umitab=attributes(mat$object)$mat
-  cell_to_cluster=attributes(mc$object)$mc
+  cell_to_cluster=as.character(attributes(mc$object)$mc)
   
   cell_to_sample=attributes(mat$object)$cell_metadata$amp_batch_id
   names(cell_to_sample)=rownames(attributes(mat$object)$cell_metadata)
@@ -591,7 +591,7 @@ load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",mi
   umitab=umitab[,cells]
   cell_to_cluster=cell_to_cluster[cells]
   if (!is.null(metacell_to_metacellset)){
-    cell_to_cluster=metacell_to_metacellset[cell_to_cluster]
+    cell_to_cluster=as.character(metacell_to_metacellset[cell_to_cluster])
   }
   cell_to_sample=cell_to_sample[cells]
   ldm=import_dataset_and_model(name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL,clustAnnots=NULL)
