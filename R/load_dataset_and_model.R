@@ -601,6 +601,10 @@ load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",mi
   }
   names(cell_to_cluster)=cells
   cell_to_sample=cell_to_sample[cells]
+  if (!is.null(sample_ID_converter)){
+    cell_to_sample=sample_ID_converter[cell_to_sample]
+  }
+  names(cell_to_sample)=cells
   ldm=import_dataset_and_model(name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL,clustAnnots=NULL)
   return(ldm)
   
