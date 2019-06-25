@@ -590,8 +590,8 @@ load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",mi
   load(mat_rda,envir=mat)
   umitab=attributes(mat$object)$mat
   cell_to_cluster=as.character(attributes(mc$object)$mc)
-  
-  cell_to_sample=attributes(mat$object)$cell_metadata$amp_batch_id
+  names(cell_to_cluster)=names(attributes(mc$object)$mc)
+  cell_to_sample=as.character(attributes(mat$object)$cell_metadata$amp_batch_id)
   names(cell_to_sample)=rownames(attributes(mat$object)$cell_metadata)
   cells=intersect(intersect(names(cell_to_cluster),names(cell_to_sample)),colnames(umitab))
   umitab=umitab[,cells]
