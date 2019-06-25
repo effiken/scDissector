@@ -542,8 +542,8 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
 
 
 
-load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000)){
-  a=readRDS(rds_file)
+load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000),sample_ID_converter=NULL){
+    a=readRDS(rds_file)
 
     if (unlist(attributes(a)$version)[1]<3){
       umitab=attributes(a)[["raw.data"]]
@@ -557,6 +557,9 @@ load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis
       names(cell_to_cluster)=cells
       colnames(umitab)=cells
       cell_to_sample=attributes(a)$meta.data$orig.ident
+      if (!is.null(sample_ID_converter)){
+        cell_to_sample=sample_ID_converter[cell_to_sample]
+      }
       names(cell_to_sample)=cells
       l=import_dataset_and_model(model_name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL,clustAnnots=annots)
     }
@@ -567,6 +570,9 @@ load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis
     cell_to_cluster=as.numeric(cluster_factor)
     names(cell_to_cluster)=names(cluster_factor)
     cell_to_sample=attributes(a)$meta.data$orig.ident
+    if (!is.null(sample_ID_converter)){
+      cell_to_sample=sample_ID_converter[cell_to_sample]
+    }
     names(cell_to_sample)=cells
     l=import_dataset_and_model(model_name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL)
   }
@@ -577,7 +583,7 @@ load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis
 
 
 
-load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000),metacell_to_metacellset=NULL){
+load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000),metacell_to_metacellset=NULL,sample_ID_converter=NULL){
   mc=new.env()
   mat=new.env()
   load(mc_rda,envir = mc)
@@ -593,6 +599,7 @@ load_metacell_clustering=function(mc_rda,mat_rda,clustering_data_path,name="",mi
   if (!is.null(metacell_to_metacellset)){
     cell_to_cluster=as.character(metacell_to_metacellset[cell_to_cluster])
   }
+  names(cell_to_cluster)=cells
   cell_to_sample=cell_to_sample[cells]
   ldm=import_dataset_and_model(name,clustering_data_path=clustering_data_path,umitab=umitab,cell_to_cluster=cell_to_cluster,cell_to_sample=cell_to_sample,min_umis=min_umis,max_umis=max_umis,ds_numis=ds_numis,insilico_gating=NULL,clustAnnots=NULL)
   return(ldm)
