@@ -148,7 +148,7 @@ gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_o
 }
 
 
-parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9),ord_viz_method="OLO_complete",path=""){
+parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-6,mod_size=4,min_mod_cor=0.1,zlim=c(-.9,.9),ord_viz_method="OLO_complete",figures_path="",tables_path=""){
   
   gene_mask2=names(which(apply(cormat,1,quantile,1-mod_size/ncol(cormat),na.rm=T)>=min_mod_cor))
   #gene_cor_map(cormat[gene_mask2,gene_mask2],modules_version=modules_version,ser_method="OLO_complete",zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1))
@@ -161,7 +161,7 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
 #  mod_freqs_normed=log2((reg+mod_freqs)/(reg+rowMeans(mod_freqs)))
  # ord=get_order(seriate(as.dist(1-cor(t(as.matrix(mod_freqs_normed)))),method = "OLO"))
 
-  pdf(paste(path,"module_cor_",modules_version,".pdf",sep=""),width=nmods/10,height=nmods/10)
+  pdf(paste(figures_path,"module_cor_",modules_version,".pdf",sep=""),width=nmods/10,height=nmods/10)
   cormat=cor(t(as.matrix(modsums)))
   zbreaks=c(-1,seq(zlim[1],zlim[2],l=99),1)
   cor_cols=colorRampPalette(c("blue","white","red"))(100)
@@ -186,7 +186,7 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
  # mod_freqs_normed=mod_freqs_normed[ord,]
 #  rownames(mod_freqs_normed)=1:nmods
   
-  write.table(file=paste("output/tables/",modules_version,"_modules.txt",sep=""),sapply(modsl,paste,collapse=","),row.names = T,col.names = F,quote=F)
+  write.table(file=paste(tables_path,modules_version,"_modules.txt",sep=""),sapply(modsl,paste,collapse=","),row.names = T,col.names = F,quote=F)
 #  write.csv(file=paste("tables/",modules_version,"_modules_log10_freq_per_cluster.csv",sep=""),log10(1e-10+as.matrix(mod_freqs)),row.names = T,quote=F)
 #  open_plot(fn=paste(modules_version,"_modules_clusters_heatmap",sep=""),plot_type = "pdf",width = 10,height = 5)
 #  par(mar=c(5,7,1,1))
