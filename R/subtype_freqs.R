@@ -17,23 +17,23 @@ plot_subtype_freqs=function(freq_norm,celltype,plot_legend=T,cex.names=1,cex.axi
   }
 }
 
-get_cell_counts=function(dataset,selected_samples){
-  scRNA_tab=table(dataset$cell_to_cluster,(dataset$cell_to_sample))
+get_cell_counts=function(cell_to_cluster,cell_to_sample,selected_samples){
+  scRNA_tab=table(cell_to_cluster,cell_to_sample)
   scRNA_tab=scRNA_tab[,as.character(selected_samples)]
   
   scRNA_tab=t(scRNA_tab)
   return(scRNA_tab)
 }
 
-get_freqs=function(dataset,selected_samples){
-  scRNA_tab=get_cell_counts(dataset,selected_samples)
+get_freqs=function(cell_to_cluster,cell_to_sample,selected_samples){
+  scRNA_tab=get_cell_counts(cell_to_cluster,cell_to_sample,selected_samples)
   freqs=(scRNA_tab)/rowSums(scRNA_tab)
   
   return(freqs)
 }
 
-normalize_by_clusterset_frequency=function(dataset,samples,cluster_sets,pool_subtype=T,reg=0){
-  freqs=get_freqs(dataset,samples)
+normalize_by_clusterset_frequency=function(cell_to_cluster,cell_to_sample,samples,cluster_sets,pool_subtype=T,reg=0){
+  freqs=get_freqs(cell_to_cluster,cell_to_sample,samples)
   
   pool_subtype_freqs=function(one_subtype){
     return(rowSums(freqs[,unlist(one_subtype),drop=F]))

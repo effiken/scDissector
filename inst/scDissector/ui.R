@@ -70,7 +70,7 @@ mainPanel(width=12,
                    ),
                   tabPanel("Clusters", 
                     fluidRow(
-                          selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average")),
+                          selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average"),selected = "Model parameters"),
                           column(1,offset=0, style='padding:0px;',uiOutput("samples_enrichment")),column(10,uiOutput("avg_profile_plot")),column(1,offset=0, style='padding:0px;',uiOutput("cluster_sizes")),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),
@@ -109,8 +109,7 @@ mainPanel(width=12,
                             selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Cluster-sets","Formula")),
                             textInput("inOrderClusetersByGenes","Order by gene formula:",width=2000),
                             actionButton("inResetClusters", "Reset Clusters"),
-                            actionButton("inSaveClusterOrder","Save Order"),
-                            actionButton("inUndoClusterChanges","Undo")
+                            actionButton("inSaveClusterOrder","Save Order")
                             ),
                             wellPanel(
                               h4("Cluster-sets"),
@@ -156,21 +155,13 @@ mainPanel(width=12,
                   uiOutput("subtype_freqs"),
                   hr()),
                   column(12,uiOutput("sample_avg_profile_plot")),
-                  column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
-                  column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),
-                  column(6,textInput("inProjectSampleGroup2","Samples Group 2:")),
-                  column(12,selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
-                         uiOutput("projection_barplot_plot"),
-                         selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
-                         wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
-                                   tableOutput("Gene1ExprsTableRefVsProj")),
-                         plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))),
+                  column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
                           selectInput("inQCClust", "Cluster:",choices=c()),
                           selectInput("inQCDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
-                          selectInput("inQCNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
+                          selectInput("inQCNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 250,width=200)
                           
                         )
                       ),
