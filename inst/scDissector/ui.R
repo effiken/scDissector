@@ -1,5 +1,5 @@
 library(ggvis)
-
+library(shinyTree)
 # For dropdown menu
 
 actionLink <- function(inputId, ...) {
@@ -23,7 +23,7 @@ mainPanel(width=12,
     titlePanel("scDissector v0.99"),
       navbarPage("",id = "inMain",footer = fluidPage(
         img(src = 'sinai_logo.png',height = '70px', width = '70px'),
-        p(em("(c) 2018 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
+        p(em("(c) 2019 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
   #   tabsetPanel(id="inMain",
                   tabPanel("Data", fluidRow(column(12,
                                   br(),
@@ -47,7 +47,14 @@ mainPanel(width=12,
                   #                ),
                   br(),br(),br(),br(),br(),br(),br(),br())
                                   )),
-                  tabPanel("Gating",
+          tabPanel("MetaData",
+                   fluidRow(
+                     DT::dataTableOutput("mytable",height = 600)),fluidRow(
+                       actionButton("selectAllSamples","Select All"),
+                       actionButton("selectSamples","Copy Selected Ids"),
+                       textInput("inSamplesToShow", width=2000, "Samples:")
+                     )),
+           tabPanel("Gating",
                            fluidRow(
                              selectInput("inGatingSample", "Sample:",choices = c()),
                              selectInput("inGatingShowClusters", "Cluster to highlight:",choices = c()),
@@ -56,13 +63,14 @@ mainPanel(width=12,
                   ),
                   tabPanel("Basics", 
                            fluidRow(
+                             plotOutput("correlation_betwen_clusters",width=600,height=600),
                              plotOutput("ncells_barplot",width="100%",height=200),
                              plotOutput("UMI_boxplot",width="100%",height=200)
                           )
                    ),
                   tabPanel("Clusters", 
                     fluidRow(
-                          selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average")),
+                          selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average"),selected = "Model parameters"),
                           column(1,offset=0, style='padding:0px;',uiOutput("samples_enrichment")),column(10,uiOutput("avg_profile_plot")),column(1,offset=0, style='padding:0px;',uiOutput("cluster_sizes")),
                           column(4,plotOutput("modelSampleLegend",height = 200)
                                  ),
@@ -85,51 +93,75 @@ mainPanel(width=12,
                               selectInput("inSelectGenesFrom","Select From:",choices=c("All genes","Without RPs","TFs","Surface markers")),
                               selectInput("inNgenes", "N=",choices =c(50,100,200,300,400,500,1000),width=100),
                               actionButton("inBlindChisqSelectedClusters", "Chi sq. screen on selected clusters"),
+                              actionButton("inVarMeanScreenSelectedClusters", "VarMean screen on selected clusters"),
+                              sliderInput("inMinExprForScreen","Min expression (log10)",min = -7,max = -1,step = .1,value=c(-5,-1)),
                               br(),
                                actionButton("inFC", "Fold Change screen (FG/BG)"),
                             textInput("inFC_fgClusts","Fold Change FG clusters"),
                             textInput("inFC_bgClusts","Fold Change BG clusters")
-                            )
+                            ),
+                            selectInput("categorizeSamplesBy",label = "Categorize Samples By:",choices=c())
                            ),
                           column(6,
                             textInput("inClusters","Clusters:",width=2000),
                             wellPanel( 
                             actionButton("inOrderClusters", "Reorder Clusters"),
-                            selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Formula")),
+                            selectInput("inReorderingClustersMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal","Cluster-sets","Formula")),
                             textInput("inOrderClusetersByGenes","Order by gene formula:",width=2000),
                             actionButton("inResetClusters", "Reset Clusters"),
-                            actionButton("inSaveClusterOrder","Save Order"),
-                            actionButton("inUndoClusterChanges","Undo")
+                            actionButton("inSaveClusterOrder","Save Order")
                             ),
                             wellPanel(
-                              selectInput("inAnnotateClusterNum","Cluster",choices=c()),
-                            textInput("inClustAnnot", "New Annotation:"),
-                            actionButton("inAnnotateCluster","Annotate"),
-                            actionButton("inSaveAnnot", "Save Annotations"))
+                              h4("Cluster-sets"),
+                              fluidRow(column(6,textInput("inAddClusterSet", "Type in name",value="")),column(6,h2(""),actionButton("inAddClusterSetButton","Add"))),
+                              fluidRow(column(6,selectInput("removeClusterSetSelectInput","Select to remove",choices = c())),column(6,h2(""),actionButton("inRemoveClusterSetButton","Remove"))),
+                              actionButton("saveClusterSetButtion","Save Cluster-sets"),
+                              actionButton("reloadClusterSetButtion","Reload Cluster-sets")
+                            ),
+                            shinyTree("clusters_sets_shinytree", theme="proton", themeIcons = FALSE, themeDots = FALSE,dragAndDrop=T)
+          #                  wellPanel(
+          #                    selectInput("inAnnotateClusterNum","Cluster",choices=c()),
+          #                  textInput("inClustAnnot", "New Annotation:"),
+          #                  actionButton("inAnnotateCluster","Annotate"),
+          #                  actionButton("inSaveAnnot", "Save Annotations"))
                             ),
                     column(12,
                      hr(),
-                     textInput("inSamplesToShow", width=2000, "Samples:"),
-                     textInput("inSampleColors", width=2000, "Colors:"),
-                     actionButton("inResetSamples","Reset"),
                      hr()) 
             )), 
                 tabPanel("Cells", fluidRow(
-                      plotOutput("truthplot",width="100%",height = "700"),
+                      plotOutput("truthplot",width="100%",height = "900"),
                       plotOutput("colorLegendTruth",height = 70,width=200),
                       plotOutput("truthSampleLegend",width=200,height=200),
                       sliderInput("inTruthColorScale","log2(1+#UMIs)",min = 0,max = 8,step = .1,value = c(0,2)),
+                      textInput("inGenesScore", width=2000, "Order cells within clusters by the following genes:"),
+                      checkboxInput("inScoreReverseOrder",label = "Reverse Order",value = F),
                       selectInput("inTruthDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
                       checkboxInput("inTruthShowSeparatorBars",label = "Show Separator Bars",value = T),
-                      selectInput("inTruthNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200),
+                      wellPanel(radioButtons("inTruthEqualRepresent", "Equally represent:",
+                                             c("Samples" = "equally_represent_samples",
+                                               "Clusters" = "equally_represent_clusters")),
+                        selectInput("inTruthNcellsPer",label="#Cells sampled",choices=params$nrandom_cells_per_sample_choices,selected = 250,width=200)),
                       downloadButton('downloadTruthPlot', 'Download Plot')
                   )),
+                tabPanel("Samples",
+                  column(12,wellPanel(
+                    selectInput("inReorderSamplesBy", "ClusterSet:",choices=c()),
+                    actionButton("inSamplesAddClusterSet","Add clusterSet"),
+                    textAreaInput("inSamplesClusterSets",label = "ClusterSets to view:",value = ""),
+                    actionButton("inReorderSamples","Reorder samples")
+                  )),
+                  column(12,
+                  uiOutput("subtype_freqs"),
+                  hr()),
+                  column(12,uiOutput("sample_avg_profile_plot")),
+                  column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)))),
                 tabPanel("Clustering QC",fluidRow(
                       column(4,
                         wellPanel(
                           selectInput("inQCClust", "Cluster:",choices=c()),
                           selectInput("inQCDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
-                          selectInput("inQCNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 1000,width=200)
+                          selectInput("inQCNcellsPerSample",label="#Cells Per Sample=",choices=params$nrandom_cells_per_sample_choices,selected = 250,width=200)
                           
                         )
                       ),
@@ -177,19 +209,8 @@ mainPanel(width=12,
                         selectInput("inModuleSelect","Show Module:",choices=c()),
                         textOutput("textModuleGenes")
                       )
-              )),
-                tabPanel("Samples",fluidRow(
-                          column(12,uiOutput("sample_avg_profile_plot")),
-                          column(12,sliderInput("inSamplesColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4))),
-                          column(6,textInput("inProjectSampleGroup1","Samples Group 1:")),
-                          column(6,textInput("inProjectSampleGroup2","Samples Group 2:")),
-                          column(12,selectInput("inProjectPlotType","Plot Type",choices=c("Side by Side","Tile")),
-                          uiOutput("projection_barplot_plot"),
-                   selectInput("inClustForDiffGeneExprsProjVsRef","Cluster for GE analysis:",choices=c()),
-                   wellPanel(textInput("Gene1ForExprsTableRefVsProj","Gene:"),
-                   tableOutput("Gene1ExprsTableRefVsProj")),
-                   plotOutput("DiffGeneExprsProjVsRef",width="100%",height=500))))
-              )
+              ))
+            )
          )
           
   

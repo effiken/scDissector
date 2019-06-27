@@ -5,8 +5,7 @@ library(dplyr)
 library(gplots)
 library("heatmaply")
 set.seed(3505)
-
-non_data_tabs=c("Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
+non_data_tabs=c("MetaData","Gating","Basics","Clusters","Cells","QC","Clustering QC","Gene Modules","Samples")
 
 #write.table(file="~/Documents/GitHub/scDissector/viridis_colors.txt",viridis(100),quote=T,row.names=F,col.names=F)
 
@@ -15,6 +14,122 @@ print(getwd())
 
 #load_on_startup()
 
+
+############################################
+
+as_list_recursive=function(l){
+  if (is.null(l)){
+    return(list())
+  }
+  if (length(l)==0){
+    return(l)
+  }
+  for (i in 1:length(l)){
+    if (is.list(l[[i]])){
+      l[[i]]=as_list_recursive(l[[i]])
+    }
+    else{
+      item=l[[i]]
+      names(l)[i]=item
+    }
+  }
+  return(l)
+}
+
+as_cluster_sets_recursive=function(l){
+  if (is.null(l)){
+    return(l)
+  }
+  l2=list()
+    for (i in 1:length(l)){
+      if (!is.list(l[[i]])){
+        l2[[i]]=names(l)[i]
+      }
+      else{
+        l2[[i]]=as_cluster_sets_recursive(l[[i]])
+      }
+    }
+  names(l2)=names(l)
+  return(l2)
+}
+
+get_nodes=function(l){
+  if (is.list(l)){
+    return(setdiff(c(names(l),unlist(sapply(l,get_nodes))),unlist(l)))
+  }
+  else {
+    return(c())
+  }
+}
+
+remove_node=function(l,node){
+  if (is.list(l)){
+    if (node%in%names(l)){
+      l2=l
+      l2[[node]]=NULL
+      if (is.list(l[[node]])){
+        for (n in names(l[[node]])){
+          l2[[as.character(n)]]=l[[node]][[as.character(n)]]
+        }
+      }
+      return(l2)
+    }
+    else {
+      return(sapply(l,remove_node,node,simplify = F))
+    }
+  }
+  else{
+    return(l)
+  }
+}
+
+get_edges=function(l,name=NA){
+  if (is.null(l)){
+    return()
+  }
+  else{
+    node=c()
+    parent=c()
+    for (i in 1:length(names(l))){
+      if (!is.na(name)&!is.null(names(l))){
+        parent[i]=name
+        node[i]=names(l)[i]
+      }
+    }
+    m=data.frame(node=node,parent=parent)
+    for (i in length(l):1){
+      if (!is.null(names(l))){
+        m=rbind(get_edges(l[[i]],names(l)[i]),m)
+      }
+    }
+    return(m)
+  }
+}
+
+
+get_cluster_set_tree=function(mat,nodes_to_add=NULL){
+  
+  if (is.null(nodes_to_add)){
+    nodes_to_add=setdiff(mat$parent,mat$node)
+  }
+  
+  tr=list()  
+  for (node in nodes_to_add){
+    if (any(mat$parent==node)){
+      tr[[node]]= get_cluster_set_tree(mat,mat$node[mat$parent==node])
+      if (!is.null(tr[[node]])){
+        names(tr)[length(tr)]=node
+      }
+    }
+    else{
+      tr[[length(tr)+1]]=node
+      names(tr)[length(tr)]=node
+    }
+  }
+  
+  #  names(tr)=nodes_to_add
+  return(tr)
+}
 
 hide_all_tabs=function(){
   for (tab in non_data_tabs){
@@ -49,36 +164,102 @@ update_all= function(session,ldm){
   for (item in names(ldm)){
     session$userData[[item]]=ldm[[item]]
   }
-  session$userData$sample_colors=default_sample_colors[1:length(session$userData$dataset$samples)]
+  session$userData$reactiveVars<-reactiveValues()
+  session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=c(),genes=c(),samples=c())
+  session$userData$sample_colors=default_sample_colors[1:length(get_loaded_samples(session))]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
-  ncells_per_sample=ncells_choices[which.min(abs((2000/length(session$userdata$samples))-ncells_choices))]
+  ncells_per_sample=ncells_choices[which.min(abs((2000/length(get_loaded_samples(session)))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
-
+  session$userData$scDissector_params$cluster_sets=ldm$cluster_sets
   update_clusters(session,session$userData$default_clusters,T)
+  #print("*****")
+  #print(as_list_recursive(session$userData$cluster_sets))
+  #updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(session$userData$cluster_sets))
   updateSelectInput(session,"inAnnotateClusterNum",choices = clust_title)
   updateSelectInput(session,"inQCClust",choices =clust_title)
+  updateTextInput(session,"inSamplesToShow",value = paste(get_loaded_samples(session),collapse=", "))
   updateSelectInput(session,"inClustForDiffGeneExprsProjVsRef",choices = clust_title)
-  updateTextInput(session,"inSamplesToShow",value = paste(session$userData$dataset$samples,collapse=", "))
-  updateTextInput(session,"inSampleColors",value = paste(session$userData$sample_colors,collapse=", "))
-  updateSelectInput(session,"inGatingSample",choices = session$userData$dataset$samples)
+  cluster_sets=unique(unlist(get_nodes(as_cluster_sets_recursive(session$userData$cluster_sets))))
+  updateSelectInput(session,"categorizeSamplesBy",choices=colnames(session$userData$sample_annots),selected = "sample_ID")
+  updateSelectInput(session,"removeClusterSetSelectInput",choices=cluster_sets)
+  updateSelectInput(session,"inReorderSamplesBy",choices=c("All",cluster_sets))
+  updateSelectInput(session,"inGatingSample",choices = get_loaded_samples(session))
   updateSelectInput(session,"inGatingShowClusters",choices = clust_title)
-  updateSelectInput(session,"input$inTruthNcellsPerSample",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
-  updateSelectInput(session,"inQCDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
-  updateSelectInput(session,"inTruthDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = ifelse("1000"%in%session$userData$dataset$ds_numis,"1000",max(session$userData$dataset$ds_numis)))
-  updateSelectInput(session,"inModulesDownSamplingVersion",choices=session$userData$dataset$ds_numis,selected = max(session$userData$dataset$ds_numis))
-  if (is.null(ldm$model$noise_models)){
+  updateSelectInput(session,"input$inTruthNcellsPer",choices=params$nrandom_cells_per_sample_choices,selected =ncells_per_sample )
+  updateSelectInput(session,"inQCDownSamplingVersion",choices=get_ds_options(session),selected = ifelse("1000"%in%get_ds_options(session),"1000",max(get_ds_options(session))))
+  updateSelectInput(session,"inTruthDownSamplingVersion",choices=get_ds_options(session),selected = ifelse("1000"%in%get_ds_options(session),"1000",max(get_ds_options(session))))
+  updateSelectInput(session,"inModulesDownSamplingVersion",choices=get_ds_options(session),selected = max(get_ds_options(session)))
+
+  if (is.null(get_noise_models(session))){
      updateSelectInput(session,"inModelOrAverage",choices=c("Model","Average"))
   }
   
   
-  updateTextInput(session,"inMaxUmis",value = session$userData$dataset$max_umis)
-  updateTextInput(session,"inMinUmis",value = session$userData$dataset$min_umis)
+  updateTextInput(session,"inMaxUmis",value = get_max_umis(session))
+  updateTextInput(session,"inMinUmis",value = get_min_umis(session))
   message("Successfully finished loading.")
   
   session$userData$loaded_flag<-T
 }
 
+
+load_metadata=function(session,datapath){
+  verfile=paste(datapath,"model_versions.csv",sep="/")
+  samples_file=paste(datapath,"samples.csv",sep="/")
+  read_flag=T
+  if (!file.exists(verfile)){
+    message(verfile ," not found")
+    read_flag=F
+  }
+  if  (!file.exists(samples_file)){
+    message(samples_file ," not found")
+    read_flag=F
+  }
+  
+  if (!read_flag){
+    updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
+    return()
+  }
+  session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+  session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
+  
+  
+  myGeneListFile= paste(datapath,"gene_sets.txt",sep="/")
+  
+  if (file.exists(myGeneListFile)){
+    added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
+    
+    if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
+      message(myGeneListFile, " was not loaded since gene sets names are not unique.")
+    }
+    else{
+      names2=c(added_gene_list_tmp[,1],names(session$userData$geneList))
+      session$userData$geneList<-c(added_gene_list_tmp[,2],session$userData$geneList)
+      names(session$userData$geneList)=names2
+    }
+  }  
+  
+  sample_annots_fn=paste(datapath,"metadata","sample_annots.csv",sep="/")
+  if (dir.exists(paste(datapath,"metadata",sep="/"))){
+    if (file.exists(sample_annots_fn)){
+      session$userData$sample_annots=read.csv(sample_annots_fn,stringsAsFactors = F)
+      rownames(session$userData$sample_annots)=session$userData$sample_annots$sample_ID
+      session$userData$sample_annots=session$userData$sample_annots
+    }
+  }
+  
+  
+  mySampleSetsFile= paste(datapath,"sample_sets.txt",sep="/")
+  samples_to_show=session$userData$samples_tab$index
+  if (file.exists(mySampleSetsFile)){
+    sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
+    session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
+    names(session$userData$sample_sets)<-rownames(sample_sets_tab)
+    session$userData$samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
+  }
+  
+}
 
 
 
@@ -103,63 +284,16 @@ tab3_left_margin=12
     session$userData$click_flag<-T
     
     
-    
-    
     observeEvent(input$inDatapath,{
       if (input$inDatapath==""){
         return()
       }
-      verfile=paste(input$inDatapath,"model_versions.csv",sep="/")
-      samples_file=paste(input$inDatapath,"samples.csv",sep="/")
-      read_flag=T
-      if (!file.exists(verfile)){
-        message(verfile ," not found")
-        read_flag=F
-      }
-      if  (!file.exists(samples_file)){
-        message(samples_file ," not found")
-        read_flag=F
-      }
-    
-      if (!read_flag){
-        updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
-        updateSelectInput(session,"inProjectedDataset","Projected Version:",choices="")
-        return()
-      }
-      session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-      session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
-      
-   
-      myGeneListFile= paste(input$inDatapath,"gene_sets.txt",sep="/")
-   
-      if (file.exists(myGeneListFile)){
-        added_gene_list_tmp=read.delim(file=myGeneListFile,header=T,stringsAsFactors = F)
-       
-        if (length(added_gene_list_tmp[,1])!=length(unique(added_gene_list_tmp[,1]))){
-          message(myGeneListFile, " was not loaded since gene sets names are not unique.")
-        }
-        else{
-          names2=c(added_gene_list_tmp[,1],names(session$userData$geneList))
-          session$userData$geneList<-c(added_gene_list_tmp[,2],session$userData$geneList)
-          names(session$userData$geneList)=names2
-        }
-      }  
-    
-    
-    mySampleSetsFile= paste(input$inDatapath,"sample_sets.txt",sep="/")
-    samples_to_show=session$userData$samples_tab$index
-    if (file.exists(mySampleSetsFile)){
-      sample_sets_tab<-read.table(file=mySampleSetsFile,header=T,stringsAsFactors = F,row.names =1)
-      session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
-      names(session$userData$sample_sets)<-rownames(sample_sets_tab)
-      samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
-     }
+      load_metadata(session,input$inDatapath)
     session$userData$scDissector_datadir<-input$inDatapath
     
     updateSelectInput(session,"inGeneSets",choices = names(session$userData$geneList))
     updateSelectInput(session,"inModelVer", "Model Version:",choices =  session$userData$vers_tab$title)
-    updateSelectInput(session,"inSampleToAdd", "Samples:",choices =samples_to_show)
-    updateSelectInput(session,"inProjectedDataset","Projected Version:",choices =  session$userData$vers_tab$title)
+    updateSelectInput(session,"inSampleToAdd", "Samples:",choices =session$userData$samples_to_show)
   })
   
   observeEvent(input$inLoad,{
@@ -204,7 +338,37 @@ tab3_left_margin=12
     
 
     show_all_tabs()
+
     update_all(session,ldm)
+   
+  })
+  
+  
+  observeEvent(input$inSamplesAddClusterSet,{
+    cluster_sets=vis_freqs_cluster_sets_reactive()
+    if (input$inReorderSamplesBy=="All"){
+      added=names(cluster_sets_reactive())
+    }
+    else{
+      added=input$inReorderSamplesBy
+    }
+    print(names(added))
+    updateTextAreaInput(session,"inSamplesClusterSets",value=paste(unique(c(cluster_sets,added)),collapse = ", "))
+  })
+  
+  observeEvent(input$inReorderSamples,{
+    insamples=samples_reactive()
+    cluster_sets=cluster_sets_reactive()
+
+    freq_norm=normalize_by_clusterset_frequency(get_cell_to_cluster(session),get_cell_to_sample(session),insamples,cluster_sets,pool_subtype = T,reg = 0)
+    
+    reorderby=vis_freqs_cluster_sets_reactive()
+  
+    x=do.call(cbind,freq_norm[reorderby])
+    x=pmax(x,0,na.rm=T)
+    ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
+  #  ord=get_order(seriate(as.dist(1-cor(t(x))),method = "GW"))
+    updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
     
   })
   
@@ -213,10 +377,9 @@ tab3_left_margin=12
     updateTextInput(session,"inSamples",value=s1) 
   })
   
-  observeEvent(input$inResetSamples,{
-    samples=session$userData$dataset$samples
-    updateTextAreaInput(session,"inSamplesToShow",value = paste(samples,collapse=", "))
-    updateTextAreaInput(session,"inSampleColors",value = paste(default_sample_colors[1:length(session$userData$dataset$samples)],collapse=", "))
+  observeEvent(input$selectAllSamples,{
+    proxy <- DT::dataTableProxy("mytable")
+    DT::selectRows(proxy,selected = input$mytable_rows_all)
   })
   
   observeEvent(input$inAbsOrRel,{
@@ -239,36 +402,27 @@ tab3_left_margin=12
     }
   })
   
-  samples_reactive <-reactive({
-    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
-    if (is.null(session$userData$dataset)){
-      return(c())
-    }
-    samples=intersect(samples,session$userData$dataset$samples)
-    return(samples)
+  
+  observeEvent(input$inSamples,{
+    update_clusters_genes_samples_reactive()
   })
   
-  sample_colors_reactive <-reactive({
-    sample_colors=strsplit(input$inSampleColors,",|, | ,")[[1]]
-    if (is.null(session$userData$dataset)){
-      return(c())
-    }
-    #TODO check is sample_colors are valid colors
-    return(sample_colors)
+  observeEvent(input$inClusters,{
+    update_clusters_genes_samples_reactive()
+  })
+  
+  observeEvent(input$inGenes,{
+    update_clusters_genes_samples_reactive()
   })
   
   
-  clusters_genes_sampples_reactive <-reactive({
-    xy_range <- event_data("plotly_relayout")
-    
-    if (!session$userData$loaded_flag){
-      return()
-    }
- 
+  observe({
+    genes=init_genes(input$inGenes)
     genes=init_genes(input$inGenes)
     clusts=strsplit(input$inClusters,",|, | ,")[[1]]
-    clusts=intersect(clusts,setdiff(colnames(session$userData$model$models),session$userData$scDissector_params$excluded_clusters))
+    clusts=intersect(clusts,setdiff(get_all_clusters(session),session$userData$scDissector_params$excluded_clusters))
     
+    xy_range <- event_data("plotly_relayout")
     if ((!is.null(xy_range))&(sum(c('xaxis.range[0]','xaxis.range[1]')%in%names(xy_range))==2)){
       if(!all(session$userData$prev_xy_range_G==unlist(xy_range))){
         if (min(unlist(xy_range),na.rm=T)<0){
@@ -298,41 +452,143 @@ tab3_left_margin=12
         
       }
     }
+    session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=clusts,genes=genes,samples=samples_reactive())
+  })
     
-    return(list(clusters=clusts,genes=genes,samples=samples_reactive()))
+  samples_reactive <-reactive({
+    samples=strsplit(input$inSamplesToShow,",|, | ,")[[1]]
+    if (!dataset_exists(session)){
+      return(c())
+    }
+    samples=intersect(samples,get_loaded_samples(session))
+    return(samples)
+  })
+  
+  cluster_sets_reactive <-reactive ({
+   # print(input$clusters_sets_shinytree)
+    if (is.null(input$clusters_sets_shinytree)){
+      return(NULL)
+    }
+    as_cluster_sets_recursive(input$clusters_sets_shinytree)
+  })
+  
+  
+  vis_freqs_cluster_sets_reactive <-reactive ({
+    return(cluster_sets=unique(strsplit(input$inSamplesClusterSets,",|, | ,")[[1]]))
+
+  })
+  
+  
+  cluster_annots_reactive<-reactive({
+    cluster_sets=cluster_sets_reactive()
+    if (is.null(session$userData$clustAnnots)&&(is.null(cluster_sets))){
+      return()
+    }
+    else{
+      if (is.null(cluster_sets)){
+        return(session$userData$clustAnnots)
+      }
+      else{
+        edges=get_edges(cluster_sets)
+        edges=edges[match(session$userData$default_clusters,edges[,"node"]),]
+        annots=edges[,2]
+        names(annots)=edges[,1]
+        return(annots)
+      }
+    }
+  })
+  
+ 
+  update_clusters_genes_samples_reactive =function(){
+    if (!session$userData$loaded_flag){
+      return()
+    }
+ 
+    genes=init_genes(input$inGenes)
+    clusts=strsplit(input$inClusters,",|, | ,")[[1]]
+    clusts=intersect(clusts,setdiff(get_all_clusters(session),session$userData$scDissector_params$excluded_clusters))
+    
+  
+    
+    session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=clusts,genes=genes,samples=samples_reactive())
+  
+  }
+  
+  sample_annots_reactive<-reactive({
+    return(session$userData$sample_annots[intersect(get_loaded_samples(session),rownames(session$userData$sample_annots)),])
   })
   
   
   cells_reactive <-reactive({
-    inclusts=clusters_genes_sampples_reactive()$clusters
-    insamples=clusters_genes_sampples_reactive()$samples
-    dataset=session$userData$dataset
-    return(sort(names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]))
+    inclusts=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
+    insamples=session$userData$reactiveVars$clusters_genes_samples_reactive$samples
+   
+    return(sort(select_cells(session,cells=get_all_cells(session),clusters=inclusts,samples=insamples)))
   })
   
-  sample_cells_reactive <-reactive({
-      randomly_selected_cells=list()
-      dataset=session$userData$dataset
-      for (ds_i in 1:length(dataset$ds_numis)){
-        randomly_selected_cells[[ds_i]]<-list()
-        for (nrandom_cells in params$nrandom_cells_per_sample_choices){
-          randomly_selected_cells[[ds_i]][[nrandom_cells]]=c()
-          for (sampi in dataset$samples){
-            maski=dataset$cell_to_sample[colnames(dataset$ds[[ds_i]])]==sampi
-            
-            if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=sum(maski)){
-              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],colnames(dataset$ds[[ds_i]])[maski])
-            }
-            else{
-              randomly_selected_cells[[ds_i]][[nrandom_cells]]<-c(randomly_selected_cells[[ds_i]][[nrandom_cells]],sample(colnames(dataset$ds[[ds_i]])[maski],size=as.numeric(nrandom_cells),replace=F))
-            }
-          }
-        }
+  sample_cells_by_cluster_reactive <-reactive({
+    if (is.null(session$userData$randomly_selected_cells_by_cluster)){
+      session$userData$randomly_selected_cells_by_cluster=list()
+      for (i in 1:length(get_ds_options(session))){
+        session$userData$randomly_selected_cells_by_cluster[[i]]=list()
       }
-      return(randomly_selected_cells)
+    }
+    
+    ds_i=match(input$inTruthDownSamplingVersion, get_ds_options(session))
+    nrandom_cells=input$inTruthNcellsPer
+    if (is.na(match(nrandom_cells,session$userData$randomly_selected_cells_by_cluster[[ds_i]]))){
+      session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]=c()
+    }
+    for (clusteri in unlist(session$userData$cluster_sets)){
+      maski=select_cells(session,cells=get_ds_cells(session,ds_i),clusters=clusteri)
+      if (length(maski)==0){
+       next 
+      }
+      #     print(paste(nrandom_cells,sampi))
+      if (nrandom_cells=="All"||pmax(0,as.numeric(nrandom_cells),na.rm=T)>=length(maski)){
+        session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]],maski)
+      }
+      else{
+        session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]]<-c(session$userData$randomly_selected_cells_by_cluster[[ds_i]][[nrandom_cells]],sample(maski,size=as.numeric(nrandom_cells),replace=F))
+      }
+    }
+    return(session$userData$randomly_selected_cells_by_cluster)
   })
-
   
+  
+  common_sample_cells_func=function(downsampling_version,ncells_per_sample){
+    if (is.null(session$userData$randomly_selected_cells_by_sample)){
+      session$userData$randomly_selected_cells_by_sample=list()
+      for (i in 1:(length(get_ds_options(session)))+1){
+        session$userData$randomly_selected_cells_by_sample[[i]]=list()
+      }
+    }
+    
+    ds_i=match(downsampling_version, get_ds_options(session))
+    if (is.na(match(ncells_per_sample,session$userData$randomly_selected_cells_by_sample[[ds_i]]))){
+      session$userData$randomly_selected_cells_by_sample[[ds_i]][[ncells_per_sample]]=c()
+    }
+    for (sampi in get_loaded_samples(session)){
+      maski=select_cells(session,cells=get_ds_cells(session,ds_i),samples=sampi)
+      if (ncells_per_sample=="All"||pmax(0,as.numeric(ncells_per_sample),na.rm=T)>=length(maski)){
+        session$userData$randomly_selected_cells_by_sample[[ds_i]][[ncells_per_sample]]<-c(session$userData$randomly_selected_cells_by_sample[[ds_i]][[ncells_per_sample]],maski)
+      }
+      else{
+        session$userData$randomly_selected_cells_by_sample[[ds_i]][[ncells_per_sample]]<-c(session$userData$randomly_selected_cells_by_sample[[ds_i]][[ncells_per_sample]],sample(maski,size=as.numeric(ncells_per_sample),replace=F))
+      }
+    }
+    return(session$userData$randomly_selected_cells_by_sample)
+  }
+  
+  sample_cells_by_sample_reactive <-reactive({
+    common_sample_cells_func(input$inTruthDownSamplingVersion,input$inTruthNcellsPer)
+  })
+  
+  sample_cells_by_sample_reactive_QC <-reactive({
+    common_sample_cells_func(input$inQCDownSamplingVersion,input$inQCNcellsPerSample)
+  })
+  
+
   
   output$event <- renderPrint({
     d <- event_data("plotly_hover")
@@ -349,18 +605,16 @@ tab3_left_margin=12
   })
   
   
-  ds_QC_reactive <-reactive({
+  ds_cells_QC_reactive <-reactive({
     clust=strsplit(input$inQCClust," - ")[[1]][1]
     samples=samples_reactive()
     
-    if (is.null(session$userData$dataset)){
+    if (!dataset_exists(session)){
       return()
-    }
-    dataset=session$userData$dataset
-    ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-    sampling_mask=sample_cells_reactive()[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]][[match(input$inQCNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
-    cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
-    return(ds[,intersect(sampling_mask,cluster_mask),drop=F])
+  }
+    sampling_mask=sample_cells_by_sample_reactive_QC()[[match(input$inQCDownSamplingVersion,get_ds_options(session))]][[input$inQCNcellsPerSample]]
+    return(select_cells(session,cells = sampling_mask,clusters = clust,samples = samples))#
+
   })
   
   observeEvent(input$inGeneSets,{
@@ -373,9 +627,9 @@ tab3_left_margin=12
     if (length(genes_string)==0){
       return()
     }
-    data_genes=rownames(session$userData$dataset$umitab)
+    data_genes=get_all_genes(session)
  
-    gene_strings_adj=adjust_gene_names(genes_string, data_genes)
+    gene_strings_adj=unique(adjust_gene_names(genes_string, data_genes))
  
     session$userData$gcol<-ifelse(toupper(gene_strings_adj)%in%tfs ,4,1)
     names(session$userData$gcol)<-toupper(gene_strings_adj)
@@ -385,24 +639,24 @@ tab3_left_margin=12
   
  
   
-  observeEvent(input$inAnnotateCluster, {
-    session$userData$clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<-input$inClustAnnot
-    updateTextInput(session,"inClustAnnot",value="")
-  })
+#  observeEvent(input$inAnnotateCluster, {
+#    session$userData$clustAnnots[strsplit(input$inAnnotateClusterNum," - ")[[1]][1]]<-input$inClustAnnot
+#    updateTextInput(session,"inClustAnnot",value="")
+#  })
   
-  observeEvent(input$inSaveAnnot, {
-    annot_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_annots.txt",sep="")
-    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
-    message("Cluster annotations saved to ",annot_fn,".")
-    
-  })
+#  observeEvent(input$inSaveAnnot, {
+#    annot_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_annots.txt",sep="")
+#    write.table(file=annot_fn,session$userData$clustAnnots,row.names=T,col.names=F,quote=F,sep="\t")
+#    message("Cluster annotations saved to ",annot_fn,".")
+#    
+#  })
   
   
   observeEvent(input$inClusterGenes, {
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     ingenes=cgs$genes
-    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
+    mat<-get_models(session,clusters = inclusters,genes = ingenes)
     if (length(ingenes)==0){
       return()
     }
@@ -412,19 +666,24 @@ tab3_left_margin=12
       mask=rowSums(!is.na(cormat))>1
       cormat=cormat[mask,mask]
     
-      ord=hclust(dist(1-cormat))$order
+      d1=dist(1-cormat)
+      d1[is.na(d1)]=100
+      #  reorderv1=hclust(d1)$order
+      ord=get_order(seriate(d1,method="GW_complete"))
+      
       genes=c(rownames(cormat)[ord],setdiff(rownames(mat),rownames(cormat)))
       update_genes(session,genes,F)
     }
     else if (input$inReorderingMethod=="Diagonal"){
-        ord=order(apply(mat[,inclusts],1,which.max))
-        genes=rownames(mat)[ord]
+        mat2=mat[!rowSums(is.na(mat))==ncol(mat),]
+        ord=order(apply(mat2[,inclusts],1,which.max))
+        genes=rownames(mat2)[ord]
         update_genes(session,genes,F)
       }
   })
   
   observeEvent(input$inClusterModules, {
-    inclusts=clusters_genes_sampples_reactive()$clusters
+    inclusts=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
     modulemat<-module_counts_reactive()
     if(is.null(modulemat)){
       return()
@@ -447,21 +706,90 @@ tab3_left_margin=12
   })
 
   
+  observeEvent(input$inVarMeanScreenSelectedClusters, {
+
+    numis=1000
+    ds_i=match(as.character(1000),get_ds_options(session))
+    if (is.na(ds_i)){
+      ds_i=which.max(as.numeric(get_ds_options(session)))
+    }
+    if (!session$userData$loaded_flag)
+    {
+      return(data.frame(m=0,v=0,gene=""))
+    }
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    ggs_res=get_genes_to_screen()
+    genes=ggs_res$genes
+    pref=ggs_res$pref
+    inclusts=cgs$clusters
+    insamples=cgs$samples
+    cell_mask=select_cells(session,clusters = inclusts,samples = insamples)
+    ds=get_dstab(session,cells = cell_mask,genes = genes,ds_version = ds_i)
+    s1=Matrix::rowSums(ds,na.rm=T) 
+    s2=Matrix::rowSums(ds^2,na.rm=T)
+    mask1=s1/(numis*ncol(ds))>10^as.numeric(input$inMinExprForScreen[1])&s1/(numis*ncol(ds))<10^as.numeric(input$inMinExprForScreen[2])
+    
+    m1=s1[mask1]/(ncol(ds)*numis)
+    m2=s2[mask1]/(ncol(ds)*numis)
+    v1=m2-m1^2
+    x=log10(m1)
+    breaks=seq(min(x,na.rm=T),max(x,na.rm=T),.2)
+    lv=log2(v1/m1)
+    llv=split(lv,cut(x,breaks))
+    mask_llv=sapply(llv,length)>0   
+    z=sapply(llv[mask_llv],min,na.rm=T)
+    b=breaks[-length(breaks)]
+    b=b[mask_llv]
+    lo=loess(z~b)
+    ngenes_to_show=as.numeric(input$inNgenes)
+    
+    var_score=lv-predict(lo,newdata =x)
+    positive_var_gens=names(var_score)[pmax(var_score,0,na.rm=T)>0.001]
+    umisum=as.matrix(Matrix.utils::aggregate.Matrix(t(ds[positive_var_gens,]),get_cell_to_cluster(session,cells=colnames(ds)),fun="sum"))
+    cluster_avg=(t(umisum/rowSums(umisum)))
+    cluster_avg_normed=log2((1e-6+cluster_avg)/(1e-6+rowMeans(cluster_avg)))
+    high_var_genes=as.vector(unlist(sapply(split(rownames(cluster_avg_normed),apply(cluster_avg_normed,1,which.max)),FUN=function(x){names(head(sort(var_score[x],decreasing = T),floor(ngenes_to_show/ncol(cluster_avg_normed))))})))
+    
+#    high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
+    genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
+    new_set_name=paste("Varmean_",pref,"_",ngenes_to_show,"_",date(),sep="")
+    if (!is.null(session$userData$geneList)){
+      geneList=session$userData$geneList
+      geneList[length(geneList)+1]=genes_to_show_comma_delimited
+    }
+    else{
+      geneList=c(genes_to_show_comma_delimited)
+    }
+    names(geneList)[length(geneList)]=new_set_name
+    
+    session$userData$geneList<-geneList
+    updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
+    
+  })
+  
+  
+  function(cluster_avg,var_score){
+    clusts=sample(colnames(cluster_avg),size=ncol(cluster_avg),replace = F)
+    for (clust in clusts){
+      
+    }
+  }
+  
   observeEvent(input$inBlindChisqSelectedClusters, {
     message("screening for variable ",input$inSelectGenesFrom)
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     clusters=cgs$clusters
     samples=cgs$samples
     ggs_res=get_genes_to_screen()
     genes=ggs_res$genes
     pref=ggs_res$pref
-    cells=names(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_cluster%in%clusters])
-    genes=intersect(genes,rownames(session$userData$dataset$umitab))
+    cells=select_cells(session,clusters = clusters)
+    genes=intersect(genes,get_all_genes(session))
   
-    counts_to_chisq=session$userData$dataset$counts[samples,genes,clusters,drop=F]
-    batch_corrected=!is.null(session$userData$dataset$noise_counts)
-    if (batch_corrected){
-      counts_to_chisq=pmax(counts_to_chisq-session$userData$dataset$noise_counts[samples,genes,clusters,drop=F],0)
+    counts_to_chisq=get_counts_array(session,samples = samples,genes = genes,clusters = clusters)
+    noise_counts=get_noise_counts_array(session,samples = samples,genes = genes,clusters = clusters)
+    if (!is.null(noise_counts)){
+      counts_to_chisq=pmax(counts_to_chisq-noise_counts,0)
     }
     
     chisq_res2=chisq_genes(counts_to_chisq)
@@ -469,13 +797,11 @@ tab3_left_margin=12
       message("Chi sq detected nothing..")
       return()
     }
-    counts=apply(session$userData$dataset$counts[samples,genes,clusters,drop=F],2:3,sum)
+    counts=apply(get_counts_array(session,samples = samples,genes = genes,clusters = clusters),2:3,sum)
     avg=t(t(counts)/colSums(counts))
 
-    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.05&
-      rowSums(session$userData$dataset$umitab[rownames(chisq_res2),cells]>1)>=10&
-      (apply(avg[rownames(chisq_res2),]/(rowSums(counts[rownames(chisq_res2),])/sum(counts)),1,max)>4|
-      apply(avg[rownames(chisq_res2),]/rowMeans(avg[rownames(chisq_res2),]),1,max)>4)
+    mask=rownames(chisq_res2)%in%genes&chisq_res2[,3]<0.01&
+      rowSums(get_umitab(session,cells = cells,genes =rownames(chisq_res2))>1)>=10
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
@@ -501,6 +827,64 @@ tab3_left_margin=12
      
   })
   
+  observeEvent(input$inAddClusterSetButton, {
+    if (is.null(input$clusters_sets_shinytree)){
+      l=list()
+    }
+    else{
+      l=cluster_sets_reactive()
+      l[[input$inAddClusterSet]]=list()
+    }
+    updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(get_nodes(l)))
+    updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(get_nodes(l))))
+  })
+  
+  observeEvent(input$inRemoveClusterSetButton, {
+    if (is.null(input$clusters_sets_shinytree)){
+      return()
+    }
+    l=cluster_sets_reactive()
+    l2=remove_node(l,input$removeClusterSetSelectInput)
+    updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l2))
+    updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(l2))))
+    updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(unlist(get_nodes(l2)))))
+  })
+  
+  observeEvent(input$saveClusterSetButtion,{
+   
+    m=get_edges(cluster_sets_reactive())
+    cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    write.table(file=cluster_set_fn,m,row.names=F,col.names=T,quote=F,sep="\t")
+    message("Cluster-sets were saved to ",cluster_set_fn,".")
+  })
+  
+  observeEvent(input$reloadClusterSetButtion,{
+    cluster_sets_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    if (file.exists(cluster_sets_fn)){
+      a=read.delim(cluster_sets_fn,header=T,stringsAsFactors = F)
+      l=get_cluster_set_tree(a)
+      
+      updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
+      updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(get_nodes(l)))
+      updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(get_nodes(l))))
+    }
+    
+  })
+  
+  observeEvent(input$selectSamples,{
+    #rows_all is ordered as the table
+    
+    samples=intersect(input$mytable_rows_all,input$mytable_rows_selected)
+    
+    samples=as.character(sample_annots_reactive()[samples,"sample_ID"])
+
+      updateTextAreaInput(session,inputId = "inSamplesToShow",value = paste(samples,collapse=", "))
+    
+  })
+  
+  
+  
   chisq_genes=function(counts){
     counts=apply(counts,2:3,sum)
     gene_mask=apply(counts,1,max)>3
@@ -515,13 +899,13 @@ tab3_left_margin=12
   }   
   
   get_genes_to_screen=function(){
+   
     if (input$inSelectGenesFrom=="All genes"){
       pref="All"
-      genes=rownames(session$userData$model$models)
+      genes=get_all_genes(session)
     } else if (input$inSelectGenesFrom=="Without RPs"){
       pref="NoRps"
-      genes=rownames(session$userData$model$models)
-      genes=setdiff(genes,grep("^RP|^Rp",genes,val=T))
+      genes=setdiff(get_all_genes(session),grep("^RP|^Rp",genes,val=T))
     }else if (input$inSelectGenesFrom=="TFs"){
       pref="Tfs"
       genes=tfs
@@ -535,17 +919,18 @@ tab3_left_margin=12
   observeEvent(input$inFC, {
     ggs_res=get_genes_to_screen()
     genes=ggs_res$genes
+    samples=ggs_res$samples
     pref=ggs_res$pref
-    mask=rownames(session$userData$model$umitab)%in%genes
+    mask=get_all_genes(session)%in%genes
     
     clusts_fg=strsplit(input$inFC_fgClusts,",")[[1]]
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
     
-    mask_fg=session$userData$model$cell_to_cluster%in%clusts_fg
-    mask_bg=session$userData$model$cell_to_cluster%in%clusts_bg
+    mask_fg=select_cells(session,samples = samples,clusters=clusts_fg)
+    mask_bg=select_cells(session,samples = samples,clusters=clusts_bg)
     reg=20
-    sfg=reg+rowSums(session$userData$model$umitab[mask,mask_fg])
-    sbg=reg+rowSums(session$userData$model$umitab[mask,mask_bg])
+    sfg=reg+rowSums(get_umitab(session,cells = mask_fg,genes = mask))
+    sbg=reg+rowSums(get_umitab(session,cells = mask_bg,genes = mask))
     fc=(sfg/sum(sfg))/(sbg/sum(sbg))
     
     isolate({
@@ -571,7 +956,7 @@ tab3_left_margin=12
   
   
   observeEvent(input$inResetClusters, {
-     clust_title=paste(session$userData$default_clusters," - ",session$userData$clustAnnots[session$userData$default_clusters],sep="") 
+     clust_title=paste(session$userData$default_clusters," - ",cluster_annots_reactive()[session$userData$default_clusters],sep="") 
     update_clusters(session,session$userData$default_clusters)
     updateSelectInput(session,"inQCClust",choices=clust_title)
     updateSelectInput(session,"inAnnotateClusterNum",choices=clust_title)
@@ -579,10 +964,9 @@ tab3_left_margin=12
   })
   
   observeEvent(input$inSaveClusterOrder, {
-    clusters=clusters_genes_sampples_reactive()$clusters
-   
+    clusters=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
     order_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_order.txt",sep="")
-    if (all(colnames(session$userData$model$models)%in%clusters)){
+    if (all(get_all_clusters(session)%in%clusters)){
       session$userData$default_clusters<-clusters
       write.table(clusters,file=order_fn,quote = F,sep="\t",row.names = F,col.names = F)
       message("Order has been successfully saved.")
@@ -591,90 +975,47 @@ tab3_left_margin=12
     }
   })
   
-  observeEvent(input$inUndoClusterChanges, {
-    update_clusters(session,session$userData$scDissector_params$previous_clusters,T)
-  })
   
-  observeEvent(input$detectDiffExrs, {
-    if (is.null(session$userData$model$models)){
-      return()
-    }
-    clusters=clusters_genes_sampples_reactive()$clusters
-    cell_mask=session$userData$model$cell_to_cluster%in%clusters
-   #tot (=#mols per cluster)
-     tot=sapply(split(colSums(session$userData$model$umitab[rownames(session$userData$model$ds),cell_mask]),session$userData$model$cell_to_cluster[cell_mask][colnames(session$userData$model$umitab)[cell_mask]]),sum)
- 
-    fc=session$userData$model$models[rownames(session$userData$model$ds),]/(rowSums(session$userData$model$ds)/sum(session$userData$model$ds))
-    fc_mask=apply(fc,1,max)>input$inputMinFC&rowMeans(session$userData$model$ds)>input$inMinAvgExprs
-    print(sum(fc_mask))
-    counts=sapply(split(as.data.frame(t(session$userData$model$umitab[rownames(session$userData$model$ds)[fc_mask],cell_mask])),session$userData$model$cell_to_cluster[cell_mask][colnames(session$userData$model$umitab)[cell_mask]]),colSums,na.rm=T)
-  
-    arrcont=array(c(counts,matrix(tot,dim(counts)[1],dim(counts)[2],byrow=T)-counts),dim=c(dim(counts),2))
-    res=t(apply(arrcont,1,function(x){unlist(chisq.test(x)[c("p.value","statistic")])}))
-    rownames(res)=rownames(counts)
-    res=res[!is.na(res[,1]),]
-    res=cbind(res,adjp=p.adjust(res[,1],method="BH"))
-    
-    chisq.res<-res[res[,3]<0.05,]
-    session$userData$chisq.res<-chisq.res[order(chisq.res[,2],decreasing=T),]
-  
-    fdrmask=res[,3]<input$inputFDR
-    names(fdrmask)=rownames(res)
-    
-    signiftab<-log2(2^-20+session$userData$model$models[names(fdrmask),])
-    session$userData$signiftab<-round(signiftab[order(apply(signiftab,1,which.max)),],digits=1)
-    print("done.")
-  })
-  
-  output$downloadSignifTable <- downloadHandler(
-    filename = function() { paste("DiffExprs", '.csv', sep='') },
-    
-    content = function(file) {
-      write.csv(session$userData$signiftab, file)
-    }
-  )
-  outputOptions(output, 'downloadSignifTable', suspendWhenHidden=FALSE)  
-  
-  output$downloadExprsTable <- downloadHandler(
-    filename = function() { paste("Exprs", '.csv', sep='') },
-    content = function(file) {
-      write.csv(session$userData$model$models, file)
-    }
-  )
-  outputOptions(output, 'downloadExprsTable', suspendWhenHidden=FALSE)   
+
+ # output$downloadExprsTable <- downloadHandler(
+#    filename = function() { paste("Exprs", '.csv', sep='') },
+#    content = function(file) {
+#      write.csv(session$userData$model$models, file)
+#    }
+#  )
+#  outputOptions(output, 'downloadExprsTable', suspendWhenHidden=FALSE)   
   
   
-  
-  
-  output$downloadCellCountsTable <- downloadHandler(
-    filename = function() { paste("cell_counts", '.csv', sep='') },
-    
-    content = function(file) { 
-      cellcounts_tab=table(unlist(dataset$cell_to_cluster),rep(names(dataset$cell_to_cluster),sapply(dataset$cell_to_cluster,length)))
-      write.csv(cellcounts_tab, file)
-    }
-  
-  )
-  outputOptions(output, 'downloadCellCountsTable', suspendWhenHidden=FALSE)
   
   observeEvent(input$inOrderClusters, {
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     ingenes=cgs$genes
     
     if (length(ingenes)==0){
       return()
     }
-    mat<-session$userData$model$models[match(ingenes,rownames(session$userData$model$models)),inclusts]
+    mat<-get_models(session,clusters = inclusts,genes=ingenes)
     if (input$inReorderingClustersMethod=="Hierarchical clustering"){
     cormat=cor(mat,use="comp")
     d1=dist(1-cormat)
     d1[is.na(d1)]=100
-    reorderv1=hclust(d1)$order
-    
+  #  reorderv1=hclust(d1)$order
+    reorderv1=get_order(seriate(d1,method="GW_complete"))
     }
     else if (input$inReorderingClustersMethod=="Diagonal"){
       reorderv1=order(apply(mat[ingenes,],2,which.max))
+    }
+    else if (input$inReorderingClustersMethod=="Cluster-sets"){
+      cluster_sets=cluster_sets_reactive()
+      if (is.null(cluster_sets)){
+        reorderv1=1:length(inclusts)
+      }
+      else{
+        x=function(l){if (!is.list(l)){return(l)}; for (i in 1:length(l)){return(sapply(l,x))}}
+        y=function(l){if (!is.list(l)){return(intersect(inclusts,l))}else{sapply(l,y)}}
+        reorderv1=order(match(inclusts,unlist(y(x(cluster_sets)))))
+      }
     }
     else if (input$inReorderingClustersMethod=="Formula"){
       s=input$inOrderClusetersByGenes
@@ -685,7 +1026,6 @@ tab3_left_margin=12
       if (s1!="+"&s1!="-"){
         sig=c("+",sig)
       }
-      #paste(colnames(model$models)[order(-1e6*model$models["Mpo",]+1e6*model$models["Car2",]+1e12*model$models["Hlf",])],collapse = ",")
       score=rep(0,length(inclusts))
       for (i in 1:length(genes)){
         message(sig[i],genes[i])
@@ -695,7 +1035,7 @@ tab3_left_margin=12
       
       reorderv1=order(score)
     }
-    clust_title=paste(inclusts," - ",session$userData$clustAnnots[inclusts],sep="") 
+    clust_title=paste(inclusts," - ",cluster_annots_reactive()[inclusts],sep="") 
     
     update_clusters(session,inclusts[reorderv1])
     updateSelectInput(session,"inQCClust",choices=clust_title[reorderv1])
@@ -703,85 +1043,38 @@ tab3_left_margin=12
   })
   
   
-  observeEvent(input$inBirdDefineClusterSet,{
-    clusts_to_add=strsplit(input$inBirdAddClusters,",| ,|, ")[[1]]
-    if (!all(clusts_to_add%in%colnames(session$userData$model$models))){
-      updateTextInput(session,"inBirdAddClusters","Clusters:",value = paste(clusts_to_add[clusts_to_add%in%colnames(session$userData$model$models)],collapse = ","))  
-      message("Warning! Cluster list contained unknown clusters. Cluster-set was not defined.")
-      return()
-    }
-    intersect_with_defined=intersect(clusts_to_add,unlist(session$userData$scDissector_params$cluster_sets))
-    if (length(intersect_with_defined)>0){
-      message("warning! Cluster list contained clusters that have been already defined as cluster sets: ",paste(intersect_with_defined,collapse=","),". Cluster-set was not defined.")
-      return()
-    }
-    
-    if (input$inBirdAddClusterSetName%in%names(session$userData$scDissector_params$cluster_sets)){
-      message("warning! Name has already been used. Cluster-set was not defined.")
-      return()
-    }
-    
-    session$userData$scDissector_params$cluster_sets[[input$inBirdAddClusterSetName]]<-clusts_to_add
-    updateSelectInput(session,"inBirdRemoveClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-   })
-  
-  observeEvent(input$inBirdUndefineClusterSet,{
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]]=F
-    session$userData$scDissector_params$cluster_sets[[input$inBirdUndefineClusterSetSelect]]<-NULL
-    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdUndefineClusterSetSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(session$userData$scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =session$userData$scDissector_params$excluded_cluster_sets)
-    updateSelectInput(session,"inBirdUndefineClusterSetSelect","Cluster Set",choices =names(session$userData$scDissector_params$cluster_sets)) 
-  })
-  
-  observeEvent(input$inBirdSaveClusterSets,{
-    f=paste(input$inDatapath, session$userData$vers_tab$path[ session$userData$vers_tab$title==session$userData$loaded_model_version],sep="/")
-  
-    clusters_set_tab=data.frame(name=names(session$userData$scDissector_params$cluster_sets),clusters=sapply(session$userData$scDissector_params$cluster_sets,paste,collapse = ","),is_excluded=ifelse(names(session$userData$scDissector_params$cluster_sets)%in%session$userData$scDissector_params$excluded_cluster_sets,"T","F"))
-    clusterset_fn=paste(strsplit(f,"\\.")[[1]][1],"_clustersets.txt",sep="")
-    write.table(file=clusterset_fn,clusters_set_tab,row.names=F,col.names=T,quote=F,sep="\t")
-   
-  })
-  
-  observeEvent(input$inBirdClusterSetExclude,{
-    
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsExcludeSelect]]]<-T
-    session$userData$scDissector_params$excluded_cluster_sets<-unique(c(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsExcludeSelect))
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),session$userData$scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
-    
-  })
-  
-  observeEvent(input$inBirdClusterSetInclude,{
-    
-    session$userData$scDissector_params$is_cluster_excluded[session$userData$scDissector_params$cluster_sets[[input$inBirdClusterSetsIncludeSelect]]]<-F
-    session$userData$scDissector_params$excluded_cluster_sets<-setdiff(session$userData$scDissector_params$excluded_cluster_sets,input$inBirdClusterSetsIncludeSelect)
-    updateSelectInput(session,"inBirdClusterSetsExcludeSelect","Cluster Set",choices =setdiff(names(scDissector_params$cluster_sets),scDissector_params$excluded_cluster_sets))
-    updateSelectInput(session,"inBirdClusterSetsIncludeSelect","Cluster Set",choices =scDissector_params$excluded_cluster_sets)
-  })
+
   
   ###########################################################
+  
+   
+  
+  
+  
   modules_varmean_reactive=reactive({
-    dataset=session$userData$dataset
-    ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
+
+    ds_i=match(input$inModulesDownSamplingVersion,get_ds_options(session))
     
     if (!session$userData$loaded_flag)
     {
       return(data.frame(m=0,v=0,gene=""))
     }
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
-    cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
-    
-    ds_mean<-rowMeans(ds)
+    cell_mask=select_cells(session,cells=get_all_cells(session),clusters = inclusts,samples=insamples)
+    ds=get_dstab(session,cells = cell_mask,ds_version = ds_i)
+ 
+    ds_mean<-Matrix::rowMeans(ds)
     genemask=ds_mean>10^input$inVarMeanXlim[1]&ds_mean<10^input$inVarMeanXlim[2]
     ds=ds[genemask,]
     ds_mean=ds_mean[genemask]
     message("Estimating variance for ",nrow(ds)," genes")
-    ds_var<-apply(ds,1,var)
+    s1=Matrix::rowSums(ds,na.rm=T) 
+    s2=Matrix::rowSums(ds^2,na.rm=T)
+    ds_mean=s1/ncol(ds)
+    m2=s2/ncol(ds)
+    ds_var=m2-ds_mean^2
     df=data.frame(m=ds_mean,v=ds_var,gene=rownames(ds))
     rownames(df)=names(ds_mean)
     return(df)
@@ -801,6 +1094,19 @@ tab3_left_margin=12
     b=b[!maskinf]
     lo=loess(z~b)
     return(lo)
+  })
+  
+  sample_to_category<-reactive({
+    samps=samples_reactive()
+    if (input$categorizeSamplesBy==""){
+      v=samps
+      names(v)=as.character(samps)
+    }
+    else{
+      v=session$userData$sample_annots[samps,input$categorizeSamplesBy]
+      names(v)=as.character(samps)
+    }
+    return(v)
   })
   
   
@@ -850,19 +1156,15 @@ tab3_left_margin=12
       return()
     }
     input$inModulesGetCormap
-    #inclusts=clusters_genes_sampples_reactive()$clusters
-    #insamples=clusters_genes_sampples_reactive()$samples
-    dataset=session$userData$dataset
-    #cell_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster%in%inclusts&dataset$cell_to_sample%in%insamples]
-    
-    cell_mask=cells_reactive()
-    ds_i=match(input$inModulesDownSamplingVersion,dataset$ds_numis)
-    #  ds=dataset$ds[[ds_i]][,dataset$randomly_selected_cells[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]]]
-    ds=dataset$ds[[ds_i]][,intersect(cell_mask,sample_cells_reactive()[[ds_i]][[match("All",params$nrandom_cells_per_sample_choices)]])]
+     
+    isolate({
+      cell_mask=cells_reactive()
+      ds_i=match(input$inModulesDownSamplingVersion,get_ds_options(session))
+    })
+      ds= get_dstab(session,cells = cell_mask,ds_version = ds_i)
     
     message("calculating gene-to-gene correlations..")
-    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],dataset$cell_to_sample[colnames(ds)])
-  #  cormat=cor(as.matrix(t(log2(.1+ds[names(which(geneModuleMask_reactive())),]))),use="comp")
+    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)))
     return(cormat)
   })
   
@@ -891,7 +1193,7 @@ tab3_left_margin=12
     
   })
  
-  
+ 
   output$textModuleGenes<- renderText({
     modsl=gene_to_module_reactive()
     if (!is.null(modsl)){
@@ -913,73 +1215,87 @@ tab3_left_margin=12
   
   ###########################################################
   
+  output$mytable = DT::renderDataTable({
+    tab=sample_annots_reactive()
+   # v=sprintf(
+  #    '<input type="checkbox" name="%s" value="%s"/>',
+  #    1:nrow(tab), T)
+    if (is.null(tab)){
+      removeUI("#selectAllSamples",immediate = T)
+      removeUI("#selectSamples",immediate = T)
+      removeUI("#mytable",immediate = T)
+      return()
+    }
+    DT::datatable(tab,filter = "top",options = list(pageLength = 50),rownames = F,escape=F,selection=list(mode = 'multiple', selected =1:nrow(tab)))
+    
+  })
+  
+  
+ 
+  
+  
   output$ncells_barplot <-renderPlot({
     input$inModelVer
-    clusters=clusters_genes_sampples_reactive()$clusters
-    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
-    ncells=table(session$userData$model$cell_to_cluster[cells])[clusters]
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    clusters=cgs$clusters
+    samples=cgs$samples
+    cells=select_cells(session,clusters = clusters,samples = samples)
+    ncells=table(get_cell_to_cluster(session,cells =cells))[clusters]
     par(mar=c(1,7,2,2))
-    barplot(ncells,xaxs = "i",log="y",ylab="#cells",names.arg ="")
+    ylim=c(1,10^ceiling(log10(max(ncells,na.rm=T))))
+    barplot(ncells,xaxs = "i",log="y",ylab="#cells",names.arg ="",ylim=ylim)
   })
   
   output$UMI_boxplot <- renderPlot({
     input$inModelVer
     par(xaxs="i")
-    clusters=clusters_genes_sampples_reactive()$clusters
-    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    clusters=cgs$clusters
+    samples=cgs$samples
+    cells=select_cells(session,clusters = clusters,samples = samples)
     par(mar=c(2,7,1,2))
-    cells=intersect(cells,colnames(session$userData$model$umitab))
-    boxplot(split(log10(colSums(session$userData$model$umitab[,cells])),session$userData$model$cell_to_cluster[cells])[clusters],las=2,ylab="log10(#UMIs)")
-  })
-  
-  output$BatchHeatmap <- renderPlot({
-    clusters=clusters_genes_sampples_reactive()$clusters
-    cells=names(session$userData$model$cell_to_cluster)[session$userData$model$cell_to_cluster%in%clusters]
-     if(length(unique(session$userData$model$cell_to_batch[cells]))==1){
-      return()
-     }
-    if (is.null(unique(session$userData$model$cell_to_batch[cells]))){
-      return(NULL)
-    }
-    obs=table(session$userData$model$cell_to_cluster[cells],session$userData$model$cell_to_batch[cells])[clusters,]
-    cs=colSums(obs)
-    rs=rowSums(obs)
-    expected=(matrix(cs,nrow(obs),ncol(obs),byrow=T)/sum(cs))*rs
-    reg=5
-    logr=log2((reg+obs)/(reg+expected))
-    par(mar=c(10,7,4,2))
-    
-   # sort(apply(obs,1,function(x){chisq.test(x,simulate.p.value = 1000)$p.value}))
-    image(logr[,ncol(logr):1],col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=c(-100,seq(-2,2,l=99),100),main="Batch enrichment")
-    mtext(text = session$userData$clustAnnots[rownames(logr)],side = 1,at = seq(0,1,l=dim(logr)[1]),las= 2,cex=1)
-    # mtext(text =paste(" ",colnames(mat1),sep=""), side=2, at=seq(1-(yusr[2]-1),-1*yusr[1],l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =colnames(logr), side=2,  at=seq(1,0,l=dim(logr)[2]),las=2,cex=1)
-    #print(obs)
-    box()
+    u=get_umitab(session,cells = cells)
+    boxplot(split(log10(colSums(u)),get_cell_to_cluster(session,cells=cells))[clusters],las=2,ylab="log10(#UMIs)")
   })
   
  
   output$gaiting_plots_dynamic <- renderUI({
-    if (!is.null(session$userData$dataset$insilico_gating_scores)){
-      nplots=length(session$userData$dataset$insilico_gating_scores)
+    insilico_gating_scores=get_insilico_gating_scores(session)
+    if (!is.null(insilico_gating_scores)){
+      nplots=length(insilico_gating_scores)
       he=max(c(500,500*nplots,na.rm=T))
       plotOutput("gating_plots", width = "100%", height = he)
     }
   })
   
+  output$subtype_freqs <- renderUI({
+    cluster_sets=vis_freqs_cluster_sets_reactive()
+    cluster_sets_length=sapply(cluster_sets_reactive(),length)[cluster_sets]
+    cluster_sets=cluster_sets[pmax(cluster_sets_length,0,na.rm=T)>1]
+    if(is.null(cluster_sets)){
+      return()
+    }
+
+    if (length(cluster_sets)>0){
+      he=300*length(cluster_sets)
+      plotOutput("subtype_freqs_barplots", width = "100%", height = he)
+    }
+  })
   
   output$gating_plots <- renderPlot({
-    nplots=length(session$userData$dataset$insilico_gating_scores)
+    clustering_params=get_clustering_params(session)
+    insilico_gating_scores=get_insilico_gating_scores(session)
+    nplots=length(insilico_gating_scores)
     samp=input$inGatingSample
-    numis=session$userData$dataset$numis_before_filtering[[samp]]
+    numis=get_numis_before_filtering(session,samp)
     clust=strsplit(input$inGatingShowClusters," ")[[1]][1]
-    cell_to_cluster=session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_sample==samp]
+    cell_to_cluster=get_cell_to_cluster(session,cells=select_cells(session,samples=samp))
     layout(matrix(1:(nplots),nplots,1))
     for (i in 1:nplots){
-      mask=intersect(names(numis),names(session$userData$dataset$insilico_gating_scores[[i]]))
-      plot(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(session$userData$model$params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
-      points(numis[mask],session$userData$dataset$insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
-      rect(xleft = session$userData$dataset$min_umis,session$userData$model$params$insilico_gating[[i]]$interval[1],session$userData$dataset$max_umis,session$userData$model$params$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
+      mask=intersect(names(numis),names(insilico_gating_scores[[i]]))
+      plot(numis[mask],insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(clustering_params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
+      points(numis[mask],insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
+      rect(xleft = get_min_umis(session),clustering_params$insilico_gating[[i]]$interval[1],get_max_umis(session),clustering_params$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
     }
 
    
@@ -987,7 +1303,7 @@ tab3_left_margin=12
   
   
   output$samples_enrichment <- renderUI({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
     he=max(c(500,12*length(inclusts)),na.rm=T)
@@ -998,7 +1314,7 @@ tab3_left_margin=12
   })
   
   output$cluster_sizes<-renderUI({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     he=max(c(500,12*length(inclusts)),na.rm=T)
     plotOutput("cluster_sizes_plot",height=he)
@@ -1006,7 +1322,7 @@ tab3_left_margin=12
   
   
   output$avg_profile_plot <- renderUI({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
     he=max(c(500,12*length(inclusts)),na.rm=T)
@@ -1022,7 +1338,7 @@ tab3_left_margin=12
   
   
   output$avg_module_plot <- renderUI({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     he=max(c(500,12*length(inclusts)),na.rm=T)
     plotOutput("avg_heatmap_modules", width = "100%", height = he)
@@ -1066,14 +1382,15 @@ tab3_left_margin=12
 
   output$modulecor_heatmap_modules <- renderPlot({
     modsl=gene_to_module_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     if (is.null(modsl)){
      return()
     }
-    ds_i=match(input$inModulesDownSamplingVersion,session$userData$dataset$ds_numis)
+    ds_i=match(input$inModulesDownSamplingVersion,get_ds_options(session))
 
     mods=rep(1:length(modsl),sapply(modsl,length))
     names(mods)=unlist(modsl)
-    modsums=aggregate(session$userData$dataset$ds[[ds_i]][names(mods),],groupings=mods,fun="sum")
+    modsums=aggregate(get_dstab(session,ds_version = ds_i,genes = names(mods),cells=select_cells(session = session,clusters = cgs$clusters,samples = cgs$samples)),groupings=mods,fun="sum")
     cormat=cor(t(as.matrix(modsums)))
     zbreaks=c(-1,seq(-1,1,l=99),1)
     cor_cols=colorRampPalette(c("blue","white","red"))(100)
@@ -1089,46 +1406,44 @@ tab3_left_margin=12
   })
   
   output$sample_avg_profile_plot <- renderUI({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     insamples=cgs$samples
     he=max(c(300,12*length(insamples)),na.rm=T)
     plotOutput("avg_heatmap_samples", width = "100%", height = he)
   })
   
   
-
-  output$projection_barplot_plot <- renderUI({
-    cgs=clusters_genes_sampples_reactive()
-    inclusts=cgs$clusters
-    he=max(c(500,12*length(inclusts)),na.rm=T)
-    plotOutput("projection_barplot",width="100%",height=he)
-  })
-  
-          
  
   
   output$samples_enrichment_plot <- renderPlot({
-    cgs=clusters_genes_sampples_reactive()
-    sample_cols=sample_colors_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    
+#    sample_cols=sample_colors_reactive()
     inclusts=cgs$clusters
     insamples=cgs$samples
+    samp_to_cat=sample_to_category()[insamples]
+    cats=as.character(unique(samp_to_cat))
+    cat_cols= session$userData$sample_colors[1:length(cats)]
+    names(cat_cols)=cats
+    sample_cols=cat_cols[as.character(samp_to_cat)]
     par(mar=c(7,0,1.6,0))
-    tab=matrix(0,ncol(session$userData$model$models),length(session$userData$dataset$samples))
-    rownames(tab)=colnames(session$userData$model$models)
-    colnames(tab)=session$userData$dataset$samples
-    tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
+    tab=matrix(0,length(get_all_clusters(session)),length(get_loaded_samples(session)))
+    rownames(tab)=get_all_clusters(session)
+    colnames(tab)=get_loaded_samples(session)
+    cells=select_cells(session,clusters =inclusts,samples = insamples)
+    tmptab=table(get_cell_to_cluster(session,cells=cells),get_cell_to_sample(session,cells = cells))
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
     tab=tab[,insamples,drop=F]
     tab=t(t(tab)/colSums(tab))
-    tab=(tab/rowSums(tab))[inclusts,]
+    tab=(tab/rowSums(tab))[inclusts,,drop=F]
     
- #   barplot(t(tab[nrow(tab):1,]),col=sample_cols[match(insamples,session$userData$dataset$samples)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
-    barplot(t(tab[nrow(tab):1,]),col=sample_cols,horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+ #   barplot(t(tab[nrow(tab):1,]),col=sample_cols[match(insamples,get_loaded_samples(session))],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
+    barplot(t(tab[nrow(tab):1,,drop=F]),col=sample_cols,horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
     
   })
   
   output$cluster_sizes_plot <- renderPlot({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
     if (input$inModelOrAverage=="Model"){
@@ -1136,7 +1451,7 @@ tab3_left_margin=12
     }
     else{
       tab=session$userData$ncells_per_cluster*0
-      tmp_tab=table(session$userData$dataset$cell_to_cluster[session$userData$dataset$cell_to_sample%in%insamples])
+      tmp_tab=table(get_cell_to_cluster(session,select_cells(session,samples=insamples)))
       tab[names(tmp_tab)]=tmp_tab
     }
     precentage=100*tab[inclusts]/sum(tab[setdiff(names(tab),session$userData$scDissector_params$excluded_clusters)])
@@ -1145,82 +1460,7 @@ tab3_left_margin=12
     barplot(rev(precentage),horiz=T,border=F,col="gray",xaxs="i",xlab="Cells ( % )",cex.axis = .8)
   })
   
-  
-  # A reactive expression with the ggvis plot
-  output$avg_heatmap <- renderPlot({
-  ##### Don't delete!!
-    input$inAnnotateCluster
-    input$inModelVer
-    input$inBirdClusterSetExclude
-    input$inBirdClusterSetInclude
-  #####
-    sample_cols=sample_colors_reactive()
-    cgs=clusters_genes_sampples_reactive()
-    inclusts=cgs$clusters
-    ingenes=cgs$genes
-    insamples=cgs$samples
-     if (!session$userData$loaded_flag){
-      return()
-    }
-  
-    # Lables for axes
-    if (length(ingenes)==0){
-        return()
-    }
-    if (length(inclusts)==0){
-      return()
-    }
 
-    zlim=input$inModelColorScale
-
-    if (length(insamples)>1&(length(inclusts)>1)){
-      layout(matrix(1:2,1,2),widths=c(1,10))
-      par(mar=c(7,1,1,.1))
-      tab=matrix(0,ncol(session$userData$model$models),length(session$userData$dataset$samples))
-      rownames(tab)=colnames(session$userData$model$models)
-      colnames(tab)=session$userData$dataset$samples
-      tmptab=table(session$userData$dataset$cell_to_cluster,session$userData$dataset$cell_to_sample)
-      tab[rownames(tmptab),colnames(tmptab)]=tmptab
-      tab=t(t(tab)/colSums(tab))
-      tab=(tab/rowSums(tab))[inclusts,]
-      barplot(t(tab[nrow(tab):1,]),col=sample_cols[1:ncol(tab)],horiz =T,yaxs = "i",names.arg=NULL,main="Samples",axes=F)
-    }
-    par(mar=c(7,tab3_left_margin,1,9))
-    if (input$inModelOrAverage=="Model"){
-      gene_match=match(ingenes,rownames(session$userData$model$models))
-      ingenes=ingenes[!is.na(gene_match)]
-      gene_match=gene_match[!is.na(gene_match)]
-      mat<-session$userData$model$models[gene_match,]
-    }
-    else {
-      gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
-      ingenes=ingenes[!is.na(gene_match)]
-      gene_match=gene_match[!is.na(gene_match)]
-      mat<-apply(session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F],2:3,sum)
-
-      if (input$inModelOrAverage=="Batch-corrected Average"){
-        if (!is.null(session$userData$dataset$noise_counts)){
-          mat_noise=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]*arr_weights,2:3,sum)
-          mat<-pmax(mat-mat_noise,0)
-        }
-      }
-      rownames(mat)=ingenes
-      mat<-t(t(mat)/colSums(mat,na.rm=T))
-    }
-    isolate({
-    mat1=mat[,inclusts,drop=F]
-    abs_or_rel=input$inAbsOrRel
-    }) 
-    main_title=paste(input$inModelOrAverage,":",session$userData$loaded_model_version)
-    genes=rownames(mat1)
-    gene.cols=session$userData$gcol[toupper(rownames(mat1))]
-    clusters=colnames(mat1)
-    clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
-    annots=session$userData$clustAnnots[inclusts]
-    plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel)
-  
-  })
-  
   
 
   
@@ -1233,12 +1473,12 @@ tab3_left_margin=12
       input$inBirdClusterSetExclude
       input$inBirdClusterSetInclude
       #####
-      
-      cgs=clusters_genes_sampples_reactive()
-      
+      cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
       inclusts=cgs$clusters
       ingenes=cgs$genes
       insamples=cgs$samples
+      
+      
       if (!session$userData$loaded_flag){
         return()
       }
@@ -1250,44 +1490,39 @@ tab3_left_margin=12
       if (length(inclusts)==0){
         return()
       }
-      
       zlim=input$inModelColorScale
       par(mar=c(7,tab3_left_margin,1,9))
-      if (input$inModelOrAverage=="Model"){
-        gene_match=match(ingenes,rownames(session$userData$model$models))
-        ingenes=ingenes[!is.na(gene_match)]
-        gene_match=gene_match[!is.na(gene_match)]
-        mat<-session$userData$model$models[gene_match,inclusts,drop=F]
+      if (input$inModelOrAverage=="Model parameters"){
+        mat<-get_models(session,genes=ingenes,clusters = inclusts)
       }
       else {
-        ncells_per_sample=table(session$userData$dataset$cell_to_sample)
-        gene_match=match(ingenes,dimnames(session$userData$dataset$counts)[[2]])
-        ingenes=ingenes[!is.na(gene_match)]
-        gene_match=gene_match[!is.na(gene_match)]
-       
-        weights=ncells_per_sample[insamples]/sum(ncells_per_sample[insamples])
-        arr_weights=array(weights,dim=c(length(insamples),length(gene_match),length(inclusts)))
-        numis_per_clust_mat=apply(session$userData$dataset$counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
-        numis_per_clust_arr=aperm(array(numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
-    #    mat=t(t(mat)/numis_per_clust)
-
+        ncells_per_sample=table(get_cell_to_sample(session))[insamples]
+        counts=get_counts_array(session,samples = insamples,genes = ingenes,clusters = inclusts)
+        weights=ncells_per_sample/sum(ncells_per_sample)
+        arr_weights=array(weights,dim=c(length(insamples),length(ingenes),length(inclusts)))
+        numis_per_clust_mat=apply(counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
+        numis_per_clust_arr=aperm(array(numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(ingenes))),c(1,3,2))
+        
         if (input$inModelOrAverage=="Batch-corrected Average"){
-          if (!is.null(session$userData$dataset$noise_counts)){
+          noise_counts=get_noise_counts_array(session,samples = insamples,genes = ingenes,clusters = inclusts)
+          if (!is.null(noise_counts)){
             
-            counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]-session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F]
+            counts=counts-noise_counts
             counts<-pmax(counts,0)
             
-            noise_numis_per_clust_mat=apply(session$userData$dataset$noise_counts[insamples,gene_match,inclusts,drop=F],c(1,3),sum,na.rm=T)
-            noise_numis_per_clust_arr=aperm(array(noise_numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(gene_match))),c(1,3,2))
+            noise_numis_per_clust_mat=apply(noise_counts,c(1,3),sum,na.rm=T)
+            noise_numis_per_clust_arr=aperm(array(noise_numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(ingenes))),c(1,3,2))
             numis_per_clust_arr=pmax(numis_per_clust_arr-noise_numis_per_clust_arr,0)
             
           }
-        }else{
-          counts=session$userData$dataset$counts[insamples,gene_match,inclusts,drop=F]
         }
-        mat=avg_per_sample_cluster=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
+        mat=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
         rownames(mat)=ingenes
       }
+      if (min(dim(mat))==0){
+        return()
+      }
+      
       isolate({
         mat1=mat
         abs_or_rel=input$inAbsOrRel
@@ -1298,8 +1533,9 @@ tab3_left_margin=12
       gene.cols=session$userData$gcol[toupper(rownames(mat1))]
       clusters=colnames(mat1)
       clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
-      annots=session$userData$clustAnnots[inclusts]
+      annots=cluster_annots_reactive()[inclusts]
       return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,session$userData$modelColorGrad))
+      # plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,reg=1e-6,colgrad =session$userData$modelColorGrad)
   })
   
   module_counts_reactive<-reactive({
@@ -1312,9 +1548,9 @@ tab3_left_margin=12
       return()
     }
     
-    counts=apply(session$userData$dataset$counts[samps,,,drop=F],2:3,sum)
-    
-    return(t(sapply(modsl,function(modi){colSums(counts[modi,,drop=F])})/colSums(counts)))
+    counts=apply(get_counts_array(session,samples=samps),2:3,sum)
+    totnumis=colSums(counts)
+    return(t(sapply(modsl,function(modi){colSums(counts[modi,,drop=F])})/totnumis))
   
     
   })
@@ -1325,7 +1561,7 @@ tab3_left_margin=12
     
     #####
     
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
     inmodules=modules_reactive()
@@ -1369,17 +1605,17 @@ tab3_left_margin=12
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
     mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
-    mtext(text =paste(session$userData$clustAnnots[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(cluster_annots_reactive()[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
   
   output$avg_heatmap_samples <- renderPlot({
-    cgs=clusters_genes_sampples_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     ingenes=cgs$genes
     insamples=cgs$samples
 
-    print(insamples)
+
     if (!session$userData$loaded_flag){
       return()
     }
@@ -1392,7 +1628,7 @@ tab3_left_margin=12
     zlim=input$inSamplesColorScale
     
     par(mar=c(7,7,1,9))
-    mat1=t(apply(session$userData$dataset$counts[insamples,ingenes,inclusts],1:2,sum))
+    mat1=t(apply(get_counts_array(session,samples=insamples,genes = ingenes,clusters = inclusts),1:2,sum))
     mat1=t(t(mat1)/colSums(mat1))
       if (ncol(mat1)>1){
         mat_to_show=log2(1e-5+mat1/pmax(1e-5,rowMeans(mat1,na.rm=T)))
@@ -1404,7 +1640,7 @@ tab3_left_margin=12
       }
 
     isolate({
-      if (length(inclusts)==ncol(session$userData$model$models)){
+      if (length(inclusts)==length(get_all_clusters(session))){
         clusters_string="All Cells"
       }
       else{
@@ -1456,11 +1692,18 @@ tab3_left_margin=12
   
   plot_truth_heatmap_wrapper=function(){
     zlim=input$inTruthColorScale
-    sample_cols=sample_colors_reactive()
-    cgs=clusters_genes_sampples_reactive()
+    #sample_cols=sample_colors_reactive()
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     ingenes=cgs$genes
     insamples=cgs$samples
+    score_genes=init_genes(input$inGenesScore)
+    reverse_score_order=input$inScoreReverseOrder
+    samp_to_cat=sample_to_category()[insamples]
+    cats=as.character(unique(samp_to_cat))
+    cat_cols= session$userData$sample_colors[1:length(cats)]
+    names(cat_cols)=cats
+    sample_cols=cat_cols[as.character(samp_to_cat)]
     nclust=length(inclusts)
     if (!session$userData$loaded_flag){
       return()
@@ -1471,15 +1714,19 @@ tab3_left_margin=12
     }
 
     samps_cl=list() 
-    ds=session$userData$dataset$ds[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]]
-    
-    cells_per_sample=as.numeric(input$inTruthNcellsPerSample)
+    ds=get_dstab(session,ds_version = match(input$inTruthDownSamplingVersion,get_ds_options(session)))
+    cells_per_sample=as.numeric(input$inTruthNcellsPer)
     genes=intersect(ingenes,rownames(ds))
-    cells_selected=sample_cells_reactive()[[match(input$inTruthDownSamplingVersion,session$userData$dataset$ds_numis)]][[match(input$inTruthNcellsPerSample,params$nrandom_cells_per_sample_choices)]]
-    cell_mask=session$userData$dataset$cell_to_cluster[colnames(ds)]%in%inclusts & 
-    session$userData$dataset$cell_to_sample[colnames(ds)]%in%insamples &colnames(ds)%in%cells_selected
+    if (input$inTruthEqualRepresent=="equally_represent_samples"){
+      cells_selected=sample_cells_by_sample_reactive()[[match(input$inTruthDownSamplingVersion,get_ds_options(session))]][[input$inTruthNcellsPer]]
+    }
+    else {
+      cells_selected=sample_cells_by_cluster_reactive()[[match(input$inTruthDownSamplingVersion,get_ds_options(session))]][[input$inTruthNcellsPer]]
+      
+    }
+    cell_mask=select_cells(session,cells = cells_selected,clusters = inclusts,samples = insamples)
     ds=ds[,cell_mask]
-    plot_truth_heatmap(ds,session$userData$dataset$cell_to_sample[colnames(ds)],session$userData$dataset$cell_to_cluster[colnames(ds)],insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars)
+    plot_truth_heatmap(ds,get_cell_to_sample(session,cells=colnames(ds)),get_cell_to_cluster(session,cells=colnames(ds)),insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars,score_genes=score_genes,reverse_score_order=reverse_score_order)
 
   }
   
@@ -1489,19 +1736,16 @@ tab3_left_margin=12
     varmean_reactive <- reactive({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       samples=samples_reactive()
-      if (is.null(session$userData$dataset)){
+      if (!dataset_exists(session)){
         return(data.frame(m=0,varmean=0,gene=""))
       }
-      dataset=session$userData$dataset
-
-      ds=dataset$ds[[match(input$inQCDownSamplingVersion,dataset$ds_numis)]]
-      cluster_mask=names(dataset$cell_to_cluster)[dataset$cell_to_cluster==clust]
-      ds=ds[,intersect(colnames(ds),cluster_mask),drop=F]
-
+    
+      ds=get_dstab(session,cells = select_cells(session,cluster=clust,samples=samples),ds_version = match(input$inQCDownSamplingVersion,get_ds_options(session)))
+      
       if (is.null(ds))(return(data.frame(m=0,varmean=0,gene=0)))
       if (ncol(ds)<2)(return(data.frame(m=0,varmean=0,gene=0)))
       
-      m=rowMeans(ds)
+      m=Matrix::rowMeans(ds)
       logm=log10(m)
       mask1=logm>input$mean[1]&logm<input$mean[2]
       v=apply(ds[mask1,],1,var)
@@ -1514,36 +1758,88 @@ tab3_left_margin=12
     
     
     output$modelSampleLegend <- renderPlot({
-    
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
-      par(mar=c(0,0,0,0))
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
+       par(mar=c(0,0,0,0))
       plot.new()
-      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
-      if(length(leg)==0){
-        leg=rep("",length(insamples))
-      }
-      ncol=ceiling(length(insamples)/10)
-      leg[is.na(leg)]=insamples[is.na(leg)]
-      leg[leg==""]=insamples[leg==""]
-   #   legend("topleft",pch=15,col=sample_cols[match(insamples,session$userData$dataset$samples)],legend=leg,cex=1,xpd=T,ncol=ncol)
-      legend("topleft",pch=15,col=sample_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
+         leg=names(cat_cols)
+       if(length(leg)==0){
+          leg=rep("",length(cat_cols))
+        }
+        ncol=ceiling(length(cat_cols)/10)
+        leg[is.na(leg)]=cat_cols[is.na(leg)]
+        leg[leg==""]=cat_cols[leg==""]
+        legend("topleft",pch=15,col=cat_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
     })
     
     
     output$truthSampleLegend <- renderPlot({
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
       par(mar=c(0,0,0,0))
       plot.new()
-      leg=session$userData$samples_tab[match(insamples,session$userData$samples_tab$index),"title"]
+      leg=names(cat_cols)
       if(length(leg)==0){
-        leg=rep("",length(insamples))
+        leg=rep("",length(cat_cols))
       }
-      ncol=ceiling(length(insamples)/10)
-      leg[is.na(leg)]=insamples[is.na(leg)]
-      legend("topleft",pch=15,col=sample_cols[1:length(insamples)],legend=leg,cex=1,xpd=T,ncol=ncol)
+      ncol=ceiling(length(cat_cols)/10)
+      leg[is.na(leg)]=cat_cols[is.na(leg)]
+      leg[leg==""]=cat_cols[leg==""]
+      legend("topleft",pch=15,col=cat_cols,legend=leg,cex=1,xpd=T,ncol=ncol)
     })
+    
+    
+    output$subtype_freqs_barplots <- renderPlot({
+      insamples=samples_reactive()
+
+      cluster_sets=cluster_sets_reactive()
+      cluster_set_names=vis_freqs_cluster_sets_reactive()
+      freq_norm=normalize_by_clusterset_frequency(get_cell_to_cluster(session),get_cell_to_sample(session),insamples,cluster_sets,pool_subtype = T,reg = 0.00)
+
+      celltypes=intersect(cluster_set_names,names(freq_norm)[(!sapply(freq_norm,is.null))])
+      celltypes=celltypes[sapply(freq_norm[celltypes],ncol)>1]
+      layout(matrix(1:(length(celltypes)*2),length(celltypes),2,byrow = T))
+      par(mar=c(8,6,2,1))
+      for (cluster_set_name in celltypes){
+        plot_subtype_freqs(freq_norm,cluster_set_name,plot_legend = T,cex.names=1.5,cex.axis=1.5,cex.legend=1.5,cluster_set_name=cluster_set_name)
+      }
+      
+    })
+    
+   output$correlation_betwen_clusters <-renderPlot({
+
+     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    cluster_sets=cluster_sets_reactive()
+     if (is.null(cluster_sets)){
+       return()
+     }
+      inclusters=rev(unlist(cluster_sets))
+    
+     models=get_models(session,clusters=inclusters)
+     gene_mask=apply(models,1,max)>5e-5
+     m=log2(1e-5+models[gene_mask,])
+     m=m-rowMeans(m)
+     cormat=cor(m)
+  #   d=as.dist(1-cormat)
+  #   order=seriate(d,method = "GW")
+  #   ord=get_order(order)
+     
+     image(cormat,col=colorRampPalette(c("blue","white","red"))(100),axes=F,breaks=seq(-1,1,l=101))
+     box(lwd=2)
+     mtext(rownames(cormat),1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.8,line =.5)
+     mtext(rownames(cormat),2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.8,line =.5)
+   })
+    
+    output$clusters_sets_shinytree <- renderTree({
+      return(as_list_recursive(session$userData$cluster_sets))
+    })
+    
     
     # Function for generating tooltip text
     gene_tooltip <- function(x) {
@@ -1562,7 +1858,7 @@ tab3_left_margin=12
     
     
     
-    if (exists("default_model_dataset")){
+    if (exists(".scDissector_preloaded_data")){
       
       hideTab(inputId = "inMain", target = "Data")
     }
@@ -1584,7 +1880,6 @@ tab3_left_margin=12
       # but since the inputs are strings, we need to do a little more work.
       #   xvar <- prop("x", as.symbol(input$xvar))
       #    yvar <- prop("y", as.symbol(input$yvar))
-      dataset=session$userData$dataset
       varmean_reactive %>%
         ggvis(x = ~m, y = ~varmean) %>%
         layer_points(size := 50, size.hover := 200,
@@ -1609,9 +1904,14 @@ tab3_left_margin=12
     output$cellcor<-renderPlot({
       clust=strsplit(input$inQCClust," - ")[[1]][1]
       insamples=samples_reactive()
-      sample_cols=sample_colors_reactive()
-      ds=ds_QC_reactive()
-      dataset=session$userData$dataset
+      samp_to_cat=sample_to_category()[insamples]
+      cats=unique(samp_to_cat)
+      cat_cols= session$userData$sample_colors[1:length(cats)]
+      names(cat_cols)=cats
+      sample_cols=cat_cols[samp_to_cat]
+
+      
+      ds=get_dstab(session,cells=ds_cells_QC_reactive(),ds_version = match(input$inQCDownSamplingVersion,get_ds_options(session)))
       if (is.null(ds)){
         return()
       }
@@ -1620,8 +1920,13 @@ tab3_left_margin=12
         return()
       }
 
-      v=apply(ds,1,var)
-      m=rowMeans(ds)
+      s1=Matrix::rowSums(ds,na.rm=T) 
+      s2=Matrix::rowSums(ds^2,na.rm=T)
+      ds_mean=s1/ncol(ds)
+      m2=s2/ncol(ds)
+      ds_var=m2-ds_mean^2
+      m=ds_mean
+      v=ds_var
       genemask=rownames(ds)[m>1e-1]
       var_genes=head(genemask[order(v[genemask]/m[genemask],decreasing=T)],200)
       z=ds[var_genes,]
@@ -1630,10 +1935,11 @@ tab3_left_margin=12
       cormat=cor(as.matrix(z),use="comp")
  
       ord=hclust(dist(1-cormat))$order
-      samps=dataset$cell_to_sample[colnames(cormat)[ord]]
+      samps=get_cell_to_sample(session,cells=colnames(cormat)[ord])
       layout(matrix(c(1:6),nrow = 3),heights = c(8,1,1),widths=c(9,1))
       par(mar=c(.5,2,2,2))
-      image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F,main=paste("Cluster",clust,": ",ncol(cormat),"/",sum(dataset$cell_to_cluster==clust),"cells"))
+      ntotcells=length(select_cells(session,clusters = clust,samples = insamples))
+      image(cormat[ord,ord],col=greenred(100),breaks=c(-1,seq(-1,1,l=99),1),axes=F,main=paste("Cluster",clust,": ",ncol(cormat),"/",ntotcells,"cells"))
       lab=paste("Single-cells (cluster ",clust,")",sep="")
 
       
@@ -1685,19 +1991,20 @@ tab3_left_margin=12
     output$gene1 <- renderText({ input$inGene1})  
    
     output$table <- renderTable({
+      insamples=samples_reactive()
       if (!session$userData$loaded_flag){
         return()
       }
       clust=strsplit(input$inQCClust," - ")[[1]][1]
-      dataset=session$userData$dataset
-      ds=ds_QC_reactive()
+      ds=get_dstab(session,cells=select_cells(session,clusters = clust,samples = insamples),ds_version = match(input$inQCDownSamplingVersion,get_ds_options(session)))
+      
       if (ncol(ds)==0){
         return()
       }
-      mask=dataset$cell_to_cluster[colnames(ds)]%in%clust
+
       flag=sum(c(input$inGene1,input$inGene2)%in%rownames(ds))==2
       if (flag){
-        dat=floor(log2(1+data.frame(t(as.matrix(ds[c(input$inGene1,input$inGene2),mask])))))
+        dat=floor(log2(1+data.frame(t(as.matrix(ds[c(input$inGene1,input$inGene2),])))))
         tab=table(dat)
         x=matrix(0,1+max(dat[,1],na.rm=T),1+max(dat[,2],na.rm=T))
         rownames(x)=0:(nrow(x)-1)
@@ -1712,215 +2019,22 @@ tab3_left_margin=12
       x
     },rownames=T,colnames=T,width=18)
     
-
     
-    output$projection_barplot=renderPlot({
-      ##### Don't delete!!
-      #####
-      
-      cgs=clusters_genes_sampples_reactive()
-      inclusts=cgs$clusters
-      ingenes=cgs$genes
-      insamples=cgs$samples
-      
-      dataset=session$userData$dataset
-     
-      samples1=as.list(strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]])
-      samples2=as.list(strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]])
-      if (!is.null(session$userData$sample_sets)){
-        samples1[!(samples1%in%insamples)]=session$userData$sample_sets[unlist(samples1[!samples1%in%insamples])]
-        samples2[!(samples2%in%insamples)]=session$userData$sample_sets[unlist(samples2[!samples2%in%insamples])]
-      }
-      samples1=unlist(samples1)
-      samples2=unlist(samples2)
-      
-      if (is.null(samples1)||is.null(samples2)){
-        return()
-      }
-      if (!(all(samples1%in%insamples)&&all(samples2%in%insamples))){
-        return()
-      }
-      if (is.null(dataset)){
-        return()
-      }
-      full_table=function(cell_to_cluster,clusters){
-        tab=rep(0,length(clusters)+1)
-        names(tab)=c("-1",clusters)
-        tab2=table(cell_to_cluster)
-        mask=intersect(names(tab2),clusters)
-        tab[mask]=tab2[mask]
-        tab["-1"]=sum(tab2[setdiff(names(tab2),clusters)])
-        return(tab)
-      }
-      tab1=t(sapply(dataset$cell_to_cluster[dataset$cell_to_sample%in%samples1],full_table,inclusts))
-      tab2=t(sapply(dataset$cell_to_cluster[dataset$cell_to_sample%in%samples2],full_table,inclusts))
-      
-      tot1=colSums(tab1)   
-      tot2=colSums(tab2)
-      
-      freq1=tot1[setdiff(names(tot1),"-1")]/sum(tot1)
-      freq2=tot2[setdiff(names(tot2),"-1")]/sum(tot2)
-      
-      percents1=round(100*freq1,digits=1)
-      percents2=round(100*freq2,digits=1)
-   
-     
-      par(mar=c(7,7,1,9))
-      
-      
-      layout(matrix(1:2,1,2),widths=c(2,1))
-      
-      m=matrix(0,2,length(inclusts),dimnames=list(c("1","2"),inclusts))
-      m[1,names(percents1)]=percents1
-      m[2,names(percents2)]=percents2
-      
-      par(mar=c(5,10,1,1))
-      barplot(m[,dim(m)[2]:1],beside=T,names.arg = rev(paste(session$userData$clustAnnots[inclusts]," - ",inclusts,sep="")),horiz = T,las=2)
-      legend("bottomright",pch=15,col= gray.colors(2),legend=c("1","2"),border=T)
-    #  reg=100*10/((ncol(model$umitab)+ncol(projected$umitab))/2)
-      reg=1e-3
-      barplot(rev(log2((reg+m[2,])/(reg+m[1,]))),names.arg = rev(paste(session$userData$clustAnnots[inclusts]," - ",inclusts,sep="")),horiz = T,las=2,xlab="log2(2/1)")
-    })
-    
-    click_tooltip_gene_proj_vs_ref <- function(x) {
-      if (is.null(x)) return(NULL)
-      if (is.null(x$gene)) return(NULL)
-      
-     
-      updateTextInput(session,"Gene1ForExprsTableRefVsProj",,x$gene)
-      
-    } 
-    
-    
-    
-    ge_proj_vs_ref <- reactive({
-      insamples=samples_reactive()
-      clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
-      samples1=as.list(strsplit(input$inProjectSampleGroup1,",| ,|, ")[[1]])
-      samples2=as.list(strsplit(input$inProjectSampleGroup2,",| ,|, ")[[1]])
-      dataset=session$userData$dataset
-      if (is.null(session$userData$dataset)){
-        return(data.frame(x=0,y=0,gene=0))
-      }
-      if (!is.null(session$userData$sample_sets)){
-        samples1[!(samples1%in%insamples)]=session$userData$sample_sets[unlist(samples1[!samples1%in%insamples])]
-        samples2[!(samples2%in%insamples)]=session$userData$sample_sets[unlist(samples2[!samples2%in%insamples])]
-      }
-      samples1=unlist(samples1)
-      samples2=unlist(samples2)
-      
-      if(length(samples1)==0||length(samples2)==0||(!(all(samples1%in%insamples)&&all(samples2%in%insamples)))||is.null(dataset)){
-        return(data.frame(x=0,y=0,gene=0))
-      }
-      counts1=apply(session$userData$dataset$counts[samples1,,,drop=F],2:3,sum)
-      counts2=apply(session$userData$dataset$counts[samples2,,,drop=F],2:3,sum)
-      
-      model1=t(t(counts1)/colSums(counts1))
-      model2=t(t(counts2)/colSums(counts2))
-      
-      df=data.frame(x=log10(model1[,clust]),y=log2(model2[,clust]/model1[,clust]),gene=rownames(session$userData$model$models))
-      
-    })
-    # A reactive expression with the ggvis plot
-    vis2 <- reactive({
-    
-      clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
-      
-      ge_proj_vs_ref %>%
-        ggvis(x = ~x, y = ~y) %>%
-        layer_points(size := 50, size.hover := 200,
-                     fillOpacity := 0.2, fillOpacity.hover := 0.5, key := ~gene) %>%
-        add_tooltip(gene_tooltip, "hover")%>% 
-        add_tooltip(click_tooltip_gene_proj_vs_ref, "click")%>% 
-        add_axis("x", title = "log10(mean)") %>%
-        add_axis("y", title = "log2(samples_gr2/samples_gr1)") %>%
-        add_axis("x", orient = "top", ticks = 0, title = paste(session$userData$loaded_model_version," ",clust),
-                 properties = axis_props(
-                   axis = list(stroke = "white"),
-                   labels = list(fontSize = 0))) %>%
-        scale_numeric("x", domain = c(-6,-1)) %>%
-        scale_numeric("y", domain = c(-6,6)) %>%
-       set_options(width = 500, height = 500)
-      
-      
-    })
-    
-    vis2 %>% bind_shiny("DiffGeneExprsProjVsRef")
-
-    
-    output$Gene1ExprsTableRefVsProj<- renderTable({
-      if (!session$userData$loaded_flag){
-        return()
-      }
-      if (!exists("projected")){
-        return()
-      }
-   
-      g=input$Gene1ForExprsTableRefVsProj
-      clust=strsplit(input$inClustForDiffGeneExprsProjVsRef," - ")[[1]][1]
-      
-      if ((g%in%rownames(ds))&(g%in%rownames(projected$ds))){
-        mask1=session$userData$model$cell_to_cluster[colnames(ds)]==clust
-        mask2=projected$cell_to_cluster[colnames(projected$ds)]==clust
-        x1=table(floor(log2(1+data.frame(ds[g,mask1]))))
-        x2=table(floor(log2(1+data.frame(projected$ds[g,mask2]))))
-        z=max(c(as.numeric(names(x1)),as.numeric(names(x2))))
-        x=matrix(0,2,1+z,dimnames=list(c("Reference","Projected"),(0:z)))
-        x[1,names(x1)]=x1
-        x[2,names(x2)]=x2
-        }
-      else {
-        return(NULL)
-      }
-      print(x)
-      x
-    },rownames=T,colnames=T,width=18)
-    
-    output$ClusteringsComparisonTable<- renderTable({
-      if (!session$userData$loaded_flag){
-        return()
-      }
-      if (!all(names(session$userData$model$cell_to_cluster)==names(projected$source_cell_to_cluster))){
-        return() 
-      }
-      tab=table(session$userData$model$cell_to_cluster,projected$source_cell_to_cluster)
-      x=matrix(tab,nrow(tab),ncol(tab),dimnames=list(rownames(tab),colnames(tab)))
-      print(x)
-      x
-      
-    })
-    
-    
-    click_tooltip_ll <- function(x) {
-      if (is.null(x)) return(NULL)
-      if (is.null(x$cell)) return(NULL)
-    } 
-    
-    cell_tooltip <- function(x) {
-      if (is.null(x)) return(NULL)
-      if (is.null(x$cell)) return(NULL)
-      
-      # Pick out the movie with this ID
-      
-      paste0("<b>", x$cell, "</b>")
+    if (exists(".scDissector_clustering_data_path")){
+      load_metadata(session,.scDissector_clustering_data_path)
+      updateTextInput(session,"inDatapath",,.scDissector_clustering_data_path)
     }
-    
-    
-    if (exists("scDissector_datadir")){
-      updateTextInput(session,"inDatapath",,scDissector_datadir)
-    }
-    
-    if (exists("default_model_dataset")){
+    if (exists(".scDissector_preloaded_data")){
       
       hideTab(inputId = "inMain", target = "Data")
-      ldm=default_model_dataset
-      if (!exists("scDissector_datadir")){
+      ldm=.scDissector_preloaded_data
+      if (!exists(".scDissector_clustering_data_path")){
         scDissector_datadir=""
       }
       session$userData$loaded_model_file<-ldm$model$model_filename
       update_all(session,ldm)
       show_all_tabs()
-      updateTabsetPanel(session, "inMain", selected = "Clusters")
+      updateTabsetPanel(session, "inMain", selected = "MetaData")
     }
     
   }

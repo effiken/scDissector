@@ -3,8 +3,8 @@ Title: Exploratory Data Analysis tool for single-cell RNA-seq data
 Version: 1.00
 Authors@R: person("Ephraim", "Kenigsberg", email = "effiken@gmail.com", role = c("aut", "cre"))
 Description: What the package does (one paragraph).
-Depends: R (>= 3.3.1),ggvis,dplyr,reshape2,gplots,seriation,Matrix,Matrix.utils,heatmaply
+Depends: R (>= 3.3.1),ggvis,dplyr,reshape2,gplots,seriation,Matrix,Matrix.utils,heatmaply,shinyTree,DT
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-
+RoxygenNote: 6.1.1

@@ -1,6 +1,6 @@
 params=list()
 params$nrandom_cells_per_sample_choices=c(100,250,500,1000,2000,4000,"All")
-
+source("ldm_interface.R")
 tfs_file=system.file("extdata", "tfs.csv", package="scDissector")
 if (tfs_file==""){
     tfs_file="../extdata/tfs.csv"

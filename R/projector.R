@@ -100,39 +100,6 @@ getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NU
 }
 
 
-noiseEMsingleBatch=function(umitab,models,noise_model,avg_numis_per_model,reg,max_noise_fraction=.75,trace=T){
-
-    beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
-if (trace){
-    message("Est 1: ~",round(beta_noise), " noise UMIs/cell")
-  }
-  cell_to_cluster=rep("",ncol(umitab))
-  nmoved=Inf
-  i=0
-  min_n_moved=min(10,ncol(umitab)/100)
-  while (nmoved>=min_n_moved&&i<6){
-    res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
-    prev_cell_to_cluster=cell_to_cluster
-    cell_to_cluster=MAP(res_boll$ll)
-    tmptab=sapply(split(colSums(umitab),cell_to_cluster[colnames(umitab)]),mean)
-    avg_numis_per_model[names(tmptab)]=tmptab
-
-    beta_noise=update_beta_single_batch(umitab,models,noise_model,avg_numis_per_model,reg=reg,max_noise_fraction=max_noise_fraction)
-
-    nmoved=sum(cell_to_cluster!=prev_cell_to_cluster)
-    if (i>0&trace){
-      message("Est 2: ~",round(beta_noise), " noise UMIs/cell")
-      message("inner iter ",i, " ",nmoved,"/",length(cell_to_cluster)," cells moved")
-    }
-    i=i+1
-  }
-
-  res_boll=getOneBatchCorrectedLikelihood(umitab,models=models,noise_model,beta_noise=beta_noise,  avg_numis_per_model,reg=reg)
-
-  return(list(beta_noise=beta_noise,avg_numis_per_model=avg_numis_per_model,ll=res_boll$ll))
-}
-
-
 
 
 get_expected_noise_UMI_counts_beta=function(umis,cluster,batch,noise_models,beta_noise,clusters){

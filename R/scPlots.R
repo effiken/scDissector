@@ -1,17 +1,17 @@
 #colgrad<<-c(colorRampPalette(c("white",colors()[378],"orange", "tomato","mediumorchid4"))(100))
 #sample_cols<<-rep(paste("#",read.table("sample_colors.txt",stringsAsFactors = F)[,1],sep=""),10)
 
-plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative"){
+plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative",colgrad,reg,cex.genes=1,cex.clusters=1,line.genes=1){
   if (Relative_or_Absolute=="Relative"){
     if (ncol(m)>1){
-      m=log2(1e-6+m/pmax(1e-6,rowMeans(m,na.rm=T)))
+      m=log2((reg+m)/pmax(reg,rowMeans(m,na.rm=T)))
     }
     else{
       return()
     }
   }
   else if (Relative_or_Absolute=="Absolute"){
-    m=log10(1e-6+m)
+    m=log10(reg+m)
   }
   else{
     plot.new()
@@ -24,9 +24,9 @@ plot_avg_heatmap=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_te
   
   image(m[,ncol(m):1],col=colgrad,breaks=breaks,axes=F,main=main_title)
   box()
-  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=1,col=gene.cols)
-  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=1)
-  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
+  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=cex.genes,col=gene.cols,line=line.genes)
+  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=cex.clusters)
+  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=cex.clusters)
 }
 
 plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute="Relative",colgrad){
@@ -48,16 +48,9 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
   break1=min(m,na.rm=T)
   break2=max(m,na.rm=T)
   
- # breaks=sort(c(break1,seq(zlim[1],zlim[2],l=99),break2))
   m[m<zlim[1]]=zlim[1]
   m[m>zlim[2]]=zlim[2]
- # image(m[,ncol(m):1],col=colgrad,breaks=breaks,axes=F,main=main_title)
-#  box()
-#  mtext(text = genes,side = 1,at = seq(0,1,l=length(genes)),las=2,cex=1,col=gene.cols)
-#  mtext(text =paste(" ",clusters,clusters_text), side=4, at=seq(1,0,l=length(clusters)),las=2,cex=1)
-#  mtext(text =paste(annots," ",sep=""), side=2, at=seq(1,0,l=length(annots)),las=2,cex=1)
-  
-  # Heatmpaly version ‘0.15.2’ stopped reversing the labels
+
   version_vector=unlist(packageVersion("heatmaply"))
   clusters_vec=colnames(m)
   if (version_vector[1]==0&&version_vector[2]<15){
@@ -72,9 +65,20 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 
 
 
-plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10){
-  ds=ds[ingenes,]
-  ds=ds[,order(match(cell_to_cluster[colnames(ds)],inclusts))]
+plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10,score_genes=NULL,reverse_score_order=F){
+
+  ds=ds[ingenes,cell_to_cluster[colnames(ds)]%in%inclusts]
+  score_genes=intersect(score_genes,rownames(ds))
+  if ((!is.null(score_genes))&(length(score_genes)>=1)){
+    score_rank=rank(apply(log2(.1+as.matrix(ds[score_genes,,drop=F])),2,mean)/ncol(ds))
+    
+    if (reverse_score_order){
+      score_rank=1-score_rank
+    }
+  }else{
+    score_rank=0
+  }
+  ds=ds[,order(2*match(cell_to_cluster[colnames(ds)],inclusts)+score_rank)]
   samps=cell_to_sample[colnames(ds)]
   ncells=rep(0,length(inclusts))
   names(ncells)=inclusts
