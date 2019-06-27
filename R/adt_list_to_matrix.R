@@ -28,6 +28,11 @@ adt_list_to_matrix <- function(adt_list){
     
     #remove all punctuation
     rownames(adt_list[[iter]]) <- gsub(x=rownames(adt_list[[iter]]),pattern="[[:punct:]]",replacement="")
+    
+    #remove "5" prefix from 5 prime samples
+    if (substr(rownames(adt_list[[iter]]),1,1)==5){
+      rownames(adt_list[[iter]]) <- substr(rownames(adt_list[[iter]]),2,nchar(rownames(adt_list[[iter]])))
+    }
   }
   
   markers <- unique(unlist(lapply(adt_list,rownames)))
