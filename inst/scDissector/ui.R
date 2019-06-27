@@ -20,7 +20,7 @@ mainPanel(width=12,
   fluidPage(
    
   #    h4("scDissector v0.99"),
-    titlePanel("scDissector v0.99"),
+    titlePanel("scDissector v1.00"),
       navbarPage("",id = "inMain",footer = fluidPage(
         img(src = 'sinai_logo.png',height = '70px', width = '70px'),
         p(em("(c) 2019 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
