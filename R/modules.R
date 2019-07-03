@@ -3,7 +3,7 @@ fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
 fisher.z2r <- function (z) {(exp(2 * z) - 1)/(1 + exp(2 * z))}
 
 
-get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=5,min_umi_counts_per_samples=5){
+get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=5,min_umi_counts_per_samples=5,showShinyProgressBar=F,session=NULL){
   zmat=matrix(0,nrow(ds),nrow(ds),dimnames=list(rownames(ds),rownames(ds)))
   samples_inp=unique(cell_to_sample)
   if (is.null(samples)){
@@ -22,19 +22,35 @@ get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_
     w=rep(1/length(samples),length(samples))
     names(w)=samples
   }
-  for (samp in samples){
-    print(samp)
-    dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>min_umi_counts_per_samples,cell_to_sample==samp,drop=F]
-    z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi)),use="complete.obs"))
-    #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
-    rm(dsi)
-    z[is.na(z)]=0
-    #   print(range(z))
-    zmat[rownames(z),colnames(z)]= zmat[rownames(z),colnames(z)] + w[samp]*z
-    rm(z)
-    gc()
+  i=0
+  
+  
+  get_cor_per_sample=function(){
+    for (samp in samples){
+      i=i+1
+      if (showShinyProgressBar){
+        setProgress(i,session = session)
+      }else{
+        print(samp)
+      }
+      dsi=ds[Matrix::rowSums(ds[,cell_to_sample==samp,drop=F],na.rm=T)>min_umi_counts_per_samples,cell_to_sample==samp,drop=F]
+      z=fisher.r2z(.99*cor(as.matrix(Matrix::t(dsi)),use="complete.obs"))
+      #    z=fisher.r2z(.99*sparse.cor(Matrix::t(dsi)))
+      rm(dsi)
+      z[is.na(z)]=0
+      #   print(range(z))
+      zmat[rownames(z),colnames(z)]= zmat[rownames(z),colnames(z)] + w[samp]*z
+      rm(z)
+      gc()
+    }
+    return(zmat)
   }
   
+  if (showShinyProgressBar){
+    withProgress( {zmat=get_cor_per_sample()},1,length(samples),1,message = "Computing Correlations",session = session)
+  }else{
+    zmat=get_cor_per_sample()
+  }
   return(fisher.z2r(zmat/sum(w)))
 }
 

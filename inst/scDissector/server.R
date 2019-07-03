@@ -1166,7 +1166,8 @@ tab3_left_margin=12
       ds= get_dstab(session,cells = cell_mask,ds_version = ds_i)
     
     message("calculating gene-to-gene correlations..")
-    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)))
+    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)),showShinyProgressBar = T,session=session)
+    
     return(cormat)
   })
   
@@ -1401,10 +1402,10 @@ tab3_left_margin=12
     par(mar=c(3,3,3,3))
     ord=get_order(seriate(as.dist(1-cormat),method="OLO_complete"))
     image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
-    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
     box()
   
   })
@@ -1586,7 +1587,7 @@ tab3_left_margin=12
     modulemat<-modulemat[inmodules,inclusts]
     
     zlim=input$inAvgModuleColorScale
-    par(mar=c(7,tab3_left_margin,1,9))
+    par(mar=c(7,tab3_left_margin,1,3))
    
    
     
@@ -1608,7 +1609,7 @@ tab3_left_margin=12
     box()
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
-    mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1),sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =paste(cluster_annots_reactive()[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })
