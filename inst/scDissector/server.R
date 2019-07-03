@@ -1263,7 +1263,7 @@ tab3_left_margin=12
     insilico_gating_scores=get_insilico_gating_scores(session)
     if (!is.null(insilico_gating_scores)){
       nplots=length(insilico_gating_scores)
-      he=max(c(500,500*nplots,na.rm=T))
+      he=max(c(400,400*ceiling(nplots/2),na.rm=T))
       plotOutput("gating_plots", width = "100%", height = he)
     }
   })
@@ -1290,12 +1290,14 @@ tab3_left_margin=12
     numis=get_numis_before_filtering(session,samp)
     clust=strsplit(input$inGatingShowClusters," ")[[1]][1]
     cell_to_cluster=get_cell_to_cluster(session,cells=select_cells(session,samples=samp))
-    layout(matrix(1:(nplots),nplots,1))
+    layout(matrix(1:(ceiling(nplots/2)*2),ceiling(nplots/2),pmin(nplots,2),byrow=T))
+    par(mar=c(5,8,5,5))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(insilico_gating_scores[[i]]))
-      plot(numis[mask],insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(clustering_params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
+      plot(numis[mask],insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(clustering_params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)),panel.first=grid(lty=3))
       points(numis[mask],insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
       rect(xleft = get_min_umis(session),clustering_params$insilico_gating[[i]]$interval[1],get_max_umis(session),clustering_params$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
+      title(paste(i,". ",names(clustering_params$insilico_gating)[i],sep=""),line=1)
     }
 
    
