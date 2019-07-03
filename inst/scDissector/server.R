@@ -465,8 +465,10 @@ tab3_left_margin=12
   })
   
   cluster_sets_reactive <-reactive ({
-   # print(input$clusters_sets_shinytree)
     if (is.null(input$clusters_sets_shinytree)){
+      if (!is.null(session$userData$cluster_sets)){
+        return(session$userData$cluster_sets)
+      }
       return(NULL)
     }
     as_cluster_sets_recursive(input$clusters_sets_shinytree)
@@ -1263,7 +1265,7 @@ tab3_left_margin=12
     insilico_gating_scores=get_insilico_gating_scores(session)
     if (!is.null(insilico_gating_scores)){
       nplots=length(insilico_gating_scores)
-      he=max(c(400,400*ceiling(nplots/2),na.rm=T))
+      he=max(c(400,4000*ceiling(nplots/2),na.rm=T))
       plotOutput("gating_plots", width = "100%", height = he)
     }
   })
