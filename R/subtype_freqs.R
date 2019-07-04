@@ -17,6 +17,7 @@ plot_subtype_freqs=function(freq_norm,celltype,plot_legend=T,cex.names=1,cex.axi
   }
 }
 
+
 get_cell_counts=function(cell_to_cluster,cell_to_sample,selected_samples){
   scRNA_tab=table(cell_to_cluster,cell_to_sample)
   scRNA_tab=scRNA_tab[,as.character(selected_samples)]
@@ -33,7 +34,10 @@ get_freqs=function(cell_to_cluster,cell_to_sample,selected_samples){
 }
 
 normalize_by_clusterset_frequency=function(cell_to_cluster,cell_to_sample,samples,cluster_sets,pool_subtype=T,reg=0){
-  freqs=get_freqs(cell_to_cluster,cell_to_sample,samples)
+  
+ 
+  
+   freqs=get_freqs(cell_to_cluster,cell_to_sample,samples)
   
   pool_subtype_freqs=function(one_subtype){
     return(rowSums(freqs[,unlist(one_subtype),drop=F]))

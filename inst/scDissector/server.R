@@ -467,8 +467,10 @@ tab3_left_margin=12
   })
   
   cluster_sets_reactive <-reactive ({
-   # print(input$clusters_sets_shinytree)
     if (is.null(input$clusters_sets_shinytree)){
+      if (!is.null(session$userData$cluster_sets)){
+        return(session$userData$cluster_sets)
+      }
       return(NULL)
     }
     as_cluster_sets_recursive(input$clusters_sets_shinytree)
@@ -1166,7 +1168,8 @@ tab3_left_margin=12
       ds= get_dstab(session,cells = cell_mask,ds_version = ds_i)
     
     message("calculating gene-to-gene correlations..")
-    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)))
+    cormat=get_avg_gene_to_gene_cor(ds[names(which(getGeneModuleMask())),],get_cell_to_sample(session,cells=colnames(ds)),showShinyProgressBar = T,session=session)
+    
     return(cormat)
   })
   
@@ -1265,7 +1268,7 @@ tab3_left_margin=12
     insilico_gating_scores=get_insilico_gating_scores(session)
     if (!is.null(insilico_gating_scores)){
       nplots=length(insilico_gating_scores)
-      he=max(c(500,500*nplots,na.rm=T))
+      he=max(c(400,4000*ceiling(nplots/2),na.rm=T))
       plotOutput("gating_plots", width = "100%", height = he)
     }
   })
@@ -1292,12 +1295,14 @@ tab3_left_margin=12
     numis=get_numis_before_filtering(session,samp)
     clust=strsplit(input$inGatingShowClusters," ")[[1]][1]
     cell_to_cluster=get_cell_to_cluster(session,cells=select_cells(session,samples=samp))
-    layout(matrix(1:(nplots),nplots,1))
+    layout(matrix(1:(ceiling(nplots/2)*2),ceiling(nplots/2),pmin(nplots,2),byrow=T))
+    par(mar=c(5,8,5,5))
     for (i in 1:nplots){
       mask=intersect(names(numis),names(insilico_gating_scores[[i]]))
-      plot(numis[mask],insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(clustering_params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)))
+      plot(numis[mask],insilico_gating_scores[[i]][mask],log="x",ylab=paste("fraction",names(clustering_params$insilico_gating)[i]),xlab="#UMIs",col=ifelse(is.na(cell_to_cluster[mask]),"gray",ifelse(cell_to_cluster[mask]==clust,2,1)),panel.first=grid(lty=3))
       points(numis[mask],insilico_gating_scores[[i]][mask],pch=ifelse(cell_to_cluster[mask]==clust,20,NA),col=2)
       rect(xleft = get_min_umis(session),clustering_params$insilico_gating[[i]]$interval[1],get_max_umis(session),clustering_params$insilico_gating[[i]]$interval[2],lty=3,lwd=3,border=2)
+      title(paste(i,". ",names(clustering_params$insilico_gating)[i],sep=""),line=1)
     }
 
    
@@ -1398,10 +1403,10 @@ tab3_left_margin=12
     par(mar=c(3,3,3,3))
     ord=get_order(seriate(as.dist(1-cormat),method="OLO_complete"))
     image(cormat[ord,ord],col=cor_cols,breaks=zbreaks,axes=F)
-    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
-    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.5)
+    mtext(text = colnames(cormat)[ord],side = 1,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 3,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 2,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
+    mtext(text = colnames(cormat)[ord],side = 4,at = seq(0,1,l=ncol(cormat)),las=2,cex=.7)
     box()
   
   })
@@ -1655,7 +1660,7 @@ tab3_left_margin=12
     modulemat<-modulemat[inmodules,inclusts]
     
     zlim=input$inAvgModuleColorScale
-    par(mar=c(7,tab3_left_margin,1,9))
+    par(mar=c(7,tab3_left_margin,1,3))
    
    
     
@@ -1677,7 +1682,7 @@ tab3_left_margin=12
     box()
     
     mtext(text = rownames(mat1),side = 1,at = seq(0,1,l=dim(mat1)[1]),las=2,cex=1)
-    mtext(text =paste(" ",colnames(mat1)," (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster),digits=1),"% )",sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
+    mtext(text =paste(" ",colnames(mat1),sep=""), side=4, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     mtext(text =paste(cluster_annots_reactive()[inclusts]," ",sep=""), side=2, at=seq(1,0,l=dim(mat1)[2]),las=2,cex=1)
     
   })

@@ -20,7 +20,7 @@ mainPanel(width=12,
   fluidPage(
    
   #    h4("scDissector v0.99"),
-    titlePanel("scDissector v0.99"),
+    titlePanel("scDissector v1.00"),
       navbarPage("",id = "inMain",footer = fluidPage(
         img(src = 'sinai_logo.png',height = '70px', width = '70px'),
         p(em("(c) 2019 Ephraim (Effi) Kenigsberg. Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai"))),
@@ -188,9 +188,9 @@ mainPanel(width=12,
                 wellPanel(
                   plotOutput("varMeanThreshPlot"),
                   selectInput("inModulesDownSamplingVersion",label="Down-sampling version:",choices = c(""),width=200),
+                  fluidRow(column(3,sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-2,2),label = "X-axis range",width(100)))),
                   textInput("inVarMean_MeanThresh",  "Min Log10(mean):", value = "-2"),
-                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.50"),
-                  sliderInput("inVarMeanXlim",min=-6,max=2,step=.1,value = c(-1.5,2),label = "X-axis range",width(100))
+                  textInput("inVarMean_varmeanThresh",  "Min Log2(var/mean):", value = "0.50")
                  ),
                 wellPanel(actionButton("inModulesGetCormap","Get Correlation Map"),
                 uiOutput("cor_gene_module_plot")),
