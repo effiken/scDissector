@@ -270,7 +270,9 @@ tab3_left_margin=12
   function(input, output, session) {
     
     
-    
+    if (!exists("use_plotly")){
+      use_plotly=T
+    }
     session$userData$prev_xy_range_G=c(0,0,0,0)
     session$userData$prev_xy_range_C=c(0,0,0,0)
     session$userData$update_ingene_text_input=T
@@ -1326,15 +1328,14 @@ tab3_left_margin=12
     inclusts=cgs$clusters
     insamples=cgs$samples
     he=max(c(500,12*length(inclusts)),na.rm=T)
-    if (length(insamples)>1&(length(inclusts)>1)){
-      plotlyOutput("avg_heatmap_interactive", width = "100%", height = he)
-    # d3heatmapOutput("avg_heatmap_interactive", width = "150%", height = he)
+    
+    if (use_plotly){
+     plotlyOutput("avg_heatmap_interactive", width = "100%", height = he)
     }
     else{
- #   d3heatmapOutput("avg_heatmap_interactive", width = "150%", height = he)
-      plotlyOutput("avg_heatmap_interactive", width = "100%", height = he)
+      plotOutput("avg_heatmap", width = "100%", height = he)
     }
-   })
+  })
   
   
   output$avg_module_plot <- renderUI({
@@ -1461,10 +1462,8 @@ tab3_left_margin=12
   })
   
 
-  
 
   
-#  output$avg_heatmap_interactive <-renderD3heatmap({
   output$avg_heatmap_interactive <-renderPlotly({
     
       ##### Don't delete!!
@@ -1537,6 +1536,80 @@ tab3_left_margin=12
       return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,session$userData$modelColorGrad))
       # plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,reg=1e-6,colgrad =session$userData$modelColorGrad)
   })
+  
+  
+  output$avg_heatmap <-renderPlot({
+    
+    ##### Don't delete!!
+    input$inAnnotateCluster
+    input$inModelVer
+    input$inBirdClusterSetExclude
+    input$inBirdClusterSetInclude
+    #####
+    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    inclusts=cgs$clusters
+    ingenes=cgs$genes
+    insamples=cgs$samples
+    
+    
+    if (!session$userData$loaded_flag){
+      return()
+    }
+    
+    # Lables for axes
+    if (length(ingenes)==0){
+      return()
+    }
+    if (length(inclusts)==0){
+      return()
+    }
+    zlim=input$inModelColorScale
+    par(mar=c(7,tab3_left_margin,1,9))
+    if (input$inModelOrAverage=="Model parameters"){
+      mat<-get_models(session,genes=ingenes,clusters = inclusts)
+    }
+    else {
+      ncells_per_sample=table(get_cell_to_sample(session))[insamples]
+      counts=get_counts_array(session,samples = insamples,genes = ingenes,clusters = inclusts)
+      weights=ncells_per_sample/sum(ncells_per_sample)
+      arr_weights=array(weights,dim=c(length(insamples),length(ingenes),length(inclusts)))
+      numis_per_clust_mat=apply(counts[insamples,,inclusts,drop=F],c(1,3),sum,na.rm=T)
+      numis_per_clust_arr=aperm(array(numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(ingenes))),c(1,3,2))
+      
+      if (input$inModelOrAverage=="Batch-corrected Average"){
+        noise_counts=get_noise_counts_array(session,samples = insamples,genes = ingenes,clusters = inclusts)
+        if (!is.null(noise_counts)){
+          
+          counts=counts-noise_counts
+          counts<-pmax(counts,0)
+          
+          noise_numis_per_clust_mat=apply(noise_counts,c(1,3),sum,na.rm=T)
+          noise_numis_per_clust_arr=aperm(array(noise_numis_per_clust_mat,dim=c(length(insamples),length(inclusts),length(ingenes))),c(1,3,2))
+          numis_per_clust_arr=pmax(numis_per_clust_arr-noise_numis_per_clust_arr,0)
+          
+        }
+      }
+      mat=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
+      rownames(mat)=ingenes
+    }
+    if (min(dim(mat))==0){
+      return()
+    }
+    
+    isolate({
+      mat1=mat
+      abs_or_rel=input$inAbsOrRel
+    }) 
+    
+    main_title=paste(input$inModelOrAverage,":",session$userData$loaded_model_version)
+    genes=rownames(mat1)
+    gene.cols=session$userData$gcol[toupper(rownames(mat1))]
+    clusters=colnames(mat1)
+    clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
+    annots=cluster_annots_reactive()[inclusts]
+    return(plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,reg=1e-6,colgrad =session$userData$modelColorGrad))
+  })
+  
   
   module_counts_reactive<-reactive({
     modsl=gene_to_module_reactive()
