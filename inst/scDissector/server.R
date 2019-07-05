@@ -270,7 +270,7 @@ tab3_left_margin=12
   function(input, output, session) {
     
     
-    if (!exists("use_plotly"){
+    if (!exists("use_plotly")){
       use_plotly=T
     }
     session$userData$prev_xy_range_G=c(0,0,0,0)
