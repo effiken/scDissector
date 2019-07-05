@@ -175,7 +175,7 @@ get_noise_counts_array=function(session,samples=NULL,genes=NULL,clusters=NULL){
   if (is.null(clusters)){
     clusters=1:dim(session$userData$dataset$noise_counts)[3]
   }else{
-    clusters=intersect(genes,dimnames(session$userData$dataset$noise_counts)[[3]])
+    clusters=intersect(clusters,dimnames(session$userData$dataset$noise_counts)[[3]])
   }
   session$userData$dataset$noise_counts[samples,genes,clusters,drop=F]
 }
