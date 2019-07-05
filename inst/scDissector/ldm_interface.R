@@ -177,7 +177,7 @@ get_noise_counts_array=function(session,samples=NULL,genes=NULL,clusters=NULL){
   }else{
     clusters=intersect(genes,dimnames(session$userData$dataset$noise_counts)[[3]])
   }
-  session$userData$dataset$noise_noise_counts[samples,genes,clusters,drop=F]
+  session$userData$dataset$noise_counts[samples,genes,clusters,drop=F]
 }
 
 get_insilico_gating_scores=function(session,cells=NULL){
