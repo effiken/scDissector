@@ -108,5 +108,6 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
   if (plot_batch_bar){
     par(mar=c(lower_mar,0,1,1))
     image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
+    mtext("Samples",side=1,las=2,line=1,cex=gene_text_cex*1.2)
   }
 }
