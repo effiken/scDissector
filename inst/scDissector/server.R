@@ -658,7 +658,7 @@ tab3_left_margin=12
     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     ingenes=cgs$genes
-    mat<-get_models(session,clusters = inclusters,genes = ingenes)
+    mat<-get_models(session,clusters = inclusts,genes = ingenes)
     if (length(ingenes)==0){
       return()
     }
