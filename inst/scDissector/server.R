@@ -923,7 +923,7 @@ tab3_left_margin=12
     genes=ggs_res$genes
     samples=ggs_res$samples
     pref=ggs_res$pref
-    mask=get_all_genes(session)%in%genes
+    mask=intersect(get_all_genes(session),genes)
     
     clusts_fg=strsplit(input$inFC_fgClusts,",")[[1]]
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
@@ -938,7 +938,6 @@ tab3_left_margin=12
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
-    
     genes_to_show=head(names(sort(fc,decreasing=T)),floor(ngenes_to_show/2))
     genes_to_show=c(genes_to_show,tail(names(sort(fc,decreasing=T)),ceiling(ngenes_to_show/2)))
     genes_to_show_comma_delimited=paste(genes_to_show,collapse=",")
