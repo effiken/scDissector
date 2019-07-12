@@ -72,14 +72,13 @@ mainPanel(width=12,
                     fluidRow(
                           selectInput("inModelOrAverage",label = NULL,choices=c("Model parameters","Batch-corrected Average","Average"),selected = "Model parameters"),
                           column(1,offset=0, style='padding:0px;',uiOutput("samples_enrichment")),column(10,uiOutput("avg_profile_plot")),column(1,offset=0, style='padding:0px;',uiOutput("cluster_sizes")),
-                          column(4,plotOutput("modelSampleLegend",height = 200)
-                                 ),
-                          column(4,
-                          sliderInput("inModelColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-4,4)),
-                          selectInput("inAbsOrRel","Expression Values",choices=c("Relative","Absolute"))),
-                          column(4,
-                                 plotOutput("colorLegendModel",height = 70,width=200)
-                                 ),
+                          column(3,plotOutput("modelSampleLegend",height = 200)),
+                          column(3,selectInput("inAbsOrRel","Expression Values",choices=c("Relative","Absolute")),
+                                 selectInput("categorizeSamplesBy",label = "Color Samples By:",choices=c())
+                                ),
+                          column(3,sliderInput("inModelColorScale","Log2(expression/mean)",min = -8,max = 8,step = 1,value = c(-2,4))),
+                          column(3,plotOutput("colorLegendModel",height = 70,width=200)
+                          ),
                           column(12,
                                   hr()),
                           column(6,
@@ -99,9 +98,8 @@ mainPanel(width=12,
                                actionButton("inFC", "Fold Change screen (FG/BG)"),
                             textInput("inFC_fgClusts","Fold Change FG clusters"),
                             textInput("inFC_bgClusts","Fold Change BG clusters")
-                            ),
-                            selectInput("categorizeSamplesBy",label = "Categorize Samples By:",choices=c())
-                           ),
+                            )
+                          ),
                           column(6,
                             textInput("inClusters","Clusters:",width=2000),
                             wellPanel( 

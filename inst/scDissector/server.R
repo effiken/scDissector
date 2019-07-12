@@ -1446,18 +1446,16 @@ tab3_left_margin=12
     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
-    if (input$inModelOrAverage=="Model"){
-      tab=session$userData$ncells_per_cluster
-    }
-    else{
-      tab=session$userData$ncells_per_cluster*0
-      tmp_tab=table(get_cell_to_cluster(session,select_cells(session,samples=insamples)))
-      tab[names(tmp_tab)]=tmp_tab
-    }
+    
+    tab=session$userData$ncells_per_cluster*0
+    tmp_tab=table(get_cell_to_cluster(session,select_cells(session,samples=insamples)))
+    tab[names(tmp_tab)]=tmp_tab
+    
     precentage=100*tab[inclusts]/sum(tab[setdiff(names(tab),session$userData$scDissector_params$excluded_clusters)])
-   
-    par(mar=c(5.9,.3,0.5,0))
-    barplot(rev(precentage),horiz=T,border=F,col="gray",xaxs="i",xlab="Cells ( % )",cex.axis = .8)
+    
+    par(mar=c(6.9,.3,1.35,0))
+    barplot(rev(precentage),horiz=T,border=F,col="gray",axes=F,yaxs="i",xlab="Cells ( % )",cex.axis = .8)
+    axis(1)
   })
   
 
