@@ -170,8 +170,8 @@ update_all= function(session,ldm){
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(get_loaded_samples(session)))-ncells_choices))]
   clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
+  session$userData$cluster_sets=ldm$cluster_sets
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
-  session$userData$scDissector_params$cluster_sets=ldm$cluster_sets
   update_clusters(session,session$userData$default_clusters,T)
   #print("*****")
   #print(as_list_recursive(session$userData$cluster_sets))
@@ -196,6 +196,9 @@ update_all= function(session,ldm){
   }
   
   
+  
+  
+  
   updateTextInput(session,"inMaxUmis",value = get_max_umis(session))
   updateTextInput(session,"inMinUmis",value = get_min_umis(session))
   message("Successfully finished loading.")
@@ -216,14 +219,11 @@ load_metadata=function(session,datapath){
     message(samples_file ," not found")
     read_flag=F
   }
-  
-  if (!read_flag){
-    updateSelectInput(session,"inModelVer", "Model Version:",choices = "")
-    return()
+ 
+  if (read_flag){
+    session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
+    session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
   }
-  session$userData$vers_tab<-read.csv(file=verfile,header=T,stringsAsFactors = F)
-  session$userData$samples_tab<-read.csv(file=samples_file,header=T,stringsAsFactors = F)
-  
   
   myGeneListFile= paste(datapath,"gene_sets.txt",sep="/")
   
@@ -258,6 +258,8 @@ load_metadata=function(session,datapath){
     names(session$userData$sample_sets)<-rownames(sample_sets_tab)
     session$userData$samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
   }
+  
+
   
 }
 
@@ -1929,7 +1931,7 @@ tab3_left_margin=12
     
     
     if (exists(".scDissector_preloaded_data")){
-      
+
       hideTab(inputId = "inMain", target = "Data")
     }
     
@@ -2102,10 +2104,13 @@ tab3_left_margin=12
         scDissector_datadir=""
       }
       session$userData$loaded_model_file<-ldm$model$model_filename
+
       update_all(session,ldm)
       show_all_tabs()
       updateTabsetPanel(session, "inMain", selected = "MetaData")
     }
+    
+    
     
   }
 
