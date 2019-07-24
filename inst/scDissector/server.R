@@ -336,7 +336,7 @@ tab3_left_margin=12
       max_umis=as.numeric(input$inMaxUmis)
       })
 
-    ldm=scDissector::load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis)
+    ldm=scDissector::load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis,lightweight = T)
     
 
     show_all_tabs()
