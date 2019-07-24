@@ -923,7 +923,7 @@ tab3_left_margin=12
     genes=ggs_res$genes
     samples=ggs_res$samples
     pref=ggs_res$pref
-    mask=get_all_genes(session)%in%genes
+    mask=intersect(get_all_genes(session),genes)
     
     clusts_fg=strsplit(input$inFC_fgClusts,",")[[1]]
     clusts_bg=strsplit(input$inFC_bgClusts,",")[[1]]
@@ -938,7 +938,6 @@ tab3_left_margin=12
     isolate({
       ngenes_to_show=as.numeric(input$inNgenes)
     })
-    
     genes_to_show=head(names(sort(fc,decreasing=T)),floor(ngenes_to_show/2))
     genes_to_show=c(genes_to_show,tail(names(sort(fc,decreasing=T)),ceiling(ngenes_to_show/2)))
     genes_to_show_comma_delimited=paste(genes_to_show,collapse=",")
@@ -1431,7 +1430,7 @@ tab3_left_margin=12
     tab=matrix(0,length(get_all_clusters(session)),length(get_loaded_samples(session)))
     rownames(tab)=get_all_clusters(session)
     colnames(tab)=get_loaded_samples(session)
-    cells=select_cells(session,clusters =inclusts,samples = insamples)
+    cells=select_cells(session,samples = insamples)
     tmptab=table(get_cell_to_cluster(session,cells=cells),get_cell_to_sample(session,cells = cells))
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
     tab=tab[,insamples,drop=F]
@@ -1447,18 +1446,16 @@ tab3_left_margin=12
     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
-    if (input$inModelOrAverage=="Model"){
-      tab=session$userData$ncells_per_cluster
-    }
-    else{
-      tab=session$userData$ncells_per_cluster*0
-      tmp_tab=table(get_cell_to_cluster(session,select_cells(session,samples=insamples)))
-      tab[names(tmp_tab)]=tmp_tab
-    }
+    
+    tab=session$userData$ncells_per_cluster*0
+    tmp_tab=table(get_cell_to_cluster(session,select_cells(session,samples=insamples)))
+    tab[names(tmp_tab)]=tmp_tab
+    
     precentage=100*tab[inclusts]/sum(tab[setdiff(names(tab),session$userData$scDissector_params$excluded_clusters)])
-   
-    par(mar=c(5.9,.3,0.5,0))
-    barplot(rev(precentage),horiz=T,border=F,col="gray",xaxs="i",xlab="Cells ( % )",cex.axis = .8)
+    
+    par(mar=c(6.9,.3,1.35,0))
+    barplot(rev(precentage),horiz=T,border=F,col="gray",axes=F,yaxs="i",xlab="Cells ( % )",cex.axis = .8)
+    axis(1)
   })
   
 
