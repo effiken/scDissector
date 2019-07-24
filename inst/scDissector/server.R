@@ -1430,7 +1430,7 @@ tab3_left_margin=12
     tab=matrix(0,length(get_all_clusters(session)),length(get_loaded_samples(session)))
     rownames(tab)=get_all_clusters(session)
     colnames(tab)=get_loaded_samples(session)
-    cells=select_cells(session,clusters =inclusts,samples = insamples)
+    cells=select_cells(session,samples = insamples)
     tmptab=table(get_cell_to_cluster(session,cells=cells),get_cell_to_sample(session,cells = cells))
     tab[rownames(tmptab),colnames(tmptab)]=tmptab
     tab=tab[,insamples,drop=F]
