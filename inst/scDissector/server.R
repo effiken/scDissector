@@ -212,6 +212,7 @@ load_metadata=function(session,datapath){
     message(verfile ," not found")
     read_flag=F
   }
+  
   if  (!file.exists(samples_file)){
     message(samples_file ," not found")
     read_flag=F
@@ -257,6 +258,9 @@ load_metadata=function(session,datapath){
     session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
     names(session$userData$sample_sets)<-rownames(sample_sets_tab)
     session$userData$samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
+  }
+  else{
+    session$userData$samples_to_show=session$userData$samples_tab$index
   }
   
 }
