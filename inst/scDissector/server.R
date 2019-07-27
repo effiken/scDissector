@@ -711,7 +711,6 @@ tab3_left_margin=12
 
   
   observeEvent(input$inVarMeanScreenSelectedClusters, {
-
     numis=1000
     ds_i=match(as.character(1000),get_ds_options(session))
     if (is.na(ds_i)){
@@ -732,7 +731,6 @@ tab3_left_margin=12
     s1=Matrix::rowSums(ds,na.rm=T) 
     s2=Matrix::rowSums(ds^2,na.rm=T)
     mask1=s1/(numis*ncol(ds))>10^as.numeric(input$inMinExprForScreen[1])&s1/(numis*ncol(ds))<10^as.numeric(input$inMinExprForScreen[2])
-    
     m1=s1[mask1]/(ncol(ds)*numis)
     m2=s2[mask1]/(ncol(ds)*numis)
     v1=m2-m1^2
@@ -746,15 +744,18 @@ tab3_left_margin=12
     b=b[mask_llv]
     lo=loess(z~b)
     ngenes_to_show=as.numeric(input$inNgenes)
-    
     var_score=lv-predict(lo,newdata =x)
-    positive_var_gens=names(var_score)[pmax(var_score,0,na.rm=T)>0.001]
-    umisum=as.matrix(Matrix.utils::aggregate.Matrix(t(ds[positive_var_gens,]),get_cell_to_cluster(session,cells=colnames(ds)),fun="sum"))
-    cluster_avg=(t(umisum/rowSums(umisum)))
-    cluster_avg_normed=log2((1e-6+cluster_avg)/(1e-6+rowMeans(cluster_avg)))
-    high_var_genes=as.vector(unlist(sapply(split(rownames(cluster_avg_normed),apply(cluster_avg_normed,1,which.max)),FUN=function(x){names(head(sort(var_score[x],decreasing = T),floor(ngenes_to_show/ncol(cluster_avg_normed))))})))
-    
-#    high_var_genes=names(head(sort((lv-predict(lo,newdata =x)),decreasing=T),ngenes_to_show))
+    if (ngenes_to_show>length(inclusts)){
+      positive_var_gens=names(var_score)[pmax(var_score,0,na.rm=T)>0.001]
+      umisum=as.matrix(Matrix.utils::aggregate.Matrix(t(ds[positive_var_gens,]),get_cell_to_cluster(session,cells=colnames(ds)),fun="sum"))
+      cluster_avg=(t(umisum/rowSums(umisum)))
+      cluster_avg_normed=log2((1e-6+cluster_avg)/(1e-6+rowMeans(cluster_avg)))
+      high_var_genes=as.vector(unlist(sapply(split(rownames(cluster_avg_normed),apply(cluster_avg_normed,1,which.max)),FUN=function(x){names(head(sort(var_score[x],decreasing = T),floor(ngenes_to_show/ncol(cluster_avg_normed))))})))
+    }
+    else{
+      high_var_genes=names(head(sort(var_score,decreasing=T),ngenes_to_show))  
+    }
+#   
     genes_to_show_comma_delimited=paste(high_var_genes,collapse = ", ")
     new_set_name=paste("Varmean_",pref,"_",ngenes_to_show,"_",date(),sep="")
     if (!is.null(session$userData$geneList)){
@@ -1047,7 +1048,6 @@ tab3_left_margin=12
   
   
 
-  
   ###########################################################
   
    
@@ -1771,6 +1771,7 @@ tab3_left_margin=12
     insamples=cgs$samples
     score_genes=init_genes(input$inGenesScore)
     reverse_score_order=input$inScoreReverseOrder
+    global_order=input$inGlobalOrder
     samp_to_cat=sample_to_category()[insamples]
     cats=as.character(unique(samp_to_cat))
     cat_cols= session$userData$sample_colors[1:length(cats)]
@@ -1798,7 +1799,7 @@ tab3_left_margin=12
     }
     cell_mask=select_cells(session,cells = cells_selected,clusters = inclusts,samples = insamples)
     ds=ds[,cell_mask]
-    plot_truth_heatmap(ds,get_cell_to_sample(session,cells=colnames(ds)),get_cell_to_cluster(session,cells=colnames(ds)),insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars,score_genes=score_genes,reverse_score_order=reverse_score_order)
+    plot_truth_heatmap(ds,get_cell_to_sample(session,cells=colnames(ds)),get_cell_to_cluster(session,cells=colnames(ds)),insamples,genes,inclusts,zlim,sample_cols=sample_cols,showSeparatorBars=input$inTruthShowSeparatorBars,score_genes=score_genes,reverse_score_order=reverse_score_order,global_order=global_order)
 
   }
   

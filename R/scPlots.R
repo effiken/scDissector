@@ -65,8 +65,9 @@ plot_avg_heatmap_interactive=function(m,zlim,main_title,genes,gene.cols,clusters
 
 
 
-plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10,score_genes=NULL,reverse_score_order=F){
+plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,inclusts,zlim,cols=colgrad,sample_cols=NULL,showSeparatorBars=T,seperatorBars_lwd=1,plot_batch_bar=T,gene_text_cex=1,cluster_text_cex=1,lower_mar=10,showClusterLabels=T,score_genes=NULL,reverse_score_order=F,global_order=F){
 
+  
   ds=ds[ingenes,cell_to_cluster[colnames(ds)]%in%inclusts]
   score_genes=intersect(score_genes,rownames(ds))
   if ((!is.null(score_genes))&(length(score_genes)>=1)){
@@ -75,10 +76,18 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
     if (reverse_score_order){
       score_rank=1-score_rank
     }
+    cell_ord=order((1-global_order)*2*match(cell_to_cluster[colnames(ds)],inclusts)+score_rank)
+    if (global_order){
+      showSeparatorBars=F
+      showClusterLabels=F
+    }
   }else{
-    score_rank=0
+    cell_ord=order(match(cell_to_cluster[colnames(ds)],inclusts))
   }
-  ds=ds[,order(2*match(cell_to_cluster[colnames(ds)],inclusts)+score_rank)]
+  
+  
+  
+  ds=ds[,cell_ord]
   samps=cell_to_sample[colnames(ds)]
   ncells=rep(0,length(inclusts))
   names(ncells)=inclusts
@@ -104,7 +113,9 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
   mtext(text =rownames(pmat), side=1, at=seq(0,1,l=dim(pmat)[1]),las=2,cex=gene_text_cex,adj=1,line=1)
   a=cumsum(ncells)
   b=a-floor(ncells[inclusts[inclusts%in%names(ncells)]]/2)
-  mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=cluster_text_cex,adj=1,line=.2)
+  if (showClusterLabels){
+    mtext(text =inclusts, side=2, at=1-(b/a[length(ncells)]),las=2,cex=cluster_text_cex,adj=1,line=.2)
+  }
   if (plot_batch_bar){
     par(mar=c(lower_mar,0,1,1))
     image(t(as.matrix(match(rev(samps),insamples))),axes=F,breaks=0:length(insamples)+.5,col=sample_cols[1:length(insamples)])
