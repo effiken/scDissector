@@ -130,7 +130,14 @@ save_gene_cor_map=function(cormat,modules_version,zbreaks=c(-1,seq(-.5,.5,l=99),
   dev.off()
 }
 
-
+#ldm - loaded dataset and model
+#ds_version - downsampling verson e.g. "2000
+#min_varmean_per_gene - threshold for difference between the log-var of the gene and the lowess varmean curve
+#min_number_of_UMIs - minimum number of UMIs for each gene.
+#genes_to_exclude - a vector containing genes to exclude from the correlation analysis
+#clusters - a vector containing the clusters to include in the analysis
+#samples - a vector containing the samples to include
+#weighted - T/F whether correlation matrices should be averaged use number of cells as weights
 gene_cor_analysis=function(ldm,ds_version,min_varmean_per_gene=0.15,min_number_of_UMIs=50,genes_to_exclude=c(),clusters=NULL,samples=NULL,weighted=F,modules_list=NULL){
   if (is.null(clusters)){
     clusters=colnames(ldm$model$models)

@@ -35,9 +35,11 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 #' @param excluded_clusters [optional] vector with clusters to exclude. Cells associated with these clusters are not loaded.
 #' @param ds_numis [optional] vector containing UMI counts to down-sample the dataset to. 
 #' @param genes [optional ] vector specifying genes which will be included in the analysis. If NULL (default) all genes are included. In cases of inconsistencies between the gene lists included in different samples this vector should provide the desired common gene list.  
+#' @param max_ncells_per_sample [optional ] Integer. limits the number of cells randomly selected and loaded per sample. If NA (default) all cells are loaded
+#' @param lightweight [optional ] Boolean. If true, unnecessary obectes are not loaded. (F is the default) 
 #' @return LDM object
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F){
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
   }
@@ -118,6 +120,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         names(model$avg_numis_per_model)=colnames(model$models)
         tmptab=sapply(split(Matrix::colSums(model$umitab),model$cell_to_cluster[colnames(model$umitab)]),mean)
         model$avg_numis_per_model[names(tmptab)]=tmptab
+    }
+    
+    if (lightweight){
+      model$umitab=NULL
     }
     
  

@@ -215,6 +215,7 @@ load_metadata=function(session,datapath){
     message(verfile ," not found")
     read_flag=F
   }
+  
   if  (!file.exists(samples_file)){
     message(samples_file ," not found")
     read_flag=F
@@ -257,6 +258,9 @@ load_metadata=function(session,datapath){
     session$userData$sample_sets<-strsplit(sample_sets_tab[,"samples"],",| ,|, ")
     names(session$userData$sample_sets)<-rownames(sample_sets_tab)
     session$userData$samples_to_show=c(names(session$userData$sample_sets),samples_to_show)
+  }
+  else{
+    session$userData$samples_to_show=session$userData$samples_tab$index
   }
   
 
@@ -338,7 +342,7 @@ tab3_left_margin=12
       max_umis=as.numeric(input$inMaxUmis)
       })
 
-    ldm=scDissector::load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis)
+    ldm=scDissector::load_dataset_and_model(model_fn,sample_paths,min_umis = min_umis,max_umis = max_umis,lightweight = T)
     
 
     show_all_tabs()
