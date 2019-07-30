@@ -158,7 +158,7 @@ get_counts_array=function(session,samples=NULL,genes=NULL,clusters=NULL){
 
 get_noise_counts_array=function(session,samples=NULL,genes=NULL,clusters=NULL){
   if (is.null(session$userData$dataset$noise_counts)){
-    return(null)
+    return(NULL)
   }
   if (is.null(samples)){
     samples=1:dim(session$userData$dataset$noise_counts)[1]
