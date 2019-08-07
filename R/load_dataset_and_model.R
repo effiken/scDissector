@@ -40,6 +40,7 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 #' @return LDM object
 #' @export
 load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F){
+
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
   }
