@@ -863,7 +863,9 @@ tab3_left_margin=12
   observeEvent(input$saveClusterSetButtion,{
    
     m=get_edges(cluster_sets_reactive())
-    cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    #Bug fix AL 08/09/19
+    cluster_set_fn=paste(substr(session$userData$loaded_model_file,1,nchar(session$userData$loaded_model_file)-3),"_cluster_sets.txt",sep="")
+    #cluster_set_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
     write.table(file=cluster_set_fn,m,row.names=F,col.names=T,quote=F,sep="\t")
     message("Cluster-sets were saved to ",cluster_set_fn,".")
   })
