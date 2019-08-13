@@ -35,25 +35,25 @@ get_freqs=function(cell_to_cluster,cell_to_sample,selected_samples){
 
 normalize_by_clusterset_frequency=function(cell_to_cluster,cell_to_sample,samples,cluster_sets,pool_subtype=T,reg=0){
   
- 
-  
    freqs=get_freqs(cell_to_cluster,cell_to_sample,samples)
-  
-  pool_subtype_freqs=function(one_subtype){
-    return(rowSums(freqs[,unlist(one_subtype),drop=F]))
+    pool_subtype_freqs=function(one_subtype){
+    return(rowSums(freqs[,intersect(colnames(freqs),unlist(one_subtype)),drop=F]))
   }
   
   norm_one_clusterset=function(one_clusterset){
+    clusts=intersect(unlist(one_clusterset),colnames(freqs))
+    
     if (length(intersect(colnames(freqs),unlist(one_clusterset)))==0){
       return(NULL)
     }
+
     if (pool_subtype==F){
-      tot=rowSums(reg+freqs[,unlist(one_clusterset),drop=F])
-      norm_subtypes_freqs=(reg+freqs[,unlist(one_clusterset),drop=F])/(tot)
+      tot=rowSums(reg+freqs[,clusts,drop=F])
+      norm_subtypes_freqs=(reg+freqs[,clusts,drop=F])/(tot)
     } 
     else {
       if (length(unlist(one_clusterset))==1){
-        norm_subtypes_freqs=reg+freqs[,unlist(one_clusterset),drop=F]
+        norm_subtypes_freqs=reg+freqs[,clusts,drop=F]
       }
       else {
         subtypes_freqs=reg+sapply(one_clusterset,pool_subtype_freqs)
