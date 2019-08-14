@@ -6,7 +6,8 @@
 \usage{
 load_dataset_and_model(model_fn, sample_fns, min_umis = 250,
   model_version_name = "", max_umis = 25000, excluded_clusters = NA,
-  ds_numis = NA, genes = NULL)
+  ds_numis = NA, genes = NULL, max_ncells_per_sample = NA,
+  lightweight = F)
 }
 \arguments{
 \item{model_fn}{model file-name}
@@ -24,6 +25,10 @@ load_dataset_and_model(model_fn, sample_fns, min_umis = 250,
 \item{ds_numis}{[optional] vector containing UMI counts to down-sample the dataset to.}
 
 \item{genes}{[optional ] vector specifying genes which will be included in the analysis. If NULL (default) all genes are included. In cases of inconsistencies between the gene lists included in different samples this vector should provide the desired common gene list.}
+
+\item{max_ncells_per_sample}{[optional ] Integer. limits the number of cells randomly selected and loaded per sample. If NA (default) all cells are loaded}
+
+\item{lightweight}{[optional ] Boolean. If true, unnecessary obectes are not loaded. (F is the default)}
 }
 \value{
 LDM object
