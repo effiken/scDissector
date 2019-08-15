@@ -4,14 +4,16 @@
 \alias{load_scDissector_data}
 \title{preload scRNA sample and project onto a model}
 \usage{
-load_scDissector_data(clustering_data_path, model_name, sample_names)
+load_scDissector_data(clustering_data_path, model_name, sample_names,
+  min_umis = 250, max_umis = 25000, ds_numis = NA,
+  max_ncells_per_sample = NA, genes = NULL)
 }
 \arguments{
 \item{clustering_data_path}{path to the folder that cntains the compiled samples, model versions and metadata}
 
-\item{model_name}{model name as defined in clustering_data_dir/model_versions.csv}
+\item{model_name}{model name as defined in clustering_data_path/model_versions.csv}
 
-\item{sample_names}{vector containing sample names as defined in clustering_data_dir/samples.csv}
+\item{sample_names}{vector containing sample names as defined in clustering_data_path/samples.csv}
 }
 \value{
 ldm object
@@ -20,11 +22,11 @@ ldm object
 preload scRNA sample and project onto a model
 }
 \examples{
-# ldm=load_ldm(clustering_data_dir="path_example/clustering_data_exaple",model_name="model_name_example",sample_names=c("sample1_example","sample2_example","sample3_example"))
+# ldm=load_ldm(clustering_data_path="path_example/clustering_data_exaple",model_name="model_name_example",sample_names=c("sample1_example","sample2_example","sample3_example"))
 # ldm can be stored on disk (optional):
 # save(ldm,file="ldm_path_example")
 # If saved, in the next time you can load the ldm file instead of regenrating it
 # load(file="ldm_path_example")
 # run scDissector
-# run_scDissector(preloaded_data = ldm,clustering_data_path =clustering_data_dir)
+# run_scDissector(preloaded_data = ldm,clustering_data_path =clustering_data_path)
 }

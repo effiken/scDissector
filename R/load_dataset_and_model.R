@@ -395,7 +395,7 @@ downsample=function(u,min_umis,chunk_size=100){
 
 
 
-import_dataset_and_model<-function(model_version_name,clustering_data_path,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA){
+import_dataset_and_model<-function(model_version_name,clustering_data_path,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA,ds_list=NULL){
  
   require(Matrix)
   require(Matrix.utils)
@@ -451,9 +451,17 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
     cell_to_cluster=cell_to_cluster[barcode_mask]
     cell_to_sample=cell_to_sample[barcode_mask]
    
+    ### edit AL 8/14/19
+    # Allow for ds_list to be passed as an argument so that you don't have to re-do the downsampling if you already have it
+    if(is.null(ds_list)){
      for (ds_i in 1:length(ds_numis)){
-      dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
-    }
+       dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
+     }
+   }else{
+     dataset$ds <- ds_list
+     names(dataset$ds) <- NULL
+   }
+    
     
    
     
