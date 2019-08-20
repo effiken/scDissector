@@ -16,6 +16,7 @@
 
     **install_github("effiken/scDissector")**
 
+
 ## Update
 
 1. Load devtools
@@ -23,6 +24,7 @@
 **library(devtools)**
 
 2. Install the package as in (3) above
+
 
 ## Running scDissector in R
 
@@ -34,8 +36,6 @@
 
 **run_scDissector(clustering_data_path =**["PATH"]**)**
 
------------
-
 ### Loading the data prior to running scDissector
 
 Loading the data prior to running scDissector is recommended: 
@@ -44,11 +44,15 @@ Loading the data prior to running scDissector is recommended:
 
 **run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
 
------------
-
 ### Loading Seurat Object and running scDissector
 
 **ldm=load_seurat_rds("[seurat_rds_file_path]",model_name,clustering_data_path=**["PATH"]**)
+
+**run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
+
+### Loading MetcCell Object and running scDissector
+
+**ldm=load_metacell_clustering(mc_file,mat_file,model_name,clustering_data_path=**["PATH"]**)
 
 **run_scDissector(preloaded_data = ldm, clustering_data_path = **["PATH"]**)**
 
