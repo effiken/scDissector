@@ -8,13 +8,13 @@
     
 2.  Install devtools package in R (in case you don't have it already installed):
 
-    **install.packages("devtools")**
+    `install.packages("devtools")`
     
-    **library(devtools)**
+    `library(devtools)`
     
 3.  Install scDissector:
 
-    **install_github("effiken/scDissector")**
+    `install_github("effiken/scDissector")`
 
 
 ## Update
@@ -28,13 +28,13 @@
 
 ## Running scDissector in R
 
-**library(scDissector)**
+`library(scDissector)`
 
-**run_scDissector()**
+`run_scDissector()`
 
 *or*
 
-**run_scDissector(clustering_data_path =**["PATH"]**)**
+`run_scDissector(clustering_data_path =**["PATH"]**)`
 
 
 ### Loading the data prior to running scDissector
