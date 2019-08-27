@@ -871,7 +871,9 @@ tab3_left_margin=12
   })
   
   observeEvent(input$reloadClusterSetButtion,{
-    cluster_sets_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
+    #Bug fix AL 08/27/19
+    cluster_set_fn=paste(substr(session$userData$loaded_model_file,1,nchar(session$userData$loaded_model_file)-3),"_cluster_sets.txt",sep="")
+    #cluster_sets_fn=paste(strsplit(session$userData$loaded_model_file,"\\.")[[1]][1],"_cluster_sets.txt",sep="")
     if (file.exists(cluster_sets_fn)){
       a=read.delim(cluster_sets_fn,header=T,stringsAsFactors = F)
       l=get_cluster_set_tree(a)
