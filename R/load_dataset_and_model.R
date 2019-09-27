@@ -556,6 +556,183 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
 }
 
 
+merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_rdfile1,ldm_rdfile2,prefix1,prefix2,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,ds_list=NULL){
+  
+  require(Matrix)
+  require(Matrix.utils)
+  env1=new.env()
+  load(file = ldm_rdfile1,env1)
+  ldm1=env1[[names(env1)]]
+  rm(env1)
+  env2=new.env()
+  load(file = ldm_rdfile2,env2)
+  ldm2=env2[[names(env2)]]
+  rm(env2)
+  gc()
+  cells=c(paste(prefix1,names(ldm1$dataset$cell_to_cluster),sep=""),paste(prefix2,names(ldm2$dataset$cell_to_cluster),sep=""))
+  umitab=cbind(ldm1$dataset$umitab,ldm2$dataset$umitab)
+  cell_to_cluster=c(paste(prefix1,ldm1$dataset$cell_to_cluster,sep=""),paste(prefix2,ldm2$dataset$cell_to_cluster,sep=""))
+  cell_to_sample=c(paste(prefix1,ldm1$dataset$cell_to_sample,sep=""),paste(prefix2,ldm2$dataset$cell_to_sample,sep=""))
+  
+  colnames(umitab)=cells
+  names(cell_to_cluster)=cells
+  names(cell_to_sample)=cells
+  
+  models=cbind(ldm1$model$models,ldm2$model$models)
+  colnames(models)=c(paste(prefix1,colnames(ldm1$model$models),sep=""),paste(prefix2,colnames(ldm2$model$models),sep=""))
+  output<-list()
+  output$scDissector_params<-list()
+  
+  clustAnnots=c(ldm1$clustAnnots,ldm2$clustAnnots)
+  names(clustAnnots)=c(paste(prefix1,colnames(ldm1$model$models),sep=""),paste(prefix2,colnames(ldm2$model$models),sep=""))
+  
+  get_cluster_set_list=function(clusts,i){
+    if (i==0){
+      return(clusts)
+    }
+    else{
+      l=split(clusts,a[clusts,i])
+      return(lapply(l,get_cluster_set_list,i-1))
+    }
+  }
+  
+  
+  
+  
+  clusters=unique(cell_to_cluster)
+  samples=unique(cell_to_sample)
+  
+  dataset<-new.env()
+  dataset$ds=list()
+  
+  dataset$ds_numis=NULL
+  dataset$ll<-c()
+  
+  
+  
+  
+  dataset$alpha_noise=rep(NA,length(samples))
+  
+  names(dataset$alpha_noise)=samples
+  
+  genes=rownames(umitab)
+  message("")
+  
+  dataset$gated_out_umitabs<-list()
+  dataset$counts<-array(0,dim=c(length(samples),length(genes),length(clusters)),dimnames = list(samples,genes,clusters))
+  
+  
+  dataset$numis_before_filtering=Matrix::colSums(umitab)
+  
+  barcode_mask=dataset$numis_before_filtering[colnames(umitab)]>min_umis&dataset$numis_before_filtering[colnames(umitab)]<max_umis
+  dataset$min_umis=min_umis
+  dataset$max_umis=max_umis
+  umitab=umitab[,barcode_mask]
+  cell_to_cluster=cell_to_cluster[barcode_mask]
+  cell_to_sample=cell_to_sample[barcode_mask]
+
+  ### edit AL 8/14/19
+  # Allow for ds_list to be passed as an argument so that you don't have to re-do the downsampling if you already have it
+  if(is.null(ds_list)){
+    for (ds_i in 1:length(ds_numis)){
+      dataset$ds[[ds_i]]=downsample(umitab,min_umis=ds_numis[ds_i])
+    }
+  }else{
+    dataset$ds <- ds_list
+    names(dataset$ds) <- NULL
+  }
+  
+  
+  
+  
+  if (is.null(insilico_gating)){
+    umitab=umitab
+  }
+  else{
+    
+    is_res=insilico_sorter(umitab,insilico_gating)
+    umitab=is_res$umitab
+    
+    for (score_i in names(insilico_gating)){
+      dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+      if (is.null(dataset$gated_out_umitabs[[score_i]])){
+        dataset$gated_out_umitabs[[score_i]]=list()
+      }
+      dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
+    }
+  }
+  
+  dataset$cell_to_cluster<-cell_to_cluster
+  dataset$cell_to_sample<-cell_to_sample
+  dataset$umitab<-umitab
+  
+  for (sampi in samples){
+    maski=cell_to_sample==sampi
+    tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[,maski]),cell_to_cluster[maski],fun="sum")))
+    dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
+  }
+  
+  
+  
+  
+  dataset$samples=samples
+  dataset$ds_numis=ds_numis
+  if (all(is.na(clustAnnots))){
+    clustAnnots<-rep("unannotated",ncol(models))
+    names(clustAnnots)<-colnames(models)
+  }
+  
+  output$clustAnnots=clustAnnots
+  
+  
+  nodes=names(clustAnnots)
+  parents=as.character(clustAnnots)
+  nodes[nodes==""]="unannotated"
+  parents[parents==""]="unannotated"
+  output$cluster_sets<-get_cluster_set_tree(data.frame(node=nodes,parent=parents))
+  
+  
+  
+  
+  cluster_order=colnames(models)
+  
+  model=new.env()
+  model$models=models
+  
+  output$dataset=dataset
+  rm("dataset")
+  included_clusters=unique(cell_to_cluster)
+  ncells_per_cluster<-rep(0,length(included_clusters))
+  names(ncells_per_cluster)<-included_clusters
+  temptab=table(cell_to_cluster)
+  #  temptab=temptab[setdiff(names(temptab),output$scDissector_params$excluded_cluster_sets)]
+  ncells_per_cluster[names(temptab)]<-temptab
+  output$ncells_per_cluster=ncells_per_cluster
+  
+  
+  output$clustAnnots=output$clustAnnots[included_clusters]
+  output$ncells_per_cluster=output$ncells_per_cluster[included_clusters]
+  
+  output$model=model
+  output$cluster_order<-intersect(cluster_order,included_clusters)
+  output$default_clusters<-intersect(cluster_order,included_clusters)
+  output$loaded_model_version<-model_version_name
+  fn_prefix=paste(clustering_data_path,"/imported_model_",model_version_name,sep="")
+  output$model$model_filename<-paste(fn_prefix,".rd",sep="")
+  
+  order_fn=paste(fn_prefix,"_order.txt",sep="")
+  if (file.exists(order_fn)){
+    output$cluster_order=as.character(read.table(file=order_fn,header = F)[,1])
+  }
+  else{
+    output$cluster_order=colnames(output$model$models)
+  }
+  output$default_clusters<-output$cluster_order
+  
+  return(output)
+  
+}
+
 
 load_seurat_rds=function(rds_file,model_name="",clustering_data_path="",min_umis=200,max_umis=25000,ds_numis=c(200,500,1000,2000),sample_ID_converter=NULL){
     a=readRDS(rds_file)
