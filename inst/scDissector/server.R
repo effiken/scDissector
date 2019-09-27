@@ -192,7 +192,7 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inModulesDownSamplingVersion",choices=get_ds_options(session),selected = max(get_ds_options(session)))
 
   if (is.null(get_noise_models(session))){
-     updateSelectInput(session,"inModelOrAverage",choices=c("Model","Average"))
+     updateSelectInput(session,"inModelOrAverage",choices=c("Model parameters","Average"))
   }
   
   
@@ -1427,7 +1427,6 @@ tab3_left_margin=12
   
   output$samples_enrichment_plot <- renderPlot({
     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
-    
 #    sample_cols=sample_colors_reactive()
     inclusts=cgs$clusters
     insamples=cgs$samples
@@ -1472,7 +1471,7 @@ tab3_left_margin=12
 
   
   output$avg_heatmap_interactive <-renderPlotly({
-    
+
       ##### Don't delete!!
       input$inAnnotateCluster
       input$inModelVer
@@ -1522,24 +1521,26 @@ tab3_left_margin=12
             
           }
         }
+ 
         mat=apply(counts,2:3,sum,na.rm=T)/apply(numis_per_clust_arr,2:3,sum,na.rm=T)
         rownames(mat)=ingenes
       }
       if (min(dim(mat))==0){
         return()
       }
-      
+
       isolate({
         mat1=mat
         abs_or_rel=input$inAbsOrRel
       }) 
-
+      
       main_title=paste(input$inModelOrAverage,":",session$userData$loaded_model_version)
       genes=rownames(mat1)
       gene.cols=session$userData$gcol[toupper(rownames(mat1))]
       clusters=colnames(mat1)
       clusters_text=paste(" (n=",session$userData$ncells_per_cluster[inclusts]," ; ",round(100*session$userData$ncells_per_cluster[inclusts]/sum(session$userData$ncells_per_cluster[setdiff(names(session$userData$ncells_per_cluster),session$userData$scDissector_params$excluded_clusters)]),digits=1),"% )",sep="")
       annots=cluster_annots_reactive()[inclusts]
+   
       return(plot_avg_heatmap_interactive(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,colgrad=session$userData$modelColorGrad))
       # plot_avg_heatmap(mat1,zlim,main_title,genes,gene.cols,clusters,clusters_text,annots,Relative_or_Absolute=abs_or_rel,reg=1e-6,colgrad =session$userData$modelColorGrad)
   })
