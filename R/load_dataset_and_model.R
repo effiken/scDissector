@@ -556,7 +556,7 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
 }
 
 
-merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_rdfile1,ldm_rdfile2,prefix1,prefix2,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,ds_list=NULL){
+merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_rdfile1,ldm_rdfile2,prefix1,prefix2,clusters1=c(),clusters2=c(),min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,ds_list=NULL){
   
   require(Matrix)
   require(Matrix.utils)
@@ -569,22 +569,34 @@ merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_r
   ldm2=env2[[names(env2)]]
   rm(env2)
   gc()
-  cells=c(paste(prefix1,names(ldm1$dataset$cell_to_cluster),sep=""),paste(prefix2,names(ldm2$dataset$cell_to_cluster),sep=""))
-  umitab=cbind(ldm1$dataset$umitab,ldm2$dataset$umitab)
-  cell_to_cluster=c(paste(prefix1,ldm1$dataset$cell_to_cluster,sep=""),paste(prefix2,ldm2$dataset$cell_to_cluster,sep=""))
-  cell_to_sample=c(paste(prefix1,ldm1$dataset$cell_to_sample,sep=""),paste(prefix2,ldm2$dataset$cell_to_sample,sep=""))
+  
+  if (length(clusters1)==0){
+    clusters1=colnames(ldm1$model$models)
+  }
+  
+  if (length(clusters2)==0){
+    clusters2=colnames(ldm2$model$models)
+  }
+  
+   mask1=names(ldm1$dataset$cell_to_cluster)[ldm1$dataset$cell_to_cluster%in%clusters1]
+   mask2=names(ldm2$dataset$cell_to_cluster)[ldm2$dataset$cell_to_cluster%in%clusters2]
+  
+  cells=c(paste(prefix1,names(ldm1$dataset$cell_to_cluster[mask1]),sep=""),paste(prefix2,names(ldm2$dataset$cell_to_cluster[mask2]),sep=""))
+  umitab=cbind(ldm1$dataset$umitab[,mask1],ldm2$dataset$umitab[,mask2])
+  cell_to_cluster=c(paste(prefix1,ldm1$dataset$cell_to_cluster[mask1],sep=""),paste(prefix2,ldm2$dataset$cell_to_cluster[mask2],sep=""))
+  cell_to_sample=c(paste(prefix1,ldm1$dataset$cell_to_sample[mask1],sep=""),paste(prefix2,ldm2$dataset$cell_to_sample[mask2],sep=""))
   
   colnames(umitab)=cells
   names(cell_to_cluster)=cells
   names(cell_to_sample)=cells
   
-  models=cbind(ldm1$model$models,ldm2$model$models)
-  colnames(models)=c(paste(prefix1,colnames(ldm1$model$models),sep=""),paste(prefix2,colnames(ldm2$model$models),sep=""))
+  models=cbind(ldm1$model$models[,clusters1],ldm2$model$models[,clusters2])
+  colnames(models)=c(paste(prefix1,clusters1,sep=""),paste(prefix2,clusters2,sep=""))
   output<-list()
   output$scDissector_params<-list()
   
-  clustAnnots=c(ldm1$clustAnnots,ldm2$clustAnnots)
-  names(clustAnnots)=c(paste(prefix1,colnames(ldm1$model$models),sep=""),paste(prefix2,colnames(ldm2$model$models),sep=""))
+  clustAnnots=c(ldm1$clustAnnots[clusters1],ldm2$clustAnnots[clusters2])
+  names(clustAnnots)=c(paste(prefix1,clusters1,sep=""),paste(prefix2,clusters2,sep=""))
   
   get_cluster_set_list=function(clusts,i){
     if (i==0){
