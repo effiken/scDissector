@@ -918,7 +918,8 @@ tab3_left_margin=12
       genes=get_all_genes(session)
     } else if (input$inSelectGenesFrom=="Without RPs"){
       pref="NoRps"
-      genes=setdiff(get_all_genes(session),grep("^RP|^Rp",genes,val=T))
+      genes=get_all_genes(session)
+      genes=setdiff(genes,grep("^RP|^Rp",genes,val=T))
     }else if (input$inSelectGenesFrom=="TFs"){
       pref="Tfs"
       genes=tfs
