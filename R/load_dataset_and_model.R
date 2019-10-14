@@ -39,7 +39,7 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 #' @param lightweight [optional ] Boolean. If true, unnecessary obectes are not loaded. (F is the default) 
 #' @return LDM object
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F,cell_list=NULL){
 
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
@@ -174,7 +174,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         tmp_env=new.env()
         load(sample_fns[i],envir = tmp_env)
         tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
-        
+        if (!is.null(cell_list)){
+          tmp_env$umitab=tmp_env$umitab[,intersect(colnames(tmp_env$umitab),cell_list[[sampi]])]
+        }
         colnames(tmp_env$umitab)=paste(sampi,colnames(tmp_env$umitab),sep="_")
         if ((!is.na(max_ncells_per_sample))&ncol(tmp_env$umitab)>max_ncells_per_sample){
           tmp_env$umitab=tmp_env$umitab[,sample(colnames(tmp_env$umitab),size = max_ncells_per_sample,replace = F)]
@@ -187,7 +189,8 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           ds_numis_sampi=tmp_env$ds_numis
         }
         for (ds_i in 1:length(ds_numis_sampi)){
-            tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
+
+            tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,intersect(cell_list[[sampi]],setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes))]
             colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
         }
         if (sampi==samples[1]){
