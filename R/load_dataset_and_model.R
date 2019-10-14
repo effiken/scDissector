@@ -559,7 +559,7 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
 }
 
 
-merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_rdfile1,ldm_rdfile2,prefix1,prefix2,clusters1=c(),clusters2=c(),min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,ds_list=NULL){
+merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_rdfile1,ldm_rdfile2,prefix1,prefix2,add_prefix_to_sampleids=F,clusters1=c(),clusters2=c(),min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,ds_list=NULL){
   
   require(Matrix)
   require(Matrix.utils)
@@ -587,8 +587,12 @@ merge_dataset_and_models<-function(model_version_name,clustering_data_path,ldm_r
   cells=c(paste(prefix1,names(ldm1$dataset$cell_to_cluster[mask1]),sep=""),paste(prefix2,names(ldm2$dataset$cell_to_cluster[mask2]),sep=""))
   umitab=cbind(ldm1$dataset$umitab[,mask1],ldm2$dataset$umitab[,mask2])
   cell_to_cluster=c(paste(prefix1,ldm1$dataset$cell_to_cluster[mask1],sep=""),paste(prefix2,ldm2$dataset$cell_to_cluster[mask2],sep=""))
-  cell_to_sample=c(paste(prefix1,ldm1$dataset$cell_to_sample[mask1],sep=""),paste(prefix2,ldm2$dataset$cell_to_sample[mask2],sep=""))
-  
+  if (add_prefix_to_sampleids){
+    cell_to_sample=c(paste(prefix1,ldm1$dataset$cell_to_sample[mask1],sep=""),paste(prefix2,ldm2$dataset$cell_to_sample[mask2],sep=""))
+  }
+  else{
+    cell_to_sample=c(ldm1$dataset$cell_to_sample[mask1],ldm2$dataset$cell_to_sample[mask2])
+  }
   colnames(umitab)=cells
   names(cell_to_cluster)=cells
   names(cell_to_sample)=cells
