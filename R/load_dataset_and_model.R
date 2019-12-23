@@ -37,9 +37,10 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 #' @param genes [optional ] vector specifying genes which will be included in the analysis. If NULL (default) all genes are included. In cases of inconsistencies between the gene lists included in different samples this vector should provide the desired common gene list.  
 #' @param max_ncells_per_sample [optional ] Integer. limits the number of cells randomly selected and loaded per sample. If NA (default) all cells are loaded
 #' @param lightweight [optional ] Boolean. If true, unnecessary obectes are not loaded. (F is the default) 
+#' @param max_noise_fraction [optional ] numeric maximum value for the alpha parameter. (0.20 in default) 
 #' @return LDM object
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F,cell_list=NULL){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F,cell_list=NULL,max_noise_fraction=0.2){
 
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
@@ -271,7 +272,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
             #          cell_to_cluster=MAP(res_l$ll)
             #          alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,cell_to_cluster =cell_to_cluster,reg=model$params$reg )
-            alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg )
+            alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg ,max_noise_fraction = max_noise_fraction)
             
             message("%Noise = ",round(100*alpha_b,digits=2))
             res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
@@ -305,8 +306,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         cells_to_include=names(cell_to_cluster)[!cell_to_cluster%in%excluded_clusters]
         
         cell_to_cluster=cell_to_cluster[cells_to_include]
-        ll=ll[cells_to_include,]
-        dataset$ll<-rbind(dataset$ll,ll)
+        if (!lightweight){
+          ll=ll[cells_to_include,]
+          dataset$ll<-rbind(dataset$ll,ll)
+        }
         umitab=umitab[,cells_to_include]
         
         dataset$cell_to_cluster<-c(dataset$cell_to_cluster,cell_to_cluster)
@@ -326,6 +329,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
         message("")
         rm(list=c("ll","cell_to_cluster","tmp_env","umitab"))
+        gc()
         }
     }
     
