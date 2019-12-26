@@ -82,7 +82,7 @@ plot_truth_heatmap=function(ds,cell_to_sample,cell_to_cluster,insamples,ingenes,
       showClusterLabels=F
     }
   }else{
-    cell_ord=order(match(cell_to_cluster[colnames(ds)],inclusts))
+    cell_ord=order(match(cell_to_sample[colnames(ds)],insamples)+length(insamples)*match(cell_to_cluster[colnames(ds)],inclusts))
   }
   
   
