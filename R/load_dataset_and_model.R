@@ -167,6 +167,11 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         init_alpha[is.na(init_alpha)]=median(model$alpha_noise,na.rm=T)
       }
     }
+    
+    projection_genemask=setdiff(genes,model$params$genes_excluded)
+    models=model$models[projection_genemask,]
+    models=t(t(models)/colSums(models))
+    
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
@@ -183,36 +188,38 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           tmp_env$umitab=tmp_env$umitab[,sample(colnames(tmp_env$umitab),size = max_ncells_per_sample,replace = F)]
         }
         
-        if (!is.na(ds_numis)){
-          ds_numis_sampi=intersect(as.character(ds_numis),as.character(tmp_env$ds_numis))
-        }
-        else{
-          ds_numis_sampi=tmp_env$ds_numis
-        }
-        for (ds_i in 1:length(ds_numis_sampi)){
-            if (!is.null(cell_list)){
-              tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,intersect(cell_list[[sampi]],setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes))]
-            }
-            else{
-              tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
-            }
+        if (length(ds_numis)>0){
+          if (!is.na(ds_numis)){
+            ds_numis_sampi=intersect(as.character(ds_numis),as.character(tmp_env$ds_numis))
+          }
+          else{
+            ds_numis_sampi=tmp_env$ds_numis
+          }
+          for (ds_i in 1:length(ds_numis_sampi)){
+              if (!is.null(cell_list)){
+                tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,intersect(cell_list[[sampi]],setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes))]
+              }
+              else{
+                tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
+              }
               
-            colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
-        }
-        if (sampi==samples[1]){
+              colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
+          }
+          if (sampi==samples[1]){
             for (ds_i in 1:length(ds_numis_sampi)){
                 dataset$ds[[ds_i]]<-Matrix(,length(genes),,dimnames = list(genes,NA))
             }
             
-        }
-        if (is.null(dataset$ds_numis)){
-            dataset$ds_numis=ds_numis_sampi
-        }
-        else{
-            if (!all(dataset$ds_numis==ds_numis_sampi)){
-                message("Warning! Some of the samples don't share the same downsampling UMIs values")
-                dataset$ds_numis=intersect(dataset$ds_numis,ds_numis_sampi)
-            }
+          }
+          if (is.null(dataset$ds_numis)){
+              dataset$ds_numis=ds_numis_sampi
+          }
+          else{
+              if (!all(dataset$ds_numis==ds_numis_sampi)){
+                  message("Warning! Some of the samples don't share the same downsampling UMIs values")
+                  dataset$ds_numis=intersect(dataset$ds_numis,ds_numis_sampi)
+              }
+          }
         }
         tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
         
@@ -224,13 +231,14 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             
             is_res=insilico_sorter(tmp_env$umitab,model$params$insilico_gating)
             umitab=is_res$umitab
-            
-            for (score_i in names(model$params$insilico_gating)){
-                dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
-                if (is.null(dataset$gated_out_umitabs[[score_i]])){
-                    dataset$gated_out_umitabs[[score_i]]=list()
-                }
-                dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
+            if (!lightweight){
+              for (score_i in names(model$params$insilico_gating)){
+                  dataset$insilico_gating_scores[[score_i]]=c(dataset$insilico_gating_scores[[score_i]],is_res$scores[[score_i]])
+                  if (is.null(dataset$gated_out_umitabs[[score_i]])){
+                      dataset$gated_out_umitabs[[score_i]]=list()
+                  }
+                  dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
+              }
             }
             
             
@@ -255,11 +263,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         umitab=umitab[,barcode_mask]
         dataset$noise_models[genes,sampi]=tmp_env$noise_model[genes,1]
       #  genemask=intersect(rownames(umitab),rownames(model$models))
-        projection_genemask=setdiff(genes,model$params$genes_excluded)
+
         noise_model=dataset$noise_models[projection_genemask,sampi]
         noise_model=noise_model/sum(noise_model)
-        models=model$models[projection_genemask,]
-        models=t(t(models)/colSums(models))
+       
         message("Projecting ",ncol(umitab)," cells")
   #      genes=intersect(rownames(umitab),genes)
         if (is.null(model$alpha_noise)&is.null(model$avg_numis_per_model)){
@@ -318,8 +325,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         
-        for (ds_i in 1:length(ds_numis_sampi)){
-            dataset$ds[[ds_i]]<-cbind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
+        if (exists("ds_numis_sampi")){
+          for (ds_i in 1:length(ds_numis_sampi)){
+              dataset$ds[[ds_i]]<-cbind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
+          }
         }
         dataset$umitab<-cbind(dataset$umitab[genes,],umitab[genes,])
         cellids=colnames(umitab)
@@ -328,7 +337,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         names(cell_to_sampi)=cellids
         dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
         message("")
-        rm(list=c("ll","cell_to_cluster","tmp_env","umitab"))
+        rm(list=c("ll","cell_to_cluster","tmp_env","umitab","cell_to_sampi","cellids","tmp_counts","cells_to_include","umitab"))
         gc()
         }
     }
@@ -337,8 +346,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     
     
     dataset$umitab<-dataset$umitab[,-1]
-    for (ds_i in 1:length(dataset$ds)){
+    if (length(dataset$ds)>0){
+      for (ds_i in 1:length(dataset$ds)){
         dataset$ds[[ds_i]]=dataset$ds[[ds_i]][,-1]
+      }
     }
     dataset$samples=samples
     
