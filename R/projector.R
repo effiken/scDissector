@@ -97,7 +97,7 @@ getOneBatchCorrectedLikelihood=function(umitab,models,noise_model,alpha_noise=NU
   adjusted_models=t((1-alpha_noise)*t(models)+alpha_noise*matrix(noise_model,ncol(models),nrow(models),byrow=T))
   cells_per_iter=split(colnames(umitab),rep(seq(1,ceiling(ncol(umitab)/ncells_per_iter)),each=ncells_per_iter)[1:ncol(umitab)])
   for (i in 1:length(cells_per_iter)){
-    ll[cells_per_iter[[i]],colnames(adjusted_models)]=getLikelihood(umitab[,cells_per_iter[[i]]],adjusted_models,reg=reg)
+    ll[cells_per_iter[[i]],colnames(adjusted_models)]=getLikelihood(umitab[,cells_per_iter[[i]],drop=F],adjusted_models,reg=reg)
   }
   rm(adjusted_models)
   if (calc_ll_noise){
