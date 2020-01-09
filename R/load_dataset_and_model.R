@@ -339,7 +339,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         gc()
 
         for (cluster in included_clusters){
-          dataset$counts[sampi,genes,cluster]=rowSums(umitab[genes,cell_to_cluster==cluster,drop=F])
+          dataset$counts[sampi,genes,cluster]=Matrix::rowSums(umitab[genes,cell_to_cluster==cluster,drop=F])
         }
      #   tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genes,]),cell_to_cluster,fun="sum")))
         gc()
