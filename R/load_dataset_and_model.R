@@ -176,11 +176,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     included_clusters=setdiff(colnames(model$models),excluded_clusters)
     umitab_l=list()
     ds_l=list()
-    if (length(ds_numis)>0){
-      for (ds_i in 1:length(ds_numis)){
-        ds_l[[ds_i]]<-list()
-      }
-    }
+    
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
@@ -205,6 +201,13 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           }
           else{
             ds_numis_sampi=tmp_env$ds_numis
+          }
+          if (length(ds_numis_sampi)>0){
+            if (length(ds_l)==0){
+              for (ds_i in 1:length(ds_numis_sampi)){
+                  ds_l[[ds_i]]<-list()
+               }
+            }
           }
           for (ds_i in 1:length(ds_numis_sampi)){
               if (!is.null(cell_list)){
@@ -291,7 +294,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg ,max_noise_fraction = max_noise_fraction)
             
             message("%Noise = ",round(100*alpha_b,digits=2))
-            
+       
             res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
             gc()
             #     cells_to_exclude=apply(res_l$ll,1,which.max)==ncol(models)+1
@@ -342,7 +345,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         gc()
     #    dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
-        
+
         if (exists("ds_numis_sampi")){
           for (ds_i in 1:length(ds_numis_sampi)){
               ds_l[[ds_i]][[sampi]]<-tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)]
