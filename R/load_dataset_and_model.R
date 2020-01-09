@@ -126,8 +126,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     
     if (lightweight){
       model$umitab=NULL
+      model$ll=NULL
+      gc()
     }
-    
  
     samples=names(sample_fns)
     
@@ -153,6 +154,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
       genes=intersect(genes,rownames(model$models))
     }
     message("")
+   
     dataset$umitab<-Matrix(,length(genes),,dimnames = list(genes,NA))
     dataset$gated_out_umitabs<-list()
     dataset$noise_models=matrix(0,length(genes),length(samples),dimnames = list(genes,samples))
@@ -171,7 +173,14 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     projection_genemask=setdiff(genes,model$params$genes_excluded)
     models=model$models[projection_genemask,]
     models=t(t(models)/colSums(models))
-    
+    included_clusters=setdiff(colnames(model$models),excluded_clusters)
+    umitab_l=list()
+    ds_l=list()
+    if (length(ds_numis)>0){
+      for (ds_i in 1:length(ds_numis)){
+        ds_l[[ds_i]]<-list()
+      }
+    }
     for (sampi in samples){
         message("Loading sample ",sampi)
         i=match(sampi,samples)
@@ -179,6 +188,8 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
         
         tmp_env=new.env()
         load(sample_fns[i],envir = tmp_env)
+        
+        gc()
         tmp_env$umitab=tmp_env$umitab[,setdiff(colnames(tmp_env$umitab),tmp_env$noise_barcodes)]
         if (!is.null(cell_list)){
           tmp_env$umitab=tmp_env$umitab[,intersect(colnames(tmp_env$umitab),cell_list[[sampi]])]
@@ -205,12 +216,10 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
               
               colnames(tmp_env$ds[[ds_i]])=paste(sampi,colnames(tmp_env$ds[[ds_i]]),sep="_")
           }
-          if (sampi==samples[1]){
-            for (ds_i in 1:length(ds_numis_sampi)){
-                dataset$ds[[ds_i]]<-Matrix(,length(genes),,dimnames = list(genes,NA))
-            }
+  #        if (sampi==samples[1]){
+  #          
             
-          }
+  #        }
           if (is.null(dataset$ds_numis)){
               dataset$ds_numis=ds_numis_sampi
           }
@@ -222,7 +231,6 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           }
         }
         tmp_env$numis_before_filtering=Matrix::colSums(tmp_env$umitab)
-        
         
         if (is.null(model$params$insilico_gating)){
             umitab=tmp_env$umitab
@@ -240,10 +248,11 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
                   dataset$gated_out_umitabs[[score_i]][[sampi]]=is_res$gated_out_umitabs[[score_i]]
               }
             }
-            
-            
+            rm("is_res")
             
         }
+        tmp_env$umitab=NULL
+        gc()
   
         ### AL edit 4/1/19
         if (!is.null(tmp_env$adttab)){
@@ -282,7 +291,9 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg ,max_noise_fraction = max_noise_fraction)
             
             message("%Noise = ",round(100*alpha_b,digits=2))
+            
             res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
+            gc()
             #     cells_to_exclude=apply(res_l$ll,1,which.max)==ncol(models)+1
             #      if (sum(cells_to_exclude)>0){
             #        message("Excluding ",sum(cells_to_exclude)," noisy barcodes")
@@ -297,7 +308,8 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             #    message("%Noise = ",round(100*alpha_b,digits=2))
             
             dataset$alpha_noise[sampi]=alpha_b
-            ll=res_l$ll[,1:ncol(models)]  
+            ll=res_l$ll[,1:ncol(models)]
+            rm(res_l)
           }
           else {
             if (!is.null(model$avg_numis_per_model)){
@@ -317,39 +329,71 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
           ll=ll[cells_to_include,]
           dataset$ll<-rbind(dataset$ll,ll)
         }
+        rm("ll")
         umitab=umitab[,cells_to_include]
         
         dataset$cell_to_cluster<-c(dataset$cell_to_cluster,cell_to_cluster)
-        
-        tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genes,]),cell_to_cluster,fun="sum")))
-        dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
+        gc()
+
+        for (cluster in included_clusters){
+          dataset$counts[sampi,genes,cluster]=rowSums(umitab[genes,cell_to_cluster==cluster,drop=F])
+        }
+     #   tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[genes,]),cell_to_cluster,fun="sum")))
+        gc()
+    #    dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
         dataset$numis_before_filtering[[sampi]]=tmp_env$numis_before_filtering
         
         if (exists("ds_numis_sampi")){
           for (ds_i in 1:length(ds_numis_sampi)){
-              dataset$ds[[ds_i]]<-cbind(dataset$ds[[ds_i]][genes,],tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)])
+              ds_l[[ds_i]][[sampi]]<-tmp_env$ds[[ds_i]][genes,intersect(colnames(tmp_env$ds[[ds_i]]),cells_to_include)]
           }
         }
-        dataset$umitab<-cbind(dataset$umitab[genes,],umitab[genes,])
+        
+        umitab_l[[sampi]]=umitab[genes,]
+
+       
         cellids=colnames(umitab)
         
         cell_to_sampi=rep(sampi,length(cellids))
         names(cell_to_sampi)=cellids
         dataset$cell_to_sample<-c(dataset$cell_to_sample,cell_to_sampi)
         message("")
-        rm(list=c("ll","cell_to_cluster","tmp_env","umitab","cell_to_sampi","cellids","tmp_counts","cells_to_include","umitab"))
+        rm(list=c("cell_to_cluster","tmp_env","umitab","cell_to_sampi","cellids","cells_to_include"))
         gc()
         }
     }
-    
+
     message("...")
-    
+    gc()
+    #dataset$umitab<-Matrix(0,length(genes),length(dataset$cell_to_sample),dimnames = list(genes,names(dataset$cell_to_sample)),sparse=TRUE)
+    #if (length(dataset$ds_numis)>0){
+    #  for (ds_i in 1:length(dataset$ds_numis)){
+    #    ds_l[[ds_i]]=Matrix(0,length(genes),length(dataset$cell_to_sample),dimnames = list(genes,names(dataset$cell_to_sample)),sparse=TRUE)
+    #  }
+    message("Combining datasets...")
+    if (length(dataset$ds_numis)>0){ 
+      for (ds_i in 1:length(ds_numis_sampi)){
+        dataset$ds[[ds_i]]<-Matrix(,length(genes),,dimnames = list(genes,NA))
+      }
+    }
+    for (sampi in samples){
+      print(sampi)
+      dataset$umitab<-cbind(dataset$umitab,umitab_l[[sampi]])
+      umitab_l[[sampi]]=NULL
+      if (length(dataset$ds_numis)>0){
+        for (ds_i in 1:length(dataset$ds_numis)){
+          dataset$ds[[ds_i]]<-cbind(dataset$ds[[ds_i]],ds_l[[ds_i]][[sampi]])
+          ds_l[[ds_i]][[sampi]]=NULL
+        }
+      }
+      gc()
+    }
     
     dataset$umitab<-dataset$umitab[,-1]
     if (length(dataset$ds)>0){
       for (ds_i in 1:length(dataset$ds)){
-        dataset$ds[[ds_i]]=dataset$ds[[ds_i]][,-1]
-      }
+      dataset$ds[[ds_i]]=dataset$ds[[ds_i]][,-1]
+    }
     }
     dataset$samples=samples
     
@@ -365,7 +409,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     model$model_filename=model_fn
     output$dataset=dataset
     rm("dataset")
-    included_clusters=setdiff(colnames(model$models),excluded_clusters)
+    
     ncells_per_cluster<-rep(0,dim(model$models)[2])
     names(ncells_per_cluster)<-colnames(model$models)
     temptab=table(model$cell_to_cluster)
@@ -382,6 +426,7 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     output$cluster_order<-intersect(cluster_order,included_clusters)
     output$default_clusters<-intersect(cluster_order,included_clusters)
     output$loaded_model_version<-model_version_name
+    message("Done.")
     return(output)
     
 }
