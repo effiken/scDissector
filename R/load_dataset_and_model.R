@@ -465,7 +465,22 @@ downsample=function(u,min_umis,chunk_size=100){
 }
 
 
-
+#' Converts a single-cell dataset to an scDissector LDM object
+#'  
+#' @param model_version_name user-defined model version name
+#' @param clustering_data_path scDissector clustering_data folder. An empty folder could be created by create_clustering_data_dir
+#' @param umitab UMI matrix. Genes are rows while cells are columns. row names are the gene IDs (usually geneSymbols) and column names are cell IDs.
+#' @param cell_to_cluster a vector that maps from cells IDs to cluster IDs. The vector names are the cell IDs while clusters IDs are the vector values.
+#' @param cell_to_sample a vector that maps from cells IDs to sample IDs. The vector names are the cell IDs while sample IDs are the vector values.
+#' @param min_umis lower UMI-count threshold 
+#' @param max_umis upper UMI-count threshold 
+#' @param excluded_clusters [optional] vector with clusters to exclude. Cells associated with these clusters are not loaded.
+#' @param ds_numis [optional] vector containing UMI counts to down-sample the dataset to.
+#' @param insilico_gating [optional] A list containing the in-silico gating policy for the imported cells. Each item in the list is a list containg two parameters: (1) genes- a vector defining a gene list (2) interval - a vector of length 2 defining the lower and upper UMI fraction expressed by the input gene list.
+#' @param clustAnnots=NA [optional] cluster annotations vector. Mapping from cluster IDs to user-defined annotations.
+#' @param ds_list [optional] user-defined downsapling
+#' @return LDM object
+#' @export
 import_dataset_and_model<-function(model_version_name,clustering_data_path,umitab,cell_to_cluster,cell_to_sample,min_umis=250,max_umis=25000,ds_numis=c(200,500,1000,2000),insilico_gating=NULL,clustAnnots=NA,ds_list=NULL){
  
   require(Matrix)

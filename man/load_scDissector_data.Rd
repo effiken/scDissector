@@ -4,9 +4,16 @@
 \alias{load_scDissector_data}
 \title{preload scRNA sample and project onto a model}
 \usage{
-load_scDissector_data(clustering_data_path, model_name, sample_names,
-  min_umis = 250, max_umis = 25000, ds_numis = NA,
-  max_ncells_per_sample = NA, genes = NULL)
+load_scDissector_data(
+  clustering_data_path,
+  model_name,
+  sample_names,
+  min_umis = 250,
+  max_umis = 25000,
+  ds_numis = NA,
+  max_ncells_per_sample = NA,
+  genes = NULL
+)
 }
 \arguments{
 \item{clustering_data_path}{path to the folder that cntains the compiled samples, model versions and metadata}
