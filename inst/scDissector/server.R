@@ -374,10 +374,10 @@ tab3_left_margin=12
   
     x=do.call(cbind,freq_norm[reorderby])
     x=pmax(x,0,na.rm=T)
-    ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
-  #  ord=get_order(seriate(as.dist(1-cor(t(x))),method = "GW"))
-    updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
-    
+    if (nrow(x)>=2){
+      ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
+      updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
+    }
   })
   
   observeEvent(input$inAddSample,{
