@@ -216,13 +216,13 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
               if (!is.null(cell_list)){
                 # Bug fix AL 2/24/20 loading specified ds_numis
                 #tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,intersect(cell_list[[sampi]],setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes))]
-                tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]=tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]][,intersect(cell_list[[sampi]],setdiff(tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]],tmp_env$noise_barcodes))]
+                tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]=tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]][,intersect(cell_list[[sampi]],setdiff(colnames(tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]),tmp_env$noise_barcodes))]
                 #
               }
               else{
                 # Bug fix AL 2/24/20 loading specified ds_numis
                 #tmp_env$ds[[ds_i]]=tmp_env$ds[[ds_i]][,setdiff(colnames(tmp_env$ds[[ds_i]]),tmp_env$noise_barcodes)]
-                tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]=tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]][,setdiff(tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]],tmp_env$noise_barcodes)]
+                tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]=tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]][,setdiff(colnames(tmp_env$ds[[match(ds_i,tmp_env$ds_numis)]]),tmp_env$noise_barcodes)]
                 #
               }
             # Bug fix AL 2/24/20 loading specified ds_numis
