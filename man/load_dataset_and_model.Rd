@@ -2,23 +2,12 @@
 % Please edit documentation in R/load_dataset_and_model.R
 \name{load_dataset_and_model}
 \alias{load_dataset_and_model}
-\title{load_dataset_and_model
-Load dataset and project onto a predefined model}
+\title{Load dataset and project onto a predefined model}
 \usage{
-load_dataset_and_model(
-  model_fn,
-  sample_fns,
-  min_umis = 250,
-  model_version_name = "",
-  max_umis = 25000,
-  excluded_clusters = NA,
-  ds_numis = NA,
-  genes = NULL,
-  max_ncells_per_sample = NA,
-  lightweight = F,
-  cell_list = NULL,
-  max_noise_fraction = 0.2
-)
+load_dataset_and_model(model_fn, sample_fns, min_umis = 250,
+  model_version_name = "", max_umis = 25000, excluded_clusters = NA,
+  ds_numis = NA, genes = NULL, max_ncells_per_sample = NA,
+  lightweight = F, cell_list = NULL, max_noise_fraction = 0.2)
 }
 \arguments{
 \item{model_fn}{model file-name}
@@ -47,6 +36,5 @@ load_dataset_and_model(
 LDM object
 }
 \description{
-load_dataset_and_model
 Load dataset and project onto a predefined model
 }

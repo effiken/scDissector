@@ -2,21 +2,12 @@
 % Please edit documentation in R/load_dataset_and_model.R
 \name{import_dataset_and_model}
 \alias{import_dataset_and_model}
-\title{converts a single-cell dataset to an scDissector LDM object}
+\title{Converts a single-cell dataset to an scDissector LDM object}
 \usage{
-import_dataset_and_model(
-  model_version_name,
-  clustering_data_path,
-  umitab,
-  cell_to_cluster,
-  cell_to_sample,
-  min_umis = 250,
-  max_umis = 25000,
-  ds_numis = c(200, 500, 1000, 2000),
-  insilico_gating = NULL,
-  clustAnnots = NA,
-  ds_list = NULL
-)
+import_dataset_and_model(model_version_name, clustering_data_path, umitab,
+  cell_to_cluster, cell_to_sample, min_umis = 250, max_umis = 25000,
+  ds_numis = c(200, 500, 1000, 2000), insilico_gating = NULL,
+  clustAnnots = NA, ds_list = NULL)
 }
 \arguments{
 \item{model_version_name}{user-defined model version name}
@@ -26,6 +17,8 @@ import_dataset_and_model(
 \item{umitab}{UMI matrix. Genes are rows while cells are columns. row names are the gene IDs (usually geneSymbols) and column names are cell IDs.}
 
 \item{cell_to_cluster}{a vector that maps from cells IDs to cluster IDs. The vector names are the cell IDs while clusters IDs are the vector values.}
+
+\item{cell_to_sample}{a vector that maps from cells IDs to sample IDs. The vector names are the cell IDs while sample IDs are the vector values.}
 
 \item{min_umis}{lower UMI-count threshold}
 
@@ -37,8 +30,6 @@ import_dataset_and_model(
 
 \item{ds_list}{[optional] user-defined downsapling}
 
-\item{cell_to_samplea}{a vector that maps from cells IDs to sample IDs. The vector names are the cell IDs while sample IDs are the vector values.}
-
 \item{excluded_clusters}{[optional] vector with clusters to exclude. Cells associated with these clusters are not loaded.}
 
 \item{clustAnnots=NA}{[optional] cluster annotations vector. Mapping from cluster IDs to user-defined annotations.}
@@ -47,5 +38,5 @@ import_dataset_and_model(
 LDM object
 }
 \description{
-converts a single-cell dataset to an scDissector LDM object
+Converts a single-cell dataset to an scDissector LDM object
 }
