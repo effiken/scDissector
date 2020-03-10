@@ -169,7 +169,26 @@ update_all= function(session,ldm){
   session$userData$sample_colors=default_sample_colors[1:length(get_loaded_samples(session))]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(get_loaded_samples(session)))-ncells_choices))]
-  clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
+
+  
+  if (is.null(session$userData$clustAnnots)&&(is.null(ldm$cluster_sets))){
+    annots=NULL
+  }
+  else{
+    if (is.null(ldm$cluster_sets)){
+      annots=session$userData$clustAnnots
+    }
+    else{
+      edges=get_edges(ldm$cluster_sets)
+      edges=edges[match(session$userData$default_clusters,edges[,"node"]),]
+      annots=edges[,2]
+      names(annots)=edges[,1]
+    }
+  }
+
+  clust_title=paste(session$userData$cluster_order," - ",annots[session$userData$cluster_order],sep="") 
+  print(clust_title)
+#  clust_title=paste(session$userData$cluster_order," - ",session$userData$clustAnnots[session$userData$cluster_order],sep="") 
   session$userData$cluster_sets=ldm$cluster_sets
   session$userData$scDissector_params$previous_clusters=session$userData$default_clusters
   update_clusters(session,session$userData$default_clusters,T)
@@ -190,7 +209,7 @@ update_all= function(session,ldm){
   updateSelectInput(session,"inQCDownSamplingVersion",choices=get_ds_options(session),selected = ifelse("1000"%in%get_ds_options(session),"1000",max(get_ds_options(session))))
   updateSelectInput(session,"inTruthDownSamplingVersion",choices=get_ds_options(session),selected = ifelse("1000"%in%get_ds_options(session),"1000",max(get_ds_options(session))))
   updateSelectInput(session,"inModulesDownSamplingVersion",choices=get_ds_options(session),selected = max(get_ds_options(session)))
-
+  updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(ldm$cluster_sets))
   if (is.null(get_noise_models(session))){
      updateSelectInput(session,"inModelOrAverage",choices=c("Model parameters","Average"))
   }
@@ -374,10 +393,10 @@ tab3_left_margin=12
   
     x=do.call(cbind,freq_norm[reorderby])
     x=pmax(x,0,na.rm=T)
-    ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
-  #  ord=get_order(seriate(as.dist(1-cor(t(x))),method = "GW"))
-    updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
-    
+    if (nrow(x)>=2){
+      ord=get_order(seriate(as.dist(1-cor(t(x))),method = "OLO_complete"))
+      updateTextInput(session,"inSamplesToShow",value = paste(insamples[ord],collapse=", "))
+    }
   })
   
   observeEvent(input$inAddSample,{
@@ -475,7 +494,7 @@ tab3_left_margin=12
   cluster_sets_reactive <-reactive ({
    # print(input$clusters_sets_shinytree)
     if (is.null(input$clusters_sets_shinytree)){
-      return(NULL)
+      return(session$userData$cluster_set)
     }
     as_cluster_sets_recursive(input$clusters_sets_shinytree)
   })
@@ -489,6 +508,9 @@ tab3_left_margin=12
   
   cluster_annots_reactive<-reactive({
     cluster_sets=cluster_sets_reactive()
+    if (is.null(cluster_sets)){
+      cluster_sets=session$userData$cluster_sets
+    }
     if (is.null(session$userData$clustAnnots)&&(is.null(cluster_sets))){
       return()
     }
@@ -838,12 +860,12 @@ tab3_left_margin=12
   
   observeEvent(input$inAddClusterSetButton, {
     if (is.null(input$clusters_sets_shinytree)){
-      l=list()
+      l=session$userData$cluster_sets
     }
     else{
       l=cluster_sets_reactive()
-      l[[input$inAddClusterSet]]=list()
     }
+    l[[input$inAddClusterSet]]=list()
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l))
     updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(get_nodes(l)))
     updateSelectInput(session,"inReorderSamplesBy",choices=c("All",unique(get_nodes(l))))
@@ -851,9 +873,11 @@ tab3_left_margin=12
   
   observeEvent(input$inRemoveClusterSetButton, {
     if (is.null(input$clusters_sets_shinytree)){
-      return()
+      l=session$userData$cluster_sets
     }
-    l=cluster_sets_reactive()
+    else {
+      l=cluster_sets_reactive()
+    }
     l2=remove_node(l,input$removeClusterSetSelectInput)
     updateTree(session,"clusters_sets_shinytree",data = as_list_recursive(l2))
     updateSelectInput(session,"removeClusterSetSelectInput",choices=unique(unlist(get_nodes(l2))))

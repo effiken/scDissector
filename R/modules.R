@@ -3,6 +3,15 @@ fisher.r2z <- function(r) { 0.5 * (log(1+r) - log(1-r)) }
 fisher.z2r <- function (z) {(exp(2 * z) - 1)/(1 + exp(2 * z))}
 
 
+aggregate_sparse=function(mat,v){
+  v_unique=unique(v)
+  aggmat=Matrix(,length(v_unique),ncol(mat),dimnames = list(v_unique,colnames(mat)))
+  for (i in 1:length(v_unique)){
+    aggmat[i,]=colSums(mat[v==v_unique[i],])
+  }
+  return(aggmat)
+}
+
 get_avg_gene_to_gene_cor=function(ds,cell_to_sample,samples=NULL,weighted=F,min_number_of_cell_per_sample=5,min_umi_counts_per_samples=5,showShinyProgressBar=F,session=NULL){
   zmat=matrix(0,nrow(ds),nrow(ds),dimnames=list(rownames(ds),rownames(ds)))
   samples_inp=unique(cell_to_sample)
@@ -178,7 +187,8 @@ parse_modules=function(ldm,cormat,ds_version,modules_version="",nmods=50,reg=1e-
   ds=ldm$dataset$ds[[match(ds_version,ldm$dataset$ds_numis)]]
   mods=cutree(hclust(as.dist(1-cormat[gene_mask2,gene_mask2])),nmods)
   modsl=split(names(mods),mods)
-  modsums=aggregate(ds[gene_mask2,],groupings=mods,fun="sum")
+#  modsums=aggregate(ds[gene_mask2,],groupings=mods,fun="sum")
+  modsums=aggregate_sparse(ds[gene_mask2,],mods)
 #  modclustsum=aggregate(t(modsums),groupings=ldm$dataset$cell_to_cluster[colnames(modsums)],fun="sum")
 #  mod_freqs=t(modclustsum/rowSums(modclustsum))
 #  mod_freqs_normed=log2((reg+mod_freqs)/(reg+rowMeans(mod_freqs)))
