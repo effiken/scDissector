@@ -40,7 +40,7 @@ get_cluster_set_tree=function(mat,nodes_to_add=NULL){
 #' @param max_noise_fraction [optional ] numeric maximum value for the alpha parameter. (0.20 in default) 
 #' @return LDM object
 #' @export
-load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F,cell_list=NULL,max_noise_fraction=0.2){
+load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_name="",max_umis=25000,excluded_clusters=NA,ds_numis=NA,genes=NULL,max_ncells_per_sample=NA,lightweight=F,cell_list=NULL,max_noise_fraction=0.2,fixed_noise=NA){
 
   if (all(is.na(excluded_clusters))){
     excluded_clusters=c()
@@ -131,7 +131,12 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
     }
  
     samples=names(sample_fns)
-    
+
+    if (length(fixed_noise)==0&&all(is.na(fixed_noise))){
+      fixed_noise=rep(NA,length(samples))
+      names(fixed_noise)=samples
+    }
+
     dataset<-new.env()
     dataset$ds=list()
     
@@ -291,9 +296,16 @@ load_dataset_and_model<-function(model_fn,sample_fns,min_umis=250,model_version_
             #          res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],models,noise_model,alpha_noise=alpha_b,reg=model$params$reg)
             #          cell_to_cluster=MAP(res_l$ll)
             #          alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,cell_to_cluster =cell_to_cluster,reg=model$params$reg )
-            alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg ,max_noise_fraction = max_noise_fraction)
+         
+            if (is.na(fixed_noise[sampi])){
+              alpha_b=update_alpha_single_batch( umitab[projection_genemask,],models,noise_model,reg=model$params$reg ,max_noise_fraction = max_noise_fraction)
+              message("%Noise = ",round(100*alpha_b,digits=2))
+            }
+            else{
+              alpha_b=fixed_noise[sampi]
+              message("Assuming %Noise = ",round(100*alpha_b,digits=2))
+            }
             
-            message("%Noise = ",round(100*alpha_b,digits=2))
        
             res_l=getOneBatchCorrectedLikelihood(umitab=umitab[projection_genemask,],cbind(models,noise_model),noise_model,alpha_noise=alpha_b,reg=model$params$reg)
             gc()
@@ -906,3 +918,36 @@ create_clustering_data_dir=function(path,samples=c(),model_names=c()){
   write.csv(file=paste(path,"/metadata/sample_annots.csv",sep=""),sample_annots_tab,row.names = F)
 }
 
+transform_models=function(scDissector_datadir,model_fn,samples_fn,genes,clusters=NULL,output_model_fn=NULL,init_noise=0.1,min_umis=300,ncells_per_sample=500,reg=1e-6){
+  
+  samples=names(samples_fn)
+  fixed_noise=rep(init_noise,length(samples))
+  names(fixed_noise)=samples
+  ldm=load_dataset_and_model(model_fn,sample_fns=fns,model_version_name = model_fn,min_umis = min_umis,max_umis = 25000,ds_numis = c("1000"),lightweight=T,max_noise_fraction = .75,fixed_noise = fixed_noise,genes =genes ,max_ncells_per_sample = ncells_per_sample)
+  if (is.null(clusters)){
+    clusters=colnames(ldm$model$models)
+  }
+  init_models=ldm$model$models
+  print(table(ldm$dataset$cell_to_cluster)[clusters])
+  data_based_models=update_models_debatched(umis=ldm$dataset$umitab[genes,],cell_to_cluster = ldm$dataset$cell_to_cluster,batch = ldm$dataset$cell_to_sample,noise_models = ldm$dataset$noise_models[genes,],alpha_noise = ldm$dataset$alpha_noise,make_plots = F)
+  clusters=intersect(colnames(data_based_models),clusters)
+  data_based_models=data_based_models[,clusters]
+  cor_vec=(mapply( clusters,FUN=function(i){cor(log(reg+data_based_models[,i]),log(reg+init_models[genes,i]))}))
+  print(cor_vec)
+  #clust_mask=colnames(data_based_models)[cor_vec>cor_thresh]
+  data_based_models_adj=t(t(data_based_models[genes,])/colSums(data_based_models[genes,]))
+  init_models_adj=t(t(init_models[genes,])/colSums(init_models[genes,]))
+  weights=1e-10+pmax(data_based_models_adj[,clusters],init_models_adj[,clusters])
+  weights=weights/rowSums(weights)
+  conversion_vector=rowSums(((reg+data_based_models_adj[,clusters])/(reg+init_models_adj[,clusters]))*weights)
+  transformed_models=init_models_adj*conversion_vector
+  #transformed_models=init_models_adj*(reg+(rowSums(ldm$model$noise_models[genes,])/sum(ldm$model$noise_models[genes,])))/(reg+(rowSums(ldm$dataset$noise_models[genes,])/sum(ldm$dataset$noise_models[genes,])))
+  transformed_models_adj=t(t(transformed_models)/colSums(transformed_models))
+  model=ldm$model
+  if (!is.null(output_model_fn)){
+    model$models=transformed_models_adj
+  #  model$params$reg=reg
+    save(file=output_model_fn,list=names(model),envir = model)
+  }
+  return(transformed_models_adj)
+}
