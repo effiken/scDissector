@@ -166,6 +166,7 @@ update_all= function(session,ldm){
   }
   session$userData$reactiveVars<-reactiveValues()
   session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=c(),genes=c(),samples=c())
+  session$userData$reactiveVars$clusters_samples_reactive=list(clusters=c(),samples=c())
   session$userData$sample_colors=default_sample_colors[1:length(get_loaded_samples(session))]
   ncells_choices=as.numeric(setdiff(params$nrandom_cells_per_sample_choices,"All"))
   ncells_per_sample=ncells_choices[which.min(abs((2000/length(get_loaded_samples(session)))-ncells_choices))]
@@ -348,6 +349,7 @@ tab3_left_margin=12
     }
     samples=unique(unlist(tmp_samples))
     if (!all(samples%in%session$userData$samples_tab$index)){
+      browser()
       message("Error: These samples could not be recognized: ",paste(samples[!(samples%in%session$userData$samples_tab$index)],collapse=","),". Loading failed!")
       message("")
       return()
@@ -491,6 +493,8 @@ tab3_left_margin=12
     return(samples)
   })
   
+  
+  
   cluster_sets_reactive <-reactive ({
    # print(input$clusters_sets_shinytree)
     if (is.null(input$clusters_sets_shinytree)){
@@ -541,7 +545,7 @@ tab3_left_margin=12
   
     
     session$userData$reactiveVars$clusters_genes_samples_reactive=list(clusters=clusts,genes=genes,samples=samples_reactive())
-  
+    session$userData$reactiveVars$clusters_samples_reactive=list(clusters=clusts,samples=samples_reactive())
   }
   
   sample_annots_reactive<-reactive({
@@ -550,8 +554,8 @@ tab3_left_margin=12
   
   
   cells_reactive <-reactive({
-    inclusts=session$userData$reactiveVars$clusters_genes_samples_reactive$clusters
-    insamples=session$userData$reactiveVars$clusters_genes_samples_reactive$samples
+    inclusts=session$userData$reactiveVars$clusters_samples_reactive$clusters
+    insamples=session$userData$reactiveVars$clusters_samples_reactive$samples
    
     return(sort(select_cells(session,cells=get_all_cells(session),clusters=inclusts,samples=insamples)))
   })
@@ -680,7 +684,9 @@ tab3_left_margin=12
 #    message("Cluster annotations saved to ",annot_fn,".")
 #    
 #  })
-  
+
+    
+
   
   observeEvent(input$inClusterGenes, {
     cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
@@ -735,6 +741,31 @@ tab3_left_margin=12
     }
   })
 
+  
+  observeEvent(input$inModulesAddGeneList,{
+    module_ids=unlist(modules_reactive())
+    modsl=gene_to_module_reactive()
+    genes_to_show_comma_delimited=paste(unlist(modsl[module_ids]),collapse = ", ")
+    new_set_name=paste("Modules_",input$inNUmberOfGeneModules,"_",date(),sep="")
+    if (!is.null(session$userData$geneList)){
+      geneList=session$userData$geneList
+      geneList[length(geneList)+1]=genes_to_show_comma_delimited
+    }
+    else{
+      geneList=c(genes_to_show_comma_delimited)
+    }
+    names(geneList)[length(geneList)]=new_set_name
+    
+    session$userData$geneList<-geneList
+    updateSelectInput(session,"inGeneSets",choices=names(session$userData$geneList),selected = names(session$userData$geneList)[length(session$userData$geneList)])
+    
+    }
+  )
+  
+  
+  observeEvent(input$inResetModules,{
+    updateTextInput(session,"inModules",value=paste(names(gene_to_module_reactive()),collapse=","))
+  })
   
   observeEvent(input$inVarMeanScreenSelectedClusters, {
     numis=1000
@@ -1095,7 +1126,8 @@ tab3_left_margin=12
     {
       return(data.frame(m=0,v=0,gene=""))
     }
-    cgs=session$userData$reactiveVars$clusters_genes_samples_reactive
+    
+    cgs=session$userData$reactiveVars$clusters_samples_reactive
     inclusts=cgs$clusters
     insamples=cgs$samples
     cell_mask=select_cells(session,cells=get_all_cells(session),clusters = inclusts,samples=insamples)

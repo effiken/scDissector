@@ -203,7 +203,9 @@ mainPanel(width=12,
                        wellPanel(
                          actionButton("inClusterModules", "Reorder Modules"),
                          selectInput("inReorderingModulesMethod","Reordering method",choices=c("Hierarchical clustering","Diagonal")),
-                         downloadButton('inDownloadModuleList', 'Download Modules')
+                         downloadButton('inDownloadModuleList', 'Download Modules'),
+                         actionButton("inModulesAddGeneList", "Add to Gene Lists"),
+                         actionButton("inResetModules", "Reset Modules")
                          ),
                       wellPanel(
                         selectInput("inModuleSelect","Show Module:",choices=c()),
