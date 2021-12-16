@@ -7,7 +7,7 @@ aggregate_sparse=function(mat,v){
   v_unique=unique(v)
   aggmat=Matrix(,length(v_unique),ncol(mat),dimnames = list(v_unique,colnames(mat)))
   for (i in 1:length(v_unique)){
-    aggmat[i,]=colSums(mat[v==v_unique[i],,drop=F])
+    aggmat[i,]=Matrix::colSums(mat[v==v_unique[i],,drop=F])
   }
   return(aggmat)
 }
