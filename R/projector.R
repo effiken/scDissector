@@ -1,5 +1,4 @@
 library(Matrix)
-library(Matrix.utils)
 library(reshape2)
 
 get_total_likelihood=function(ll){
@@ -134,7 +133,7 @@ get_expected_noise_UMI_counts_alpha=function(umis,cluster,batch,noise_models,alp
   nmodels=length(clusters)
   nsamps=ncol(noise_models)
 
-  raw_counts=Matrix::t(Matrix.utils::aggregate.Matrix(Matrix::t(umis),cluster))
+  raw_counts=Matrix::t(aggregate.Matrix(Matrix::t(umis),cluster))
   ag=aggregate(Matrix::colSums(umis),by=list(batch,cluster),sum)
   numis_per_batch=sapply(split(Matrix::colSums(umis),batch),sum)[colnames(noise_models)]
   numis_per_batch_cluster=matrix(0,nsamps,nmodels,dimnames = list(colnames(noise_models),clusters))
@@ -159,7 +158,7 @@ MAP=function(likelihood){
 }
 
 update_models=function(umis,cluster){
-    counts=Matrix.utils::aggregate.Matrix(Matrix::t(umis),cluster)
+    counts=aggregate.Matrix(Matrix::t(umis),cluster)
     models=Matrix::t(counts/Matrix::rowSums(counts))
   return(as.matrix(models))
 }
