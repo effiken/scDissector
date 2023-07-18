@@ -803,7 +803,7 @@ tab3_left_margin=12
     var_score=lv-predict(lo,newdata =x)
     if (ngenes_to_show>length(inclusts)){
       positive_var_gens=names(var_score)[pmax(var_score,0,na.rm=T)>0.001]
-      umisum=as.matrix(aggregate.Matrix(t(ds[positive_var_gens,]),get_cell_to_cluster(session,cells=colnames(ds)),fun="sum"))
+      umisum=as.matrix(aggregate.Matrix(t(ds[positive_var_gens,]),get_cell_to_cluster(session,cells=colnames(ds))))
       cluster_avg=(t(umisum/rowSums(umisum)))
       cluster_avg_normed=log2((1e-6+cluster_avg)/(1e-6+rowMeans(cluster_avg)))
       high_var_genes=as.vector(unlist(sapply(split(rownames(cluster_avg_normed),apply(cluster_avg_normed,1,which.max)),FUN=function(x){names(head(sort(var_score[x],decreasing = T),floor(ngenes_to_show/ncol(cluster_avg_normed))))})))
