@@ -594,7 +594,8 @@ import_dataset_and_model<-function(model_version_name,clustering_data_path,umita
     
     for (sampi in samples){
       maski=cell_to_sample==sampi
-      tmp_counts=as.matrix(Matrix::t(aggregate.Matrix(Matrix::t(umitab[,maski]),cell_to_cluster[maski])))
+      
+      tmp_counts=as.matrix(Matrix::t(fac2sparse(cell_to_cluster[maski]) %*% Matrix::t(umitab[,maski])))
       dataset$counts[sampi,rownames(tmp_counts),colnames(tmp_counts)]=tmp_counts
     }
     
