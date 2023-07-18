@@ -72,6 +72,6 @@ names(geneList)<-rownames(geneList_tmp)
 rm(geneList_tmp)
 
 aggregate.Matrix=function(mat,by_v){
-  return(fac2sparse(by_v) %*% t(mat))
+  return(fac2sparse(by_v) %*% mat)
 }
 
