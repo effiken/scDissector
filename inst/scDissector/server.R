@@ -1064,14 +1064,13 @@ tab3_left_margin=12
     }
     mat<-get_models(session,clusters = inclusts,genes=ingenes)
     if (input$inReorderingClustersMethod=="Hierarchical clustering"){
-    cormat=cor(mat,use="comp")
-    d1=dist(1-cormat)
-    d1[is.na(d1)]=100
-  #  reorderv1=hclust(d1)$order
-    reorderv1=get_order(seriate(d1,method="GW_complete"))
+      cormat=cor(mat,use="comp")
+      d1=dist(1-cormat)
+      d1[is.na(d1)]=100
+      reorderv1=get_order(seriate(d1,method="GW_complete"))
     }
     else if (input$inReorderingClustersMethod=="Diagonal"){
-      reorderv1=order(apply(mat[ingenes,],2,which.max))
+      reorderv1=order(apply(mat,2,which.max))
     }
     else if (input$inReorderingClustersMethod=="Cluster-sets"){
       cluster_sets=cluster_sets_reactive()
